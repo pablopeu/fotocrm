@@ -14,13 +14,21 @@ export function useModal() {
     setModalProps({})
   }, [])
 
-  const showSuccess = useCallback((title, message) => {
+  const showSuccess = useCallback((title, message, autoCloseMs = 2000) => {
     openModal({ type: 'success', title, children: message })
-  }, [openModal])
+    // Auto-cerrar después de un tiempo
+    if (autoCloseMs > 0) {
+      setTimeout(() => closeModal(), autoCloseMs)
+    }
+  }, [openModal, closeModal])
 
-  const showError = useCallback((title, message) => {
+  const showError = useCallback((title, message, autoCloseMs = 3000) => {
     openModal({ type: 'error', title, children: message })
-  }, [openModal])
+    // Auto-cerrar después de un tiempo (más largo para errores)
+    if (autoCloseMs > 0) {
+      setTimeout(() => closeModal(), autoCloseMs)
+    }
+  }, [openModal, closeModal])
 
   const showInfo = useCallback((title, message) => {
     openModal({ type: 'info', title, children: message })
