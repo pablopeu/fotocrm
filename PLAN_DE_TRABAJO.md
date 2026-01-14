@@ -5,6 +5,14 @@ Web app para un artesano de cuchillos que permite buscar rápidamente imágenes 
 
 ---
 
+## Consideraciones Importantes
+
+- **Desarrollo local, testing en hosting**: El sistema se programa localmente pero SIEMPRE se prueba en el hosting remoto, nunca localmente.
+- **Acceso al hosting**: Solo FTP y cPanel básico (sin SSH ni terminal).
+- **Sin alertas nativas**: NO usar `alert()`, `confirm()`, `prompt()` ni ningún diálogo nativo del navegador. Usar el componente Modal reutilizable para todas las interacciones.
+
+---
+
 ## Fase 1: Setup y Configuración Base
 
 ### 1.1 Inicialización del Proyecto
@@ -100,6 +108,7 @@ Web app para un artesano de cuchillos que permite buscar rápidamente imágenes 
   ```
   src/
   ├── components/
+  │   ├── Modal/           # Modal reutilizable (confirmaciones, mensajes, etc.)
   │   ├── TreeView/
   │   ├── PhotoGrid/
   │   ├── PhotoModal/
@@ -112,6 +121,19 @@ Web app para un artesano de cuchillos que permite buscar rápidamente imágenes 
   ├── services/
   └── App.jsx
   ```
+
+### 3.1.1 Componente Modal Reutilizable (PRIORITARIO)
+- [ ] Crear componente Modal con props:
+  - `isOpen` (boolean)
+  - `onClose` (function)
+  - `title` (string)
+  - `type` ('info' | 'confirm' | 'error' | 'success')
+  - `onConfirm` (function, para confirmaciones)
+  - `children` (contenido)
+- [ ] Cerrar con ESC o click en overlay
+- [ ] Focus trap para accesibilidad
+- [ ] Estilos según tipo (colores para error/success/info)
+- [ ] **PROHIBIDO**: alert(), confirm(), prompt() o similares
 
 ### 3.2 Componente TreeView (Árbol de Categorías)
 - [ ] Crear componente expandible/colapsable
@@ -172,8 +194,8 @@ Web app para un artesano de cuchillos que permite buscar rápidamente imágenes 
 ### 4.2 Gestión de Categorías
 - [ ] Formulario para crear categoría/subcategoría
 - [ ] Lista editable de categorías existentes
-- [ ] Botón eliminar con confirmación (modal)
-- [ ] Validación de formularios
+- [ ] Botón eliminar con confirmación (usar componente Modal, NO confirm())
+- [ ] Validación de formularios con feedback via Modal
 
 ### 4.3 Gestión de Fotos
 - [ ] Área de Drag & Drop para upload
@@ -187,33 +209,34 @@ Web app para un artesano de cuchillos que permite buscar rápidamente imágenes 
 ### 4.4 Edición de Fotos Existentes
 - [ ] Cambiar texto/descripción
 - [ ] Cambiar categoría
-- [ ] Eliminar con confirmación
+- [ ] Eliminar con confirmación via Modal (NO confirm())
+- [ ] Mensajes de éxito/error via Modal (NO alert())
 - [ ] Cambios reflejados inmediatamente
 
 ---
 
-## Fase 5: Testing
+## Fase 5: Testing (EN HOSTING)
 
-### 5.1 Tests Unitarios (Jest)
-- [ ] Tests para funciones de sanitización
-- [ ] Tests para helpers de copia al portapapeles
-- [ ] Tests para parsing de JSON
+> **IMPORTANTE**: Todos los tests se realizan en el hosting remoto, no localmente.
+> Flujo: Desarrollar local → Deploy via FTP → Probar en hosting
 
-### 5.2 Tests Funcionales
+### 5.1 Tests Funcionales (en hosting)
 - [ ] Navegación del árbol de categorías
 - [ ] Filtrado por acero/búsqueda
-- [ ] Copia individual y múltiple
-- [ ] Upload de fotos
+- [ ] Copia individual y múltiple al portapapeles
+- [ ] Upload de fotos desde panel admin
 - [ ] Edición de metadatos
+- [ ] Verificar que modales funcionan correctamente (no alertas nativas)
 
-### 5.3 Tests de Seguridad
+### 5.2 Tests de Seguridad (en hosting)
 - [ ] Input malicioso (XSS) sanitizado
-- [ ] Acceso sin auth denegado
+- [ ] Acceso sin auth denegado a /admin
 - [ ] Upload de archivos inválidos rechazado
 
-### 5.4 Tests de Rendimiento
-- [ ] Carga con 200 fotos simuladas < 2s
-- [ ] Verificar CSS purged de Tailwind
+### 5.3 Tests de Rendimiento (en hosting)
+- [ ] Carga con 200 fotos < 2s
+- [ ] Verificar CSS optimizado de Tailwind
+- [ ] Responsive en móvil real
 
 ---
 
