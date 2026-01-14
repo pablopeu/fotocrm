@@ -32,9 +32,10 @@ jobs:
           mkdir -p deploy
           # Copiar frontend build
           cp -r frontend/dist/* deploy/
-          # Copiar API PHP
+          # Copiar API PHP (incluyendo .htaccess)
           mkdir -p deploy/api
           cp -r api/* deploy/api/
+          cp api/.htaccess deploy/api/ 2>/dev/null || true
           # Copiar datos JSON
           mkdir -p deploy/data
           cp -r data/* deploy/data/
