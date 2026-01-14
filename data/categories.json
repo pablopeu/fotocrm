@@ -1,123 +1,49 @@
 {
-  "categories": [
+  "tag_groups": [
     {
-      "id": "cat-cocina",
-      "name": "Cocina",
-      "parent_id": null,
-      "children": [
-        {
-          "id": "cat-cocina-chef",
-          "name": "Cuchillo Chef",
-          "parent_id": "cat-cocina",
-          "children": []
-        },
-        {
-          "id": "cat-cocina-santoku",
-          "name": "Santoku",
-          "parent_id": "cat-cocina",
-          "children": []
-        },
-        {
-          "id": "cat-cocina-paring",
-          "name": "Paring",
-          "parent_id": "cat-cocina",
-          "children": []
-        }
+      "id": "tipo",
+      "name": "Tipo",
+      "tags": [
+        { "id": "cocina", "name": "Cocina" },
+        { "id": "asado", "name": "Asado" },
+        { "id": "japones", "name": "Japonés" },
+        { "id": "outdoor", "name": "Outdoor" },
+        { "id": "camping", "name": "Camping" },
+        { "id": "caza", "name": "Caza" }
       ]
     },
     {
-      "id": "cat-asado",
-      "name": "Asado",
-      "parent_id": null,
-      "children": [
-        {
-          "id": "cat-asado-asador",
-          "name": "Cuchillo Asador",
-          "parent_id": "cat-asado",
-          "children": []
-        },
-        {
-          "id": "cat-asado-deshuesar",
-          "name": "Deshuesador",
-          "parent_id": "cat-asado",
-          "children": []
-        }
+      "id": "encabado",
+      "name": "Encabado",
+      "tags": [
+        { "id": "lapacho", "name": "Lapacho" },
+        { "id": "micarta", "name": "Micarta" },
+        { "id": "resina", "name": "Resina" },
+        { "id": "ebano", "name": "Ébano" },
+        { "id": "olivo", "name": "Olivo" },
+        { "id": "guayacan", "name": "Guayacán" },
+        { "id": "quebracho", "name": "Quebracho" }
       ]
     },
     {
-      "id": "cat-japones",
-      "name": "Japonés",
-      "parent_id": null,
-      "children": [
-        {
-          "id": "cat-japones-gyuto",
-          "name": "Gyuto",
-          "parent_id": "cat-japones",
-          "children": []
-        },
-        {
-          "id": "cat-japones-nakiri",
-          "name": "Nakiri",
-          "parent_id": "cat-japones",
-          "children": []
-        },
-        {
-          "id": "cat-japones-petty",
-          "name": "Petty",
-          "parent_id": "cat-japones",
-          "children": []
-        }
+      "id": "acero",
+      "name": "Acero",
+      "tags": [
+        { "id": "inoxidable", "name": "Inoxidable" },
+        { "id": "carbono", "name": "Carbono" },
+        { "id": "damasco-inox", "name": "Damasco Inoxidable" },
+        { "id": "damasco-carbono", "name": "Damasco Carbono" }
       ]
     },
     {
-      "id": "cat-otros",
-      "name": "Otros",
-      "parent_id": null,
-      "children": [
-        {
-          "id": "cat-otros-outdoor",
-          "name": "Outdoor",
-          "parent_id": "cat-otros",
-          "children": []
-        },
-        {
-          "id": "cat-otros-camping",
-          "name": "Camping",
-          "parent_id": "cat-otros",
-          "children": []
-        }
-      ]
+      "id": "extra1",
+      "name": "Extra 1",
+      "tags": []
     },
     {
-      "id": "cat-encabados",
-      "name": "Encabados",
-      "parent_id": null,
-      "children": [
-        {
-          "id": "cat-encabados-madera",
-          "name": "Madera",
-          "parent_id": "cat-encabados",
-          "children": []
-        },
-        {
-          "id": "cat-encabados-micarta",
-          "name": "Micarta",
-          "parent_id": "cat-encabados",
-          "children": []
-        },
-        {
-          "id": "cat-encabados-resina",
-          "name": "Resina",
-          "parent_id": "cat-encabados",
-          "children": []
-        }
-      ]
+      "id": "extra2",
+      "name": "Extra 2",
+      "tags": []
     }
-  ],
-  "steel_types": [
-    { "id": "inoxidable", "name": "Inoxidable" },
-    { "id": "carbono", "name": "Carbono" },
-    { "id": "damasco-carbono", "name": "Damasco Carbono" },
-    { "id": "damasco-inoxidable", "name": "Damasco Inoxidable" }
   ]
 }

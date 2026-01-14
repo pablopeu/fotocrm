@@ -1,10 +1,9 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import Modal from '../components/Modal'
 import { useModal } from '../hooks/useModal'
 
 const API_BASE = import.meta.env.VITE_API_URL || './api/index.php'
 
-// Helper para construir URLs de API
 function apiUrl(route) {
   return `${API_BASE}?route=${route.replace(/^\//, '')}`
 }
@@ -13,19 +12,16 @@ export default function Admin() {
   const [authenticated, setAuthenticated] = useState(false)
   const [credentials, setCredentials] = useState({ user: '', pass: '' })
   const [activeTab, setActiveTab] = useState('photos')
-  const [categories, setCategories] = useState([])
-  const [steelTypes, setSteelTypes] = useState([])
+  const [tagGroups, setTagGroups] = useState([])
   const [photos, setPhotos] = useState([])
   const [loading, setLoading] = useState(false)
 
   const { isOpen, modalProps, closeModal, showSuccess, showError, showConfirm } = useModal()
 
-  // Auth header
   const getAuthHeader = () => ({
     'Authorization': 'Basic ' + btoa(`${credentials.user}:${credentials.pass}`)
   })
 
-  // Verificar autenticación
   const handleLogin = async (e) => {
     e.preventDefault()
     try {
@@ -43,18 +39,16 @@ export default function Admin() {
     }
   }
 
-  // Cargar datos
   const loadData = async () => {
     setLoading(true)
     try {
       const [catRes, photoRes] = await Promise.all([
-        fetch(apiUrl('categories')),
+        fetch(apiUrl('tags')),
         fetch(apiUrl('photos'))
       ])
       const catData = await catRes.json()
       const photoData = await photoRes.json()
-      setCategories(catData.categories || [])
-      setSteelTypes(catData.steel_types || [])
+      setTagGroups(catData.tag_groups || [])
       setPhotos(photoData.photos || [])
     } catch (error) {
       showError('Error', 'Error al cargar datos')
@@ -72,40 +66,30 @@ export default function Admin() {
           </h1>
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Usuario
-              </label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Usuario</label>
               <input
                 type="text"
                 value={credentials.user}
                 onChange={(e) => setCredentials({ ...credentials, user: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 required
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Contraseña
-              </label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Contraseña</label>
               <input
                 type="password"
                 value={credentials.pass}
                 onChange={(e) => setCredentials({ ...credentials, pass: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 required
               />
             </div>
-            <button
-              type="submit"
-              className="w-full py-2 px-4 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-            >
+            <button type="submit" className="w-full py-2 px-4 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700">
               Iniciar sesión
             </button>
           </form>
-          <a
-            href="/"
-            className="block text-center mt-4 text-sm text-gray-500 dark:text-gray-400 hover:underline"
-          >
+          <a href="#/" className="block text-center mt-4 text-sm text-gray-500 dark:text-gray-400 hover:underline">
             Volver al catálogo
           </a>
         </div>
@@ -116,54 +100,41 @@ export default function Admin() {
 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
-      {/* Header */}
       <header className="bg-white dark:bg-gray-800 shadow">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <div>
-            <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-              FotoCRM Admin
-            </h1>
-          </div>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-white">FotoCRM Admin</h1>
           <div className="flex items-center gap-4">
-            <a href="/" className="text-sm text-gray-600 dark:text-gray-300 hover:underline">
-              Ver catálogo
-            </a>
-            <button
-              onClick={() => setAuthenticated(false)}
-              className="text-sm text-red-600 dark:text-red-400 hover:underline"
-            >
+            <a href="#/" className="text-sm text-gray-600 dark:text-gray-300 hover:underline">Ver catálogo</a>
+            <button onClick={() => setAuthenticated(false)} className="text-sm text-red-600 dark:text-red-400 hover:underline">
               Cerrar sesión
             </button>
           </div>
         </div>
       </header>
 
-      {/* Tabs */}
       <div className="max-w-7xl mx-auto px-4 py-4">
         <div className="flex gap-2 border-b border-gray-200 dark:border-gray-700">
-          {['photos', 'categories'].map((tab) => (
+          {['photos', 'tags'].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={`px-4 py-2 font-medium text-sm border-b-2 -mb-px transition-colors ${
                 activeTab === tab
                   ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                  : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                  : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700'
               }`}
             >
-              {tab === 'photos' ? 'Fotos' : 'Categorías'}
+              {tab === 'photos' ? 'Fotos' : 'Tags'}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Content */}
       <main className="max-w-7xl mx-auto px-4 pb-8">
         {activeTab === 'photos' && (
           <PhotosManager
             photos={photos}
-            categories={categories}
-            steelTypes={steelTypes}
+            tagGroups={tagGroups}
             authHeader={getAuthHeader()}
             onRefresh={loadData}
             showSuccess={showSuccess}
@@ -171,9 +142,9 @@ export default function Admin() {
             showConfirm={showConfirm}
           />
         )}
-        {activeTab === 'categories' && (
-          <CategoriesManager
-            categories={categories}
+        {activeTab === 'tags' && (
+          <TagsManager
+            tagGroups={tagGroups}
             authHeader={getAuthHeader()}
             onRefresh={loadData}
             showSuccess={showSuccess}
@@ -191,13 +162,18 @@ export default function Admin() {
 // ==================
 // Photos Manager
 // ==================
-function PhotosManager({ photos, categories, steelTypes, authHeader, onRefresh, showSuccess, showError, showConfirm }) {
+function PhotosManager({ photos, tagGroups, authHeader, onRefresh, showSuccess, showError, showConfirm }) {
   const [uploading, setUploading] = useState(false)
   const [dragOver, setDragOver] = useState(false)
-  const [uploadForm, setUploadForm] = useState({ cat_id: '', steel_type: '', text: '' })
+  const [selectedTags, setSelectedTags] = useState([])
+  const [uploadText, setUploadText] = useState('')
   const [editingPhoto, setEditingPhoto] = useState(null)
 
-  const flatCategories = flattenCategories(categories)
+  const handleTagToggle = (tagId) => {
+    setSelectedTags(prev =>
+      prev.includes(tagId) ? prev.filter(t => t !== tagId) : [...prev, tagId]
+    )
+  }
 
   const handleUpload = async (files) => {
     if (!files || files.length === 0) return
@@ -207,9 +183,8 @@ function PhotosManager({ photos, categories, steelTypes, authHeader, onRefresh, 
     for (const file of files) {
       formData.append('photos[]', file)
     }
-    formData.append('cat_id', uploadForm.cat_id)
-    formData.append('steel_type', uploadForm.steel_type)
-    formData.append('text', uploadForm.text)
+    formData.append('tags', selectedTags.join(','))
+    formData.append('text', uploadText)
 
     try {
       const response = await fetch(apiUrl('admin/upload'), {
@@ -219,12 +194,13 @@ function PhotosManager({ photos, categories, steelTypes, authHeader, onRefresh, 
       })
 
       if (response.ok) {
-        showSuccess('Éxito', `${files.length} foto(s) subida(s) correctamente`)
-        setUploadForm({ cat_id: '', steel_type: '', text: '' })
+        showSuccess('Éxito', `${files.length} foto(s) subida(s)`)
+        setSelectedTags([])
+        setUploadText('')
         onRefresh()
       } else {
         const error = await response.json()
-        showError('Error', error.error || 'Error al subir fotos')
+        showError('Error', error.error || 'Error al subir')
       }
     } catch (error) {
       showError('Error', 'Error de conexión')
@@ -240,17 +216,15 @@ function PhotosManager({ photos, categories, steelTypes, authHeader, onRefresh, 
   }
 
   const handleDelete = (photo) => {
-    showConfirm('Eliminar foto', '¿Estás seguro de eliminar esta foto? Esta acción no se puede deshacer.', async () => {
+    showConfirm('Eliminar foto', '¿Eliminar esta foto?', async () => {
       try {
         const response = await fetch(apiUrl(`admin/photos/${photo.id}`), {
           method: 'DELETE',
           headers: authHeader
         })
         if (response.ok) {
-          showSuccess('Eliminado', 'Foto eliminada correctamente')
+          showSuccess('Eliminado', 'Foto eliminada')
           onRefresh()
-        } else {
-          showError('Error', 'Error al eliminar')
         }
       } catch (error) {
         showError('Error', 'Error de conexión')
@@ -267,21 +241,26 @@ function PhotosManager({ photos, categories, steelTypes, authHeader, onRefresh, 
         headers: { ...authHeader, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           text: editingPhoto.text,
-          cat_id: editingPhoto.cat_id,
-          steel_type: editingPhoto.steel_type
+          tags: editingPhoto.tags
         })
       })
 
       if (response.ok) {
-        showSuccess('Actualizado', 'Foto actualizada correctamente')
+        showSuccess('Actualizado', 'Foto actualizada')
         setEditingPhoto(null)
         onRefresh()
-      } else {
-        showError('Error', 'Error al actualizar')
       }
     } catch (error) {
       showError('Error', 'Error de conexión')
     }
+  }
+
+  const getTagName = (tagId) => {
+    for (const group of tagGroups) {
+      const tag = group.tags.find(t => t.id === tagId)
+      if (tag) return tag.name
+    }
+    return tagId
   }
 
   return (
@@ -290,61 +269,67 @@ function PhotosManager({ photos, categories, steelTypes, authHeader, onRefresh, 
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Subir fotos</h2>
 
-        <div className="grid md:grid-cols-3 gap-4 mb-4">
-          <select
-            value={uploadForm.cat_id}
-            onChange={(e) => setUploadForm({ ...uploadForm, cat_id: e.target.value })}
-            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-          >
-            <option value="">Seleccionar categoría</option>
-            {flatCategories.map((cat) => (
-              <option key={cat.id} value={cat.id}>{cat.name}</option>
+        {/* Tags selector */}
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Seleccionar tags para las fotos:
+          </label>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            {tagGroups.map(group => (
+              <div key={group.id}>
+                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">{group.name}</p>
+                <div className="space-y-1 max-h-32 overflow-y-auto">
+                  {group.tags.map(tag => (
+                    <label key={tag.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selectedTags.includes(tag.id)}
+                        onChange={() => handleTagToggle(tag.id)}
+                        className="w-4 h-4 rounded border-gray-300 text-blue-600"
+                      />
+                      <span className="text-gray-700 dark:text-gray-300">{tag.name}</span>
+                    </label>
+                  ))}
+                  {group.tags.length === 0 && (
+                    <p className="text-xs text-gray-400 italic">Sin tags</p>
+                  )}
+                </div>
+              </div>
             ))}
-          </select>
+          </div>
+        </div>
 
-          <select
-            value={uploadForm.steel_type}
-            onChange={(e) => setUploadForm({ ...uploadForm, steel_type: e.target.value })}
-            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-          >
-            <option value="">Tipo de acero</option>
-            {steelTypes.map((steel) => (
-              <option key={steel.id} value={steel.id}>{steel.name}</option>
-            ))}
-          </select>
-
+        {/* Description */}
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Descripción:
+          </label>
           <input
             type="text"
-            placeholder="Descripción"
-            value={uploadForm.text}
-            onChange={(e) => setUploadForm({ ...uploadForm, text: e.target.value })}
-            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            value={uploadText}
+            onChange={(e) => setUploadText(e.target.value)}
+            placeholder="Descripción para la(s) foto(s)"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
           />
         </div>
 
+        {/* Drop zone */}
         <div
           onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
           onDragLeave={() => setDragOver(false)}
           onDrop={handleDrop}
           className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-            dragOver
-              ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-              : 'border-gray-300 dark:border-gray-600'
+            dragOver ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-300 dark:border-gray-600'
           }`}
         >
           {uploading ? (
             <div className="flex items-center justify-center gap-2">
               <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-              <span className="text-gray-600 dark:text-gray-300">Subiendo...</span>
+              <span>Subiendo...</span>
             </div>
           ) : (
             <>
-              <svg className="w-12 h-12 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-              </svg>
-              <p className="text-gray-600 dark:text-gray-300 mb-2">
-                Arrastra fotos aquí o
-              </p>
+              <p className="text-gray-600 dark:text-gray-300 mb-2">Arrastra fotos aquí o</p>
               <label className="inline-block px-4 py-2 bg-blue-600 text-white rounded-lg cursor-pointer hover:bg-blue-700">
                 Seleccionar archivos
                 <input
@@ -355,9 +340,6 @@ function PhotosManager({ photos, categories, steelTypes, authHeader, onRefresh, 
                   onChange={(e) => handleUpload(e.target.files)}
                 />
               </label>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                JPG, PNG o WebP. Máximo 5MB por archivo.
-              </p>
             </>
           )}
         </div>
@@ -366,36 +348,37 @@ function PhotosManager({ photos, categories, steelTypes, authHeader, onRefresh, 
       {/* Photos List */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-          Fotos existentes ({photos.length})
+          Fotos ({photos.length})
         </h2>
 
         {photos.length === 0 ? (
-          <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-            No hay fotos. Sube algunas usando el área de arriba.
-          </p>
+          <p className="text-gray-500 text-center py-8">No hay fotos</p>
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {photos.map((photo) => (
               <div key={photo.id} className="bg-gray-50 dark:bg-gray-700 rounded-lg overflow-hidden">
-                <img
-                  src={photo.url}
-                  alt={photo.text}
-                  className="w-full h-32 object-cover"
-                />
+                <img src={photo.url} alt={photo.text} className="w-full h-32 object-cover" />
                 <div className="p-3">
-                  <p className="text-sm text-gray-700 dark:text-gray-300 truncate mb-2">
+                  <p className="text-sm text-gray-700 dark:text-gray-300 truncate mb-1">
                     {photo.text || 'Sin descripción'}
                   </p>
+                  <div className="flex flex-wrap gap-1 mb-2">
+                    {(photo.tags || []).map(tagId => (
+                      <span key={tagId} className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-xs rounded">
+                        {getTagName(tagId)}
+                      </span>
+                    ))}
+                  </div>
                   <div className="flex gap-2">
                     <button
-                      onClick={() => setEditingPhoto({ ...photo })}
-                      className="flex-1 px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-200 dark:hover:bg-blue-800"
+                      onClick={() => setEditingPhoto({ ...photo, tags: photo.tags || [] })}
+                      className="flex-1 px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-200"
                     >
                       Editar
                     </button>
                     <button
                       onClick={() => handleDelete(photo)}
-                      className="flex-1 px-2 py-1 text-xs bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 rounded hover:bg-red-200 dark:hover:bg-red-800"
+                      className="flex-1 px-2 py-1 text-xs bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 rounded hover:bg-red-200"
                     >
                       Eliminar
                     </button>
@@ -410,60 +393,53 @@ function PhotosManager({ photos, categories, steelTypes, authHeader, onRefresh, 
       {/* Edit Modal */}
       {editingPhoto && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setEditingPhoto(null)}>
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md mx-4" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Editar foto</h3>
 
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Descripción</label>
-                <textarea
-                  value={editingPhoto.text || ''}
-                  onChange={(e) => setEditingPhoto({ ...editingPhoto, text: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  rows={3}
-                />
-              </div>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Descripción</label>
+              <textarea
+                value={editingPhoto.text || ''}
+                onChange={(e) => setEditingPhoto({ ...editingPhoto, text: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                rows={3}
+              />
+            </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Categoría</label>
-                <select
-                  value={editingPhoto.cat_id || ''}
-                  onChange={(e) => setEditingPhoto({ ...editingPhoto, cat_id: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                >
-                  <option value="">Sin categoría</option>
-                  {flatCategories.map((cat) => (
-                    <option key={cat.id} value={cat.id}>{cat.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tipo de acero</label>
-                <select
-                  value={editingPhoto.steel_type || ''}
-                  onChange={(e) => setEditingPhoto({ ...editingPhoto, steel_type: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                >
-                  <option value="">Sin especificar</option>
-                  {steelTypes.map((steel) => (
-                    <option key={steel.id} value={steel.id}>{steel.name}</option>
-                  ))}
-                </select>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tags</label>
+              <div className="grid grid-cols-2 gap-4">
+                {tagGroups.map(group => (
+                  <div key={group.id}>
+                    <p className="text-xs font-semibold text-gray-500 mb-1">{group.name}</p>
+                    <div className="space-y-1 max-h-24 overflow-y-auto">
+                      {group.tags.map(tag => (
+                        <label key={tag.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={editingPhoto.tags.includes(tag.id)}
+                            onChange={() => {
+                              const newTags = editingPhoto.tags.includes(tag.id)
+                                ? editingPhoto.tags.filter(t => t !== tag.id)
+                                : [...editingPhoto.tags, tag.id]
+                              setEditingPhoto({ ...editingPhoto, tags: newTags })
+                            }}
+                            className="w-4 h-4 rounded border-gray-300 text-blue-600"
+                          />
+                          <span className="text-gray-700 dark:text-gray-300">{tag.name}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
 
-            <div className="flex gap-2 mt-6">
-              <button
-                onClick={() => setEditingPhoto(null)}
-                className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
-              >
+            <div className="flex gap-2">
+              <button onClick={() => setEditingPhoto(null)} className="flex-1 px-4 py-2 border border-gray-300 rounded-lg">
                 Cancelar
               </button>
-              <button
-                onClick={handleUpdatePhoto}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-              >
+              <button onClick={handleUpdatePhoto} className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
                 Guardar
               </button>
             </div>
@@ -475,27 +451,27 @@ function PhotosManager({ photos, categories, steelTypes, authHeader, onRefresh, 
 }
 
 // ==================
-// Categories Manager
+// Tags Manager
 // ==================
-function CategoriesManager({ categories, authHeader, onRefresh, showSuccess, showError, showConfirm }) {
-  const [newCategory, setNewCategory] = useState({ name: '', parent_id: '' })
+function TagsManager({ tagGroups, authHeader, onRefresh, showSuccess, showError, showConfirm }) {
+  const [newTagName, setNewTagName] = useState('')
+  const [selectedGroup, setSelectedGroup] = useState('')
+  const [editingGroup, setEditingGroup] = useState(null)
 
-  const flatCategories = flattenCategories(categories)
-
-  const handleCreate = async (e) => {
+  const handleCreateTag = async (e) => {
     e.preventDefault()
-    if (!newCategory.name.trim()) return
+    if (!newTagName.trim() || !selectedGroup) return
 
     try {
-      const response = await fetch(apiUrl('admin/categories'), {
+      const response = await fetch(apiUrl('admin/tags'), {
         method: 'POST',
         headers: { ...authHeader, 'Content-Type': 'application/json' },
-        body: JSON.stringify(newCategory)
+        body: JSON.stringify({ group_id: selectedGroup, name: newTagName })
       })
 
       if (response.ok) {
-        showSuccess('Creado', 'Categoría creada correctamente')
-        setNewCategory({ name: '', parent_id: '' })
+        showSuccess('Creado', 'Tag creado correctamente')
+        setNewTagName('')
         onRefresh()
       } else {
         const error = await response.json()
@@ -506,18 +482,16 @@ function CategoriesManager({ categories, authHeader, onRefresh, showSuccess, sho
     }
   }
 
-  const handleDelete = (cat) => {
-    showConfirm('Eliminar categoría', `¿Eliminar "${cat.name}"? Las subcategorías también se eliminarán.`, async () => {
+  const handleDeleteTag = (groupId, tagId, tagName) => {
+    showConfirm('Eliminar tag', `¿Eliminar el tag "${tagName}"?`, async () => {
       try {
-        const response = await fetch(apiUrl(`admin/categories/${cat.id}`), {
+        const response = await fetch(apiUrl(`admin/tags/${groupId}/${tagId}`), {
           method: 'DELETE',
           headers: authHeader
         })
         if (response.ok) {
-          showSuccess('Eliminado', 'Categoría eliminada')
+          showSuccess('Eliminado', 'Tag eliminado')
           onRefresh()
-        } else {
-          showError('Error', 'Error al eliminar')
         }
       } catch (error) {
         showError('Error', 'Error de conexión')
@@ -525,81 +499,114 @@ function CategoriesManager({ categories, authHeader, onRefresh, showSuccess, sho
     })
   }
 
-  const renderCategory = (cat, level = 0) => (
-    <div key={cat.id}>
-      <div
-        className="flex items-center justify-between py-2 px-3 hover:bg-gray-50 dark:hover:bg-gray-700 rounded"
-        style={{ paddingLeft: `${level * 20 + 12}px` }}
-      >
-        <span className="text-gray-700 dark:text-gray-300">{cat.name}</span>
-        <button
-          onClick={() => handleDelete(cat)}
-          className="text-xs text-red-600 dark:text-red-400 hover:underline"
-        >
-          Eliminar
-        </button>
-      </div>
-      {cat.children?.map((child) => renderCategory(child, level + 1))}
-    </div>
-  )
+  const handleRenameGroup = async () => {
+    if (!editingGroup) return
+
+    try {
+      const response = await fetch(apiUrl(`admin/tag-groups/${editingGroup.id}`), {
+        method: 'PUT',
+        headers: { ...authHeader, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: editingGroup.name })
+      })
+
+      if (response.ok) {
+        showSuccess('Actualizado', 'Grupo renombrado')
+        setEditingGroup(null)
+        onRefresh()
+      }
+    } catch (error) {
+      showError('Error', 'Error de conexión')
+    }
+  }
 
   return (
     <div className="space-y-6">
-      {/* Create Form */}
+      {/* Create Tag */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Nueva categoría</h2>
-        <form onSubmit={handleCreate} className="flex gap-4">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Crear nuevo tag</h2>
+        <form onSubmit={handleCreateTag} className="flex gap-4">
+          <select
+            value={selectedGroup}
+            onChange={(e) => setSelectedGroup(e.target.value)}
+            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            required
+          >
+            <option value="">Seleccionar grupo</option>
+            {tagGroups.map(g => (
+              <option key={g.id} value={g.id}>{g.name}</option>
+            ))}
+          </select>
           <input
             type="text"
-            placeholder="Nombre"
-            value={newCategory.name}
-            onChange={(e) => setNewCategory({ ...newCategory, name: e.target.value })}
+            placeholder="Nombre del tag"
+            value={newTagName}
+            onChange={(e) => setNewTagName(e.target.value)}
             className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             required
           />
-          <select
-            value={newCategory.parent_id}
-            onChange={(e) => setNewCategory({ ...newCategory, parent_id: e.target.value })}
-            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-          >
-            <option value="">Raíz (sin padre)</option>
-            {flatCategories.map((cat) => (
-              <option key={cat.id} value={cat.id}>{cat.name}</option>
-            ))}
-          </select>
-          <button
-            type="submit"
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          >
+          <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
             Crear
           </button>
         </form>
       </div>
 
-      {/* Categories List */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Categorías existentes</h2>
-        {categories.length === 0 ? (
-          <p className="text-gray-500 dark:text-gray-400 text-center py-4">No hay categorías</p>
-        ) : (
-          <div className="divide-y divide-gray-100 dark:divide-gray-700">
-            {categories.map((cat) => renderCategory(cat))}
+      {/* Tag Groups */}
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {tagGroups.map(group => (
+          <div key={group.id} className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold text-gray-900 dark:text-white">{group.name}</h3>
+              <button
+                onClick={() => setEditingGroup({ ...group })}
+                className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+              >
+                Renombrar
+              </button>
+            </div>
+
+            {group.tags.length === 0 ? (
+              <p className="text-sm text-gray-500 italic">Sin tags</p>
+            ) : (
+              <div className="space-y-1">
+                {group.tags.map(tag => (
+                  <div key={tag.id} className="flex items-center justify-between py-1 px-2 bg-gray-50 dark:bg-gray-700 rounded">
+                    <span className="text-sm text-gray-700 dark:text-gray-300">{tag.name}</span>
+                    <button
+                      onClick={() => handleDeleteTag(group.id, tag.id, tag.name)}
+                      className="text-xs text-red-600 hover:underline"
+                    >
+                      Eliminar
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-        )}
+        ))}
       </div>
+
+      {/* Rename Group Modal */}
+      {editingGroup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setEditingGroup(null)}>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-sm mx-4" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Renombrar grupo</h3>
+            <input
+              type="text"
+              value={editingGroup.name}
+              onChange={(e) => setEditingGroup({ ...editingGroup, name: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white mb-4"
+            />
+            <div className="flex gap-2">
+              <button onClick={() => setEditingGroup(null)} className="flex-1 px-4 py-2 border border-gray-300 rounded-lg">
+                Cancelar
+              </button>
+              <button onClick={handleRenameGroup} className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                Guardar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
-
-// Helper: aplanar categorías para selects
-function flattenCategories(categories, prefix = '') {
-  let result = []
-  for (const cat of categories) {
-    result.push({ ...cat, name: prefix + cat.name })
-    if (cat.children?.length) {
-      result = [...result, ...flattenCategories(cat.children, prefix + '  ')]
-    }
-  }
-  return result
-}
-

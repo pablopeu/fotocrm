@@ -1,7 +1,7 @@
 <?php
 /**
  * FotoCRM API - Backend PHP
- * Compatible con hosting compartido (cPanel)
+ * Sistema de Tags para catálogo de cuchillos
  */
 
 header('Content-Type: application/json; charset=utf-8');
@@ -9,7 +9,6 @@ header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
 
-// Manejar preflight requests
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit;
@@ -21,7 +20,6 @@ define('UPLOADS_DIR', __DIR__ . '/../uploads');
 define('ADMIN_USER', getenv('ADMIN_USER') ?: 'admin');
 define('ADMIN_PASS', getenv('ADMIN_PASS') ?: 'admin123');
 
-// Crear directorios si no existen
 if (!is_dir(DATA_DIR)) mkdir(DATA_DIR, 0755, true);
 if (!is_dir(UPLOADS_DIR)) mkdir(UPLOADS_DIR, 0755, true);
 
@@ -30,7 +28,7 @@ function readJSON($filename) {
     $filepath = DATA_DIR . '/' . $filename;
     if (!file_exists($filepath)) {
         return $filename === 'categories.json'
-            ? ['categories' => [], 'steel_types' => []]
+            ? ['tag_groups' => []]
             : ['photos' => []];
     }
     return json_decode(file_get_contents($filepath), true);
@@ -81,14 +79,12 @@ function getInput() {
     return json_decode($input, true) ?: [];
 }
 
-// Obtener la ruta de la petición (soporta ?route= o URL rewriting)
+// Obtener la ruta
 $path = isset($_GET['route']) ? $_GET['route'] : '';
 if (empty($path)) {
     $requestUri = $_SERVER['REQUEST_URI'];
     $basePath = dirname($_SERVER['SCRIPT_NAME']);
     $path = str_replace($basePath, '', parse_url($requestUri, PHP_URL_PATH));
-    $path = trim($path, '/');
-    // Remover 'index.php' si está presente
     $path = preg_replace('/^index\.php\/?/', '', $path);
 }
 $path = trim($path, '/');
@@ -101,12 +97,12 @@ switch (true) {
         response(['status' => 'ok', 'timestamp' => date('c')]);
         break;
 
-    // GET /categories
-    case $path === 'categories' && $method === 'GET':
+    // GET /tags - Obtener grupos de tags
+    case ($path === 'tags' || $path === 'categories') && $method === 'GET':
         response(readJSON('categories.json'));
         break;
 
-    // GET /photos
+    // GET /photos - Listar fotos
     case $path === 'photos' && $method === 'GET':
         response(readJSON('photos.json'));
         break;
@@ -122,133 +118,147 @@ switch (true) {
         response($photo[0]);
         break;
 
-    // GET /search
+    // GET /search - Buscar fotos por tags y texto
     case $path === 'search' && $method === 'GET':
         $query = isset($_GET['query']) ? strtolower(sanitize($_GET['query'])) : '';
-        $steel = isset($_GET['steel']) ? strtolower(sanitize($_GET['steel'])) : '';
-        $category = isset($_GET['category']) ? sanitize($_GET['category']) : '';
+        $tagsParam = isset($_GET['tags']) ? $_GET['tags'] : '';
+
+        // Tags puede venir como string separado por comas o como array
+        $filterTags = [];
+        if (!empty($tagsParam)) {
+            if (is_array($tagsParam)) {
+                $filterTags = $tagsParam;
+            } else {
+                $filterTags = array_map('trim', explode(',', $tagsParam));
+            }
+            $filterTags = array_filter($filterTags);
+        }
 
         $data = readJSON('photos.json');
         $results = $data['photos'];
 
+        // Filtrar por texto
         if ($query) {
             $results = array_filter($results, fn($p) =>
-                stripos($p['text'] ?? '', $query) !== false ||
-                stripos($p['name'] ?? '', $query) !== false
+                stripos($p['text'] ?? '', $query) !== false
             );
         }
-        if ($steel) {
-            $results = array_filter($results, fn($p) =>
-                strtolower($p['steel_type'] ?? '') === $steel
-            );
-        }
-        if ($category) {
-            $results = array_filter($results, fn($p) => $p['cat_id'] === $category);
+
+        // Filtrar por tags (la foto debe tener TODOS los tags seleccionados)
+        if (!empty($filterTags)) {
+            $results = array_filter($results, function($p) use ($filterTags) {
+                $photoTags = $p['tags'] ?? [];
+                foreach ($filterTags as $tag) {
+                    if (!in_array($tag, $photoTags)) {
+                        return false;
+                    }
+                }
+                return true;
+            });
         }
 
         response(['photos' => array_values($results)]);
         break;
 
     // ==================
-    // RUTAS ADMIN (protegidas)
+    // RUTAS ADMIN
     // ==================
 
-    // POST /admin/categories
-    case $path === 'admin/categories' && $method === 'POST':
+    // POST /admin/tags - Crear nuevo tag en un grupo
+    case $path === 'admin/tags' && $method === 'POST':
         checkAuth();
         $input = getInput();
-        if (empty($input['name'])) {
-            response(['error' => 'Nombre requerido'], 400);
+
+        if (empty($input['group_id']) || empty($input['name'])) {
+            response(['error' => 'group_id y name son requeridos'], 400);
         }
 
         $data = readJSON('categories.json');
-        $newCategory = [
-            'id' => generateUUID(),
-            'name' => sanitize($input['name']),
-            'parent_id' => $input['parent_id'] ?? null,
-            'children' => []
+        $tagId = strtolower(preg_replace('/[^a-zA-Z0-9]+/', '-', $input['name']));
+        $newTag = [
+            'id' => $tagId,
+            'name' => sanitize($input['name'])
         ];
 
-        if (!empty($input['parent_id'])) {
-            // Función recursiva para encontrar y agregar al padre
-            $addToParent = function(&$categories, $parentId, $newCat) use (&$addToParent) {
-                foreach ($categories as &$cat) {
-                    if ($cat['id'] === $parentId) {
-                        $cat['children'][] = $newCat;
-                        return true;
-                    }
-                    if (!empty($cat['children']) && $addToParent($cat['children'], $parentId, $newCat)) {
-                        return true;
+        $found = false;
+        foreach ($data['tag_groups'] as &$group) {
+            if ($group['id'] === $input['group_id']) {
+                // Verificar que no exista
+                foreach ($group['tags'] as $tag) {
+                    if ($tag['id'] === $tagId) {
+                        response(['error' => 'El tag ya existe'], 400);
                     }
                 }
-                return false;
-            };
-            $addToParent($data['categories'], $input['parent_id'], $newCategory);
-        } else {
-            $data['categories'][] = $newCategory;
+                $group['tags'][] = $newTag;
+                $found = true;
+                break;
+            }
+        }
+
+        if (!$found) {
+            response(['error' => 'Grupo no encontrado'], 404);
         }
 
         writeJSON('categories.json', $data);
-        response($newCategory, 201);
+        response($newTag, 201);
         break;
 
-    // PUT /admin/categories/{id}
-    case preg_match('/^admin\/categories\/([a-zA-Z0-9-]+)$/', $path, $matches) && $method === 'PUT':
+    // DELETE /admin/tags/{groupId}/{tagId}
+    case preg_match('/^admin\/tags\/([a-zA-Z0-9-]+)\/([a-zA-Z0-9-]+)$/', $path, $matches) && $method === 'DELETE':
+        checkAuth();
+        $groupId = $matches[1];
+        $tagId = $matches[2];
+
+        $data = readJSON('categories.json');
+        $found = false;
+
+        foreach ($data['tag_groups'] as &$group) {
+            if ($group['id'] === $groupId) {
+                foreach ($group['tags'] as $key => $tag) {
+                    if ($tag['id'] === $tagId) {
+                        unset($group['tags'][$key]);
+                        $group['tags'] = array_values($group['tags']);
+                        $found = true;
+                        break 2;
+                    }
+                }
+            }
+        }
+
+        if (!$found) {
+            response(['error' => 'Tag no encontrado'], 404);
+        }
+
+        writeJSON('categories.json', $data);
+        response(['message' => 'Tag eliminado']);
+        break;
+
+    // PUT /admin/tag-groups/{groupId} - Renombrar grupo
+    case preg_match('/^admin\/tag-groups\/([a-zA-Z0-9-]+)$/', $path, $matches) && $method === 'PUT':
         checkAuth();
         $input = getInput();
         $data = readJSON('categories.json');
 
-        $updateCategory = function(&$categories, $id, $name) use (&$updateCategory) {
-            foreach ($categories as &$cat) {
-                if ($cat['id'] === $id) {
-                    $cat['name'] = sanitize($name);
-                    return $cat;
+        $found = false;
+        foreach ($data['tag_groups'] as &$group) {
+            if ($group['id'] === $matches[1]) {
+                if (!empty($input['name'])) {
+                    $group['name'] = sanitize($input['name']);
                 }
-                if (!empty($cat['children'])) {
-                    $result = $updateCategory($cat['children'], $id, $name);
-                    if ($result) return $result;
-                }
+                $found = $group;
+                break;
             }
-            return null;
-        };
+        }
 
-        $updated = $updateCategory($data['categories'], $matches[1], $input['name'] ?? '');
-        if (!$updated) {
-            response(['error' => 'Categoría no encontrada'], 404);
+        if (!$found) {
+            response(['error' => 'Grupo no encontrado'], 404);
         }
 
         writeJSON('categories.json', $data);
-        response($updated);
+        response($found);
         break;
 
-    // DELETE /admin/categories/{id}
-    case preg_match('/^admin\/categories\/([a-zA-Z0-9-]+)$/', $path, $matches) && $method === 'DELETE':
-        checkAuth();
-        $data = readJSON('categories.json');
-
-        $deleteCategory = function(&$categories, $id) use (&$deleteCategory) {
-            foreach ($categories as $key => &$cat) {
-                if ($cat['id'] === $id) {
-                    unset($categories[$key]);
-                    return true;
-                }
-                if (!empty($cat['children']) && $deleteCategory($cat['children'], $id)) {
-                    return true;
-                }
-            }
-            return false;
-        };
-
-        if (!$deleteCategory($data['categories'], $matches[1])) {
-            response(['error' => 'Categoría no encontrada'], 404);
-        }
-
-        $data['categories'] = array_values($data['categories']);
-        writeJSON('categories.json', $data);
-        response(['message' => 'Categoría eliminada']);
-        break;
-
-    // POST /admin/upload
+    // POST /admin/upload - Subir foto con tags
     case $path === 'admin/upload' && $method === 'POST':
         checkAuth();
 
@@ -257,12 +267,22 @@ switch (true) {
         }
 
         $allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
-        $maxSize = 5 * 1024 * 1024; // 5MB
+        $maxSize = 5 * 1024 * 1024;
+
+        // Obtener tags del POST
+        $tags = [];
+        if (!empty($_POST['tags'])) {
+            if (is_array($_POST['tags'])) {
+                $tags = $_POST['tags'];
+            } else {
+                $tags = array_map('trim', explode(',', $_POST['tags']));
+            }
+            $tags = array_filter($tags);
+        }
 
         $data = readJSON('photos.json');
         $newPhotos = [];
 
-        // Normalizar $_FILES para múltiples archivos
         $files = [];
         if (is_array($_FILES['photos']['name'])) {
             for ($i = 0; $i < count($_FILES['photos']['name']); $i++) {
@@ -279,16 +299,13 @@ switch (true) {
         }
 
         foreach ($files as $file) {
-            if ($file['error'] !== UPLOAD_ERR_OK) {
-                continue;
-            }
+            if ($file['error'] !== UPLOAD_ERR_OK) continue;
 
             if (!in_array($file['type'], $allowedTypes)) {
-                response(['error' => 'Tipo de archivo no permitido: ' . $file['name']], 400);
+                response(['error' => 'Tipo no permitido: ' . $file['name']], 400);
             }
-
             if ($file['size'] > $maxSize) {
-                response(['error' => 'Archivo demasiado grande: ' . $file['name']], 400);
+                response(['error' => 'Archivo muy grande: ' . $file['name']], 400);
             }
 
             $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
@@ -296,13 +313,12 @@ switch (true) {
             $destination = UPLOADS_DIR . '/' . $filename;
 
             if (!move_uploaded_file($file['tmp_name'], $destination)) {
-                response(['error' => 'Error al guardar archivo'], 500);
+                response(['error' => 'Error al guardar'], 500);
             }
 
             $newPhoto = [
                 'id' => generateUUID(),
-                'cat_id' => $_POST['cat_id'] ?? null,
-                'steel_type' => sanitize($_POST['steel_type'] ?? ''),
+                'tags' => $tags,
                 'url' => 'uploads/' . $filename,
                 'text' => sanitize($_POST['text'] ?? ''),
                 'created_at' => date('c')
@@ -316,18 +332,21 @@ switch (true) {
         response(['photos' => $newPhotos], 201);
         break;
 
-    // PUT /admin/photos/{id}
+    // PUT /admin/photos/{id} - Actualizar foto (tags y texto)
     case preg_match('/^admin\/photos\/([a-zA-Z0-9-]+)$/', $path, $matches) && $method === 'PUT':
         checkAuth();
         $input = getInput();
         $data = readJSON('photos.json');
 
-        $found = false;
+        $found = null;
         foreach ($data['photos'] as &$photo) {
             if ($photo['id'] === $matches[1]) {
-                if (isset($input['text'])) $photo['text'] = sanitize($input['text']);
-                if (isset($input['cat_id'])) $photo['cat_id'] = $input['cat_id'];
-                if (isset($input['steel_type'])) $photo['steel_type'] = sanitize($input['steel_type']);
+                if (isset($input['text'])) {
+                    $photo['text'] = sanitize($input['text']);
+                }
+                if (isset($input['tags'])) {
+                    $photo['tags'] = is_array($input['tags']) ? $input['tags'] : [];
+                }
                 $photo['updated_at'] = date('c');
                 $found = $photo;
                 break;
@@ -351,11 +370,8 @@ switch (true) {
         foreach ($data['photos'] as $key => $photo) {
             if ($photo['id'] === $matches[1]) {
                 $found = $photo;
-                // Eliminar archivo físico
                 $filepath = UPLOADS_DIR . '/' . basename($photo['url']);
-                if (file_exists($filepath)) {
-                    @unlink($filepath);
-                }
+                if (file_exists($filepath)) @unlink($filepath);
                 unset($data['photos'][$key]);
                 break;
             }
@@ -370,7 +386,6 @@ switch (true) {
         response(['message' => 'Foto eliminada']);
         break;
 
-    // Ruta no encontrada
     default:
         response(['error' => 'Ruta no encontrada', 'path' => $path], 404);
 }
