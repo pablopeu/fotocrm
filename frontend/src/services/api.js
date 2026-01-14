@@ -1,7 +1,10 @@
-const API_BASE = import.meta.env.VITE_API_URL || './api'
+const API_BASE = import.meta.env.VITE_API_URL || './api/index.php?route='
 
 async function fetchJSON(url, options = {}) {
-  const response = await fetch(`${API_BASE}${url}`, {
+  // Convertir /path a route=path
+  const route = url.startsWith('/') ? url.slice(1) : url
+  const fullUrl = `${API_BASE}${route}`
+  const response = await fetch(fullUrl, {
     headers: {
       'Content-Type': 'application/json',
       ...options.headers,

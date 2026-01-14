@@ -2,7 +2,12 @@ import { useState, useEffect, useCallback } from 'react'
 import Modal from '../components/Modal'
 import { useModal } from '../hooks/useModal'
 
-const API_BASE = import.meta.env.VITE_API_URL || './api'
+const API_BASE = import.meta.env.VITE_API_URL || './api/index.php'
+
+// Helper para construir URLs de API
+function apiUrl(route) {
+  return `${API_BASE}?route=${route.replace(/^\//, '')}`
+}
 
 export default function Admin() {
   const [authenticated, setAuthenticated] = useState(false)
@@ -24,7 +29,7 @@ export default function Admin() {
   const handleLogin = async (e) => {
     e.preventDefault()
     try {
-      const response = await fetch(`${API_BASE}/health`, {
+      const response = await fetch(apiUrl('health'), {
         headers: getAuthHeader()
       })
       if (response.ok) {
@@ -43,8 +48,8 @@ export default function Admin() {
     setLoading(true)
     try {
       const [catRes, photoRes] = await Promise.all([
-        fetch(`${API_BASE}/categories`),
-        fetch(`${API_BASE}/photos`)
+        fetch(apiUrl('categories')),
+        fetch(apiUrl('photos'))
       ])
       const catData = await catRes.json()
       const photoData = await photoRes.json()
@@ -207,7 +212,7 @@ function PhotosManager({ photos, categories, steelTypes, authHeader, onRefresh, 
     formData.append('text', uploadForm.text)
 
     try {
-      const response = await fetch(`${API_BASE}/admin/upload`, {
+      const response = await fetch(apiUrl('admin/upload'), {
         method: 'POST',
         headers: authHeader,
         body: formData
@@ -237,7 +242,7 @@ function PhotosManager({ photos, categories, steelTypes, authHeader, onRefresh, 
   const handleDelete = (photo) => {
     showConfirm('Eliminar foto', '¿Estás seguro de eliminar esta foto? Esta acción no se puede deshacer.', async () => {
       try {
-        const response = await fetch(`${API_BASE}/admin/photos/${photo.id}`, {
+        const response = await fetch(apiUrl(`admin/photos/${photo.id}`), {
           method: 'DELETE',
           headers: authHeader
         })
@@ -257,7 +262,7 @@ function PhotosManager({ photos, categories, steelTypes, authHeader, onRefresh, 
     if (!editingPhoto) return
 
     try {
-      const response = await fetch(`${API_BASE}/admin/photos/${editingPhoto.id}`, {
+      const response = await fetch(apiUrl(`admin/photos/${editingPhoto.id}`), {
         method: 'PUT',
         headers: { ...authHeader, 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -482,7 +487,7 @@ function CategoriesManager({ categories, authHeader, onRefresh, showSuccess, sho
     if (!newCategory.name.trim()) return
 
     try {
-      const response = await fetch(`${API_BASE}/admin/categories`, {
+      const response = await fetch(apiUrl('admin/categories'), {
         method: 'POST',
         headers: { ...authHeader, 'Content-Type': 'application/json' },
         body: JSON.stringify(newCategory)
@@ -504,7 +509,7 @@ function CategoriesManager({ categories, authHeader, onRefresh, showSuccess, sho
   const handleDelete = (cat) => {
     showConfirm('Eliminar categoría', `¿Eliminar "${cat.name}"? Las subcategorías también se eliminarán.`, async () => {
       try {
-        const response = await fetch(`${API_BASE}/admin/categories/${cat.id}`, {
+        const response = await fetch(apiUrl(`admin/categories/${cat.id}`), {
           method: 'DELETE',
           headers: authHeader
         })
@@ -598,4 +603,3 @@ function flattenCategories(categories, prefix = '') {
   return result
 }
 
-const API_BASE_ADMIN = import.meta.env.VITE_API_URL || './api'

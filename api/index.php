@@ -81,10 +81,16 @@ function getInput() {
     return json_decode($input, true) ?: [];
 }
 
-// Obtener la ruta de la petición
-$requestUri = $_SERVER['REQUEST_URI'];
-$basePath = dirname($_SERVER['SCRIPT_NAME']);
-$path = str_replace($basePath, '', parse_url($requestUri, PHP_URL_PATH));
+// Obtener la ruta de la petición (soporta ?route= o URL rewriting)
+$path = isset($_GET['route']) ? $_GET['route'] : '';
+if (empty($path)) {
+    $requestUri = $_SERVER['REQUEST_URI'];
+    $basePath = dirname($_SERVER['SCRIPT_NAME']);
+    $path = str_replace($basePath, '', parse_url($requestUri, PHP_URL_PATH));
+    $path = trim($path, '/');
+    // Remover 'index.php' si está presente
+    $path = preg_replace('/^index\.php\/?/', '', $path);
+}
 $path = trim($path, '/');
 $method = $_SERVER['REQUEST_METHOD'];
 
