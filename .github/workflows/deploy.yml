@@ -27,12 +27,31 @@ jobs:
         working-directory: frontend
         run: npm run build
 
+      - name: Prepare deploy folder
+        run: |
+          mkdir -p deploy
+          # Copiar frontend build
+          cp -r frontend/dist/* deploy/
+          # Copiar API PHP
+          mkdir -p deploy/api
+          cp -r api/* deploy/api/
+          # Copiar datos JSON
+          mkdir -p deploy/data
+          cp -r data/* deploy/data/
+          # Crear carpeta uploads
+          mkdir -p deploy/uploads
+          touch deploy/uploads/.gitkeep
+
       - name: Deploy to FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.FTP_HOST }}
           username: ${{ secrets.FTP_USER }}
           password: ${{ secrets.FTP_PASS }}
-          local-dir: ./frontend/dist/
+          local-dir: ./deploy/
           server-dir: ${{ secrets.FTP_PATH }}
           dangerous-clean-slate: false
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
