@@ -212,7 +212,7 @@ function App() {
           </div>
 
           <a
-            href="/admin"
+            href="#/admin"
             className="px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
           >
             Admin
