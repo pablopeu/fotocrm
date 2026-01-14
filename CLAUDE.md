@@ -1,5 +1,12 @@
 # Instrucciones del Proyecto FotoCRM
 
+## Git y Deploy Automático
+
+- **Después de cada prompt**: Hacer commit y push a GitHub automáticamente
+- **No requiere permiso**: Subir directamente sin preguntar al usuario
+- **Cualquier branch**: Push desde cualquier branch, no solo main
+- **Deploy automático**: GitHub Actions sube via FTP al hosting después de cada push
+
 ## Entorno de Desarrollo y Testing
 
 - **Desarrollo**: Local en Debian CLI (sin entorno gráfico)

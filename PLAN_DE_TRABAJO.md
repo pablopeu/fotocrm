@@ -248,13 +248,19 @@ Web app para un artesano de cuchillos que permite buscar rápidamente imágenes 
 - [ ] Crear `.htaccess` para proteger directorios
 
 ### 6.2 GitHub Actions
-- [ ] Crear workflow `.github/workflows/deploy.yml`
-- [ ] Configurar secrets: FTP_HOST, FTP_USER, FTP_PASS
-- [ ] Steps:
+- [x] Crear workflow `.github/workflows/deploy.yml` ✓ COMPLETADO
+- [ ] Configurar secrets en GitHub:
+  - `FTP_HOST` - Servidor FTP
+  - `FTP_USER` - Usuario FTP
+  - `FTP_PASS` - Contraseña FTP
+  - `FTP_PATH` - Ruta remota (ej: `/public_html/fotocrm/`)
+- [x] Steps configurados:
   1. Checkout
-  2. Install dependencies
-  3. Build frontend
-  4. Upload via FTP a cPanel
+  2. Setup Node.js 20
+  3. Install dependencies (frontend)
+  4. Build frontend
+  5. Upload via FTP
+- **Trigger**: Push a cualquier branch (no solo main)
 
 ### 6.3 Configuración cPanel
 - [ ] Configurar HTTPS con Let's Encrypt
