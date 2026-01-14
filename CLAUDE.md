@@ -1,6 +1,6 @@
 # Instrucciones del Proyecto FotoCRM
 
-## Git y Deploy Automático 
+## Git y Deploy Automático
 
 - **Después de cada prompt**: Hacer commit y push a GitHub automáticamente
 - **No requiere permiso**: Subir directamente sin preguntar al usuario
