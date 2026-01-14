@@ -22,7 +22,13 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedPhotoIds, setSelectedPhotoIds] = useState([])
   const [viewingPhoto, setViewingPhoto] = useState(null)
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+  // Sidebar cerrado por defecto en móvil, abierto en desktop
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth >= 1024 // lg breakpoint
+    }
+    return false
+  })
 
   const { isOpen, modalProps, closeModal, showSuccess, showError } = useModal()
 
