@@ -54,14 +54,53 @@ function generateUUID() {
     );
 }
 
+function getAuthorizationHeader() {
+    // Intentar obtener el header Authorization de múltiples fuentes
+    // (los hostings compartidos a veces lo pasan por diferentes variables)
+    if (isset($_SERVER['HTTP_AUTHORIZATION'])) {
+        return $_SERVER['HTTP_AUTHORIZATION'];
+    }
+    if (isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])) {
+        return $_SERVER['REDIRECT_HTTP_AUTHORIZATION'];
+    }
+    if (function_exists('apache_request_headers')) {
+        $headers = apache_request_headers();
+        if (isset($headers['Authorization'])) {
+            return $headers['Authorization'];
+        }
+        // Algunos servidores lo pasan en minúsculas
+        if (isset($headers['authorization'])) {
+            return $headers['authorization'];
+        }
+    }
+    return null;
+}
+
 function checkAuth() {
-    if (!isset($_SERVER['PHP_AUTH_USER']) || !isset($_SERVER['PHP_AUTH_PW'])) {
-        // NO enviar WWW-Authenticate para evitar el dialog nativo del navegador
+    $user = null;
+    $pass = null;
+
+    // Primero intentar PHP_AUTH_USER/PW (método estándar)
+    if (isset($_SERVER['PHP_AUTH_USER']) && isset($_SERVER['PHP_AUTH_PW'])) {
+        $user = $_SERVER['PHP_AUTH_USER'];
+        $pass = $_SERVER['PHP_AUTH_PW'];
+    } else {
+        // Si no, intentar parsear el header Authorization manualmente
+        $authHeader = getAuthorizationHeader();
+        if ($authHeader && preg_match('/Basic\s+(.*)$/i', $authHeader, $matches)) {
+            $decoded = base64_decode($matches[1]);
+            if ($decoded && strpos($decoded, ':') !== false) {
+                list($user, $pass) = explode(':', $decoded, 2);
+            }
+        }
+    }
+
+    if (!$user || !$pass) {
         http_response_code(401);
         echo json_encode(['error' => 'Autenticación requerida']);
         exit;
     }
-    if ($_SERVER['PHP_AUTH_USER'] !== ADMIN_USER || $_SERVER['PHP_AUTH_PW'] !== ADMIN_PASS) {
+    if ($user !== ADMIN_USER || $pass !== ADMIN_PASS) {
         http_response_code(401);
         echo json_encode(['error' => 'Credenciales inválidas']);
         exit;

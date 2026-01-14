@@ -69,6 +69,7 @@ export default function Admin() {
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Usuario</label>
               <input
                 type="text"
+                autoComplete="username"
                 value={credentials.user}
                 onChange={(e) => setCredentials({ ...credentials, user: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
@@ -79,6 +80,7 @@ export default function Admin() {
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Contraseña</label>
               <input
                 type="password"
+                autoComplete="current-password"
                 value={credentials.pass}
                 onChange={(e) => setCredentials({ ...credentials, pass: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
