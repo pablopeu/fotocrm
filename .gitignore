@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+
+# Build output
+frontend/dist/
+
+# Environment files
+.env
+*.env.local
+
+# Uploads (fotos subidas)
+uploads/*
+!uploads/.gitkeep
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Cache
+.cache/
