@@ -56,7 +56,7 @@ function generateUUID() {
 
 function checkAuth() {
     if (!isset($_SERVER['PHP_AUTH_USER']) || !isset($_SERVER['PHP_AUTH_PW'])) {
-        header('WWW-Authenticate: Basic realm="FotoCRM Admin"');
+        // NO enviar WWW-Authenticate para evitar el dialog nativo del navegador
         http_response_code(401);
         echo json_encode(['error' => 'Autenticación requerida']);
         exit;

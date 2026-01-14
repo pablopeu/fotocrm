@@ -198,6 +198,8 @@ function PhotosManager({ photos, tagGroups, authHeader, onRefresh, showSuccess, 
         setSelectedTags([])
         setUploadText('')
         onRefresh()
+      } else if (response.status === 401) {
+        showError('Sesión expirada', 'Por favor, vuelve a iniciar sesión')
       } else {
         const error = await response.json()
         showError('Error', error.error || 'Error al subir')
@@ -225,6 +227,8 @@ function PhotosManager({ photos, tagGroups, authHeader, onRefresh, showSuccess, 
         if (response.ok) {
           showSuccess('Eliminado', 'Foto eliminada')
           onRefresh()
+        } else if (response.status === 401) {
+          showError('Sesión expirada', 'Por favor, vuelve a iniciar sesión')
         }
       } catch (error) {
         showError('Error', 'Error de conexión')
@@ -249,6 +253,8 @@ function PhotosManager({ photos, tagGroups, authHeader, onRefresh, showSuccess, 
         showSuccess('Actualizado', 'Foto actualizada')
         setEditingPhoto(null)
         onRefresh()
+      } else if (response.status === 401) {
+        showError('Sesión expirada', 'Por favor, vuelve a iniciar sesión')
       }
     } catch (error) {
       showError('Error', 'Error de conexión')
@@ -473,6 +479,8 @@ function TagsManager({ tagGroups, authHeader, onRefresh, showSuccess, showError,
         showSuccess('Creado', 'Tag creado correctamente')
         setNewTagName('')
         onRefresh()
+      } else if (response.status === 401) {
+        showError('Sesión expirada', 'Por favor, vuelve a iniciar sesión')
       } else {
         const error = await response.json()
         showError('Error', error.error || 'Error al crear')
@@ -492,6 +500,8 @@ function TagsManager({ tagGroups, authHeader, onRefresh, showSuccess, showError,
         if (response.ok) {
           showSuccess('Eliminado', 'Tag eliminado')
           onRefresh()
+        } else if (response.status === 401) {
+          showError('Sesión expirada', 'Por favor, vuelve a iniciar sesión')
         }
       } catch (error) {
         showError('Error', 'Error de conexión')
@@ -513,6 +523,8 @@ function TagsManager({ tagGroups, authHeader, onRefresh, showSuccess, showError,
         showSuccess('Actualizado', 'Grupo renombrado')
         setEditingGroup(null)
         onRefresh()
+      } else if (response.status === 401) {
+        showError('Sesión expirada', 'Por favor, vuelve a iniciar sesión')
       }
     } catch (error) {
       showError('Error', 'Error de conexión')
