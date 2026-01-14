@@ -54,39 +54,41 @@ function generateUUID() {
     );
 }
 
-function getAuthorizationHeader() {
-    // Intentar obtener el header Authorization de múltiples fuentes
-    // (los hostings compartidos a veces lo pasan por diferentes variables)
-    if (isset($_SERVER['HTTP_AUTHORIZATION'])) {
-        return $_SERVER['HTTP_AUTHORIZATION'];
-    }
-    if (isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])) {
-        return $_SERVER['REDIRECT_HTTP_AUTHORIZATION'];
-    }
-    if (function_exists('apache_request_headers')) {
-        $headers = apache_request_headers();
-        if (isset($headers['Authorization'])) {
-            return $headers['Authorization'];
-        }
-        // Algunos servidores lo pasan en minúsculas
-        if (isset($headers['authorization'])) {
-            return $headers['authorization'];
-        }
-    }
-    return null;
-}
-
 function checkAuth() {
     $user = null;
     $pass = null;
 
-    // Primero intentar PHP_AUTH_USER/PW (método estándar)
-    if (isset($_SERVER['PHP_AUTH_USER']) && isset($_SERVER['PHP_AUTH_PW'])) {
+    // 1. Intentar desde parámetros POST/JSON (método más compatible)
+    $input = json_decode(file_get_contents('php://input'), true) ?: [];
+    if (!empty($_POST['auth_user']) && !empty($_POST['auth_pass'])) {
+        $user = $_POST['auth_user'];
+        $pass = $_POST['auth_pass'];
+    } elseif (!empty($input['auth_user']) && !empty($input['auth_pass'])) {
+        $user = $input['auth_user'];
+        $pass = $input['auth_pass'];
+    }
+    // 2. Intentar desde query string (para GET requests)
+    elseif (!empty($_GET['auth_user']) && !empty($_GET['auth_pass'])) {
+        $user = $_GET['auth_user'];
+        $pass = $_GET['auth_pass'];
+    }
+    // 3. Intentar PHP_AUTH (si el hosting lo permite)
+    elseif (isset($_SERVER['PHP_AUTH_USER']) && isset($_SERVER['PHP_AUTH_PW'])) {
         $user = $_SERVER['PHP_AUTH_USER'];
         $pass = $_SERVER['PHP_AUTH_PW'];
-    } else {
-        // Si no, intentar parsear el header Authorization manualmente
-        $authHeader = getAuthorizationHeader();
+    }
+    // 4. Intentar header Authorization manual
+    else {
+        $authHeader = null;
+        if (isset($_SERVER['HTTP_AUTHORIZATION'])) {
+            $authHeader = $_SERVER['HTTP_AUTHORIZATION'];
+        } elseif (isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])) {
+            $authHeader = $_SERVER['REDIRECT_HTTP_AUTHORIZATION'];
+        } elseif (function_exists('apache_request_headers')) {
+            $headers = apache_request_headers();
+            $authHeader = $headers['Authorization'] ?? $headers['authorization'] ?? null;
+        }
+
         if ($authHeader && preg_match('/Basic\s+(.*)$/i', $authHeader, $matches)) {
             $decoded = base64_decode($matches[1]);
             if ($decoded && strpos($decoded, ':') !== false) {
@@ -97,7 +99,7 @@ function checkAuth() {
 
     if (!$user || !$pass) {
         http_response_code(401);
-        echo json_encode(['error' => 'Autenticación requerida']);
+        echo json_encode(['error' => 'Autenticación requerida', 'debug' => 'No credentials found']);
         exit;
     }
     if ($user !== ADMIN_USER || $pass !== ADMIN_PASS) {
@@ -134,6 +136,12 @@ switch (true) {
     // Health check
     case $path === 'health' && $method === 'GET':
         response(['status' => 'ok', 'timestamp' => date('c')]);
+        break;
+
+    // Admin verify (verificar credenciales)
+    case $path === 'admin/verify' && $method === 'GET':
+        checkAuth();
+        response(['status' => 'ok', 'message' => 'Authenticated']);
         break;
 
     // GET /tags - Obtener grupos de tags

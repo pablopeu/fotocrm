@@ -18,16 +18,21 @@ export default function Admin() {
 
   const { isOpen, modalProps, closeModal, showSuccess, showError, showConfirm } = useModal()
 
-  const getAuthHeader = () => ({
-    'Authorization': 'Basic ' + btoa(`${credentials.user}:${credentials.pass}`)
+  // Credenciales para enviar en body (más compatible con hostings restrictivos)
+  const getAuthParams = () => ({
+    auth_user: credentials.user,
+    auth_pass: credentials.pass
   })
 
   const handleLogin = async (e) => {
     e.preventDefault()
     try {
-      const response = await fetch(apiUrl('health'), {
-        headers: getAuthHeader()
+      // Verificar credenciales con un endpoint admin
+      const params = new URLSearchParams({
+        auth_user: credentials.user,
+        auth_pass: credentials.pass
       })
+      const response = await fetch(apiUrl('admin/verify') + '&' + params.toString())
       if (response.ok) {
         setAuthenticated(true)
         loadData()
@@ -137,7 +142,7 @@ export default function Admin() {
           <PhotosManager
             photos={photos}
             tagGroups={tagGroups}
-            authHeader={getAuthHeader()}
+            authParams={getAuthParams()}
             onRefresh={loadData}
             showSuccess={showSuccess}
             showError={showError}
@@ -147,7 +152,7 @@ export default function Admin() {
         {activeTab === 'tags' && (
           <TagsManager
             tagGroups={tagGroups}
-            authHeader={getAuthHeader()}
+            authParams={getAuthParams()}
             onRefresh={loadData}
             showSuccess={showSuccess}
             showError={showError}
@@ -164,7 +169,7 @@ export default function Admin() {
 // ==================
 // Photos Manager
 // ==================
-function PhotosManager({ photos, tagGroups, authHeader, onRefresh, showSuccess, showError, showConfirm }) {
+function PhotosManager({ photos, tagGroups, authParams, onRefresh, showSuccess, showError, showConfirm }) {
   const [uploading, setUploading] = useState(false)
   const [dragOver, setDragOver] = useState(false)
   const [selectedTags, setSelectedTags] = useState([])
@@ -187,11 +192,13 @@ function PhotosManager({ photos, tagGroups, authHeader, onRefresh, showSuccess, 
     }
     formData.append('tags', selectedTags.join(','))
     formData.append('text', uploadText)
+    // Auth en FormData (compatible con hostings restrictivos)
+    formData.append('auth_user', authParams.auth_user)
+    formData.append('auth_pass', authParams.auth_pass)
 
     try {
       const response = await fetch(apiUrl('admin/upload'), {
         method: 'POST',
-        headers: authHeader,
         body: formData
       })
 
@@ -222,9 +229,9 @@ function PhotosManager({ photos, tagGroups, authHeader, onRefresh, showSuccess, 
   const handleDelete = (photo) => {
     showConfirm('Eliminar foto', '¿Eliminar esta foto?', async () => {
       try {
-        const response = await fetch(apiUrl(`admin/photos/${photo.id}`), {
-          method: 'DELETE',
-          headers: authHeader
+        const params = new URLSearchParams(authParams)
+        const response = await fetch(apiUrl(`admin/photos/${photo.id}`) + '&' + params.toString(), {
+          method: 'DELETE'
         })
         if (response.ok) {
           showSuccess('Eliminado', 'Foto eliminada')
@@ -244,10 +251,11 @@ function PhotosManager({ photos, tagGroups, authHeader, onRefresh, showSuccess, 
     try {
       const response = await fetch(apiUrl(`admin/photos/${editingPhoto.id}`), {
         method: 'PUT',
-        headers: { ...authHeader, 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           text: editingPhoto.text,
-          tags: editingPhoto.tags
+          tags: editingPhoto.tags,
+          ...authParams
         })
       })
 
@@ -461,7 +469,7 @@ function PhotosManager({ photos, tagGroups, authHeader, onRefresh, showSuccess, 
 // ==================
 // Tags Manager
 // ==================
-function TagsManager({ tagGroups, authHeader, onRefresh, showSuccess, showError, showConfirm }) {
+function TagsManager({ tagGroups, authParams, onRefresh, showSuccess, showError, showConfirm }) {
   const [newTagName, setNewTagName] = useState('')
   const [selectedGroup, setSelectedGroup] = useState('')
   const [editingGroup, setEditingGroup] = useState(null)
@@ -473,8 +481,8 @@ function TagsManager({ tagGroups, authHeader, onRefresh, showSuccess, showError,
     try {
       const response = await fetch(apiUrl('admin/tags'), {
         method: 'POST',
-        headers: { ...authHeader, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ group_id: selectedGroup, name: newTagName })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ group_id: selectedGroup, name: newTagName, ...authParams })
       })
 
       if (response.ok) {
@@ -495,9 +503,9 @@ function TagsManager({ tagGroups, authHeader, onRefresh, showSuccess, showError,
   const handleDeleteTag = (groupId, tagId, tagName) => {
     showConfirm('Eliminar tag', `¿Eliminar el tag "${tagName}"?`, async () => {
       try {
-        const response = await fetch(apiUrl(`admin/tags/${groupId}/${tagId}`), {
-          method: 'DELETE',
-          headers: authHeader
+        const params = new URLSearchParams(authParams)
+        const response = await fetch(apiUrl(`admin/tags/${groupId}/${tagId}`) + '&' + params.toString(), {
+          method: 'DELETE'
         })
         if (response.ok) {
           showSuccess('Eliminado', 'Tag eliminado')
@@ -517,8 +525,8 @@ function TagsManager({ tagGroups, authHeader, onRefresh, showSuccess, showError,
     try {
       const response = await fetch(apiUrl(`admin/tag-groups/${editingGroup.id}`), {
         method: 'PUT',
-        headers: { ...authHeader, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: editingGroup.name })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: editingGroup.name, ...authParams })
       })
 
       if (response.ok) {
