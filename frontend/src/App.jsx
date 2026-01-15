@@ -189,6 +189,7 @@ function App() {
               options={getTagsByGroup('encabado')}
               selected={selectedEncabado}
               onChange={setSelectedEncabado}
+              groupId="encabado"
             />
 
             {/* Acero */}
@@ -197,6 +198,7 @@ function App() {
               options={getTagsByGroup('acero')}
               selected={selectedAcero}
               onChange={setSelectedAcero}
+              groupId="acero"
             />
 
             {/* Extras */}
@@ -205,6 +207,7 @@ function App() {
               options={getTagsByGroup('extras')}
               selected={selectedExtras}
               onChange={setSelectedExtras}
+              groupId="extras"
             />
 
             {/* Botón resetear */}
@@ -259,7 +262,7 @@ function App() {
 }
 
 // Componente MultiSelect para filtros
-function MultiSelect({ label, options, selected, onChange }) {
+function MultiSelect({ label, options, selected, onChange, groupId }) {
   const [isOpen, setIsOpen] = useState(false)
 
   const handleToggle = (id) => {
@@ -272,13 +275,23 @@ function MultiSelect({ label, options, selected, onChange }) {
 
   const selectedCount = selected.length
 
+  // Obtener colores según el grupo
+  const getGroupColor = () => {
+    const colors = {
+      encabado: 'border-amber-400 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300',
+      acero: 'border-gray-400 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200',
+      extras: 'border-orange-400 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300'
+    }
+    return colors[groupId] || 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+  }
+
   return (
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={`flex items-center gap-2 px-3 py-1.5 text-sm border rounded-lg transition-colors ${
           selectedCount > 0
-            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+            ? getGroupColor()
             : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
         }`}
       >
@@ -354,6 +367,19 @@ function PhotoCard({ photo, tagGroups }) {
     return () => container.removeEventListener('wheel', handleWheel)
   }, [])
 
+  // Resetear zoom cuando se hace scroll en la página
+  useEffect(() => {
+    const handlePageScroll = () => {
+      if (scale > 1) {
+        setScale(1)
+        setPosition({ x: 0, y: 0 })
+      }
+    }
+
+    window.addEventListener('scroll', handlePageScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handlePageScroll)
+  }, [scale])
+
   const handleMouseDown = (e) => {
     if (scale > 1) {
       e.preventDefault()
@@ -418,7 +444,7 @@ function PhotoCard({ photo, tagGroups }) {
       tipo: 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300',
       encabado: 'bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300',
       acero: 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200',
-      extras: 'bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300'
+      extras: 'bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300'
     }
     return colors[groupId] || 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
   }
