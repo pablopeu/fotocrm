@@ -112,8 +112,26 @@ export default function Admin() {
   return (
     <div className="h-screen bg-gray-100 dark:bg-gray-900 flex flex-col overflow-hidden">
       <header className="bg-white dark:bg-gray-800 shadow flex-shrink-0">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
-          <h1 className="text-xl font-bold text-gray-900 dark:text-white">FotoCRM Admin</h1>
+        <div className="max-w-7xl mx-auto px-4 py-2 flex justify-between items-center">
+          <h1 className="text-lg font-bold text-gray-900 dark:text-white">FotoCRM Admin</h1>
+
+          {/* Tabs en el header */}
+          <div className="flex gap-1">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`px-4 py-1.5 font-medium text-sm rounded-lg transition-colors ${
+                  activeTab === tab.id
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
           <div className="flex items-center gap-4">
             <a href="#/" className="text-sm text-gray-600 dark:text-gray-300 hover:underline">Ver catálogo</a>
             <button onClick={() => setAuthenticated(false)} className="text-sm text-red-600 dark:text-red-400 hover:underline">
@@ -122,24 +140,6 @@ export default function Admin() {
           </div>
         </div>
       </header>
-
-      <div className="max-w-7xl mx-auto px-4 py-2 w-full flex-shrink-0">
-        <div className="flex gap-1 border-b border-gray-200 dark:border-gray-700">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-2 font-medium text-sm border-b-2 -mb-px transition-colors ${
-                activeTab === tab.id
-                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                  : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      </div>
 
       <main className="flex-1 overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 h-full">
@@ -192,6 +192,8 @@ function UploadPhotos({ tagGroups, authParams, onRefresh, showSuccess, showError
   const [photoTags, setPhotoTags] = useState({}) // { photoId: [tagIds] }
   const [photoTexts, setPhotoTexts] = useState({}) // { photoId: text }
   const [saving, setSaving] = useState(false)
+  const [savedFeedback, setSavedFeedback] = useState(false) // Para feedback visual verde
+  const [arrowFeedback, setArrowFeedback] = useState(null) // 'prev' | 'next' | null
 
   const currentPhoto = uploadedPhotos[currentIndex]
 
@@ -291,7 +293,7 @@ function UploadPhotos({ tagGroups, authParams, onRefresh, showSuccess, showError
     return null
   }
 
-  const handleSaveCurrentPhoto = async () => {
+  const handleSaveCurrentPhoto = async (showFeedback = true) => {
     if (!currentPhoto) return
 
     setSaving(true)
@@ -306,8 +308,10 @@ function UploadPhotos({ tagGroups, authParams, onRefresh, showSuccess, showError
         })
       })
 
-      if (response.ok) {
-        showSuccess('Guardado', 'Foto actualizada')
+      if (response.ok && showFeedback) {
+        // Feedback visual verde en el botón
+        setSavedFeedback(true)
+        setTimeout(() => setSavedFeedback(false), 1000)
       } else if (response.status === 401) {
         showError('Sesión expirada', 'Por favor, vuelve a iniciar sesión')
       }
@@ -318,16 +322,22 @@ function UploadPhotos({ tagGroups, authParams, onRefresh, showSuccess, showError
     }
   }
 
-  const goToPrev = () => {
+  const goToPrev = async () => {
     if (currentIndex > 0) {
-      handleSaveCurrentPhoto()
+      await handleSaveCurrentPhoto(false)
+      // Feedback visual verde en flecha
+      setArrowFeedback('prev')
+      setTimeout(() => setArrowFeedback(null), 500)
       setCurrentIndex(currentIndex - 1)
     }
   }
 
-  const goToNext = () => {
+  const goToNext = async () => {
     if (currentIndex < uploadedPhotos.length - 1) {
-      handleSaveCurrentPhoto()
+      await handleSaveCurrentPhoto(false)
+      // Feedback visual verde en flecha
+      setArrowFeedback('next')
+      setTimeout(() => setArrowFeedback(null), 500)
       setCurrentIndex(currentIndex + 1)
     }
   }
@@ -381,72 +391,59 @@ function UploadPhotos({ tagGroups, authParams, onRefresh, showSuccess, showError
     <div className="h-full flex flex-col py-2 gap-3">
       {/* Área superior: foto con flechas + descripción */}
       <div className="flex gap-4 flex-shrink-0" style={{ height: '45%' }}>
-        {/* Navegación y foto */}
-        <div className="flex items-center gap-2 flex-1">
-          {/* Flecha izquierda */}
-          <button
-            onClick={goToPrev}
-            disabled={currentIndex === 0}
-            className={`p-2 rounded-full transition-colors ${
-              currentIndex === 0
+        {/* Flecha izquierda */}
+        <button
+          onClick={goToPrev}
+          disabled={currentIndex === 0}
+          className={`p-2 rounded-full transition-all duration-300 self-center ${
+            arrowFeedback === 'prev'
+              ? 'text-green-500 bg-green-100 dark:bg-green-900/30'
+              : currentIndex === 0
                 ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
                 : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-            }`}
-          >
-            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
+          }`}
+        >
+          <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
 
-          {/* Foto */}
-          <div className="flex-1 h-full bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden flex items-center justify-center">
-            {currentPhoto && (
-              <img
-                src={currentPhoto.url}
-                alt={currentText}
-                className="max-w-full max-h-full object-contain"
-              />
-            )}
-          </div>
-
-          {/* Flecha derecha */}
-          <button
-            onClick={goToNext}
-            disabled={currentIndex === uploadedPhotos.length - 1}
-            className={`p-2 rounded-full transition-colors ${
-              currentIndex === uploadedPhotos.length - 1
-                ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
-                : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-            }`}
-          >
-            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
+        {/* Foto - ancho automático según imagen */}
+        <div className="h-full bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden flex items-center justify-center">
+          {currentPhoto && (
+            <img
+              src={currentPhoto.url}
+              alt={currentText}
+              className="h-full w-auto object-contain"
+            />
+          )}
         </div>
 
-        {/* Descripción y controles */}
-        <div className="w-72 flex flex-col gap-2">
-          <div className="text-sm text-gray-500 dark:text-gray-400">
-            Foto {currentIndex + 1} de {uploadedPhotos.length}
-          </div>
-          <textarea
-            value={currentText}
-            onChange={(e) => handleTextChange(e.target.value)}
-            placeholder="Descripción de la foto..."
-            rows={3}
-            className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none"
-          />
-          <div className="flex gap-2">
-            <button
-              onClick={handleSaveCurrentPhoto}
-              disabled={saving}
-              className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
-            >
-              {saving ? 'Guardando...' : 'Guardar'}
-            </button>
-            <label className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer text-center">
-              + Fotos
+        {/* Flecha derecha */}
+        <button
+          onClick={goToNext}
+          disabled={currentIndex === uploadedPhotos.length - 1}
+          className={`p-2 rounded-full transition-all duration-300 self-center ${
+            arrowFeedback === 'next'
+              ? 'text-green-500 bg-green-100 dark:bg-green-900/30'
+              : currentIndex === uploadedPhotos.length - 1
+                ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
+                : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+          }`}
+        >
+          <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+
+        {/* Descripción y controles - ocupa el resto del espacio */}
+        <div className="flex-1 flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-gray-500 dark:text-gray-400">
+              Foto {currentIndex + 1} de {uploadedPhotos.length}
+            </span>
+            <label className="px-3 py-1 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer">
+              + Agregar fotos
               <input
                 type="file"
                 multiple
@@ -456,6 +453,24 @@ function UploadPhotos({ tagGroups, authParams, onRefresh, showSuccess, showError
               />
             </label>
           </div>
+          <textarea
+            value={currentText}
+            onChange={(e) => handleTextChange(e.target.value)}
+            placeholder="Descripción de la foto..."
+            rows={3}
+            className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none"
+          />
+          <button
+            onClick={() => handleSaveCurrentPhoto(true)}
+            disabled={saving}
+            className={`w-full px-4 py-2 rounded-lg transition-all duration-300 ${
+              savedFeedback
+                ? 'bg-green-500 text-white'
+                : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600'
+            } disabled:opacity-50`}
+          >
+            {saving ? 'Guardando...' : savedFeedback ? '✓ Guardado' : 'Guardar'}
+          </button>
         </div>
       </div>
 
