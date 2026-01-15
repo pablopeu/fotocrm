@@ -433,14 +433,25 @@ function PhotoCard({ photo, tagGroups }) {
   const getPhotoTags = () => {
     const photoTags = photo.tags || []
     const tagNames = []
+    const foundTagIds = new Set()
 
+    // Primero buscar tags que existen en tagGroups
     for (const group of tagGroups) {
       for (const tag of group.tags) {
         if (photoTags.includes(tag.id)) {
           tagNames.push({ name: capitalize(tag.name), groupId: group.id })
+          foundTagIds.add(tag.id)
         }
       }
     }
+
+    // Agregar tags que no están en tagGroups (huérfanos)
+    for (const tagId of photoTags) {
+      if (!foundTagIds.has(tagId)) {
+        tagNames.push({ name: capitalize(tagId), groupId: 'unknown' })
+      }
+    }
+
     return tagNames
   }
 
@@ -452,7 +463,8 @@ function PhotoCard({ photo, tagGroups }) {
       tipo: 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300',
       encabado: 'bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300',
       acero: 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200',
-      extras: 'bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300'
+      extras: 'bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300',
+      unknown: 'bg-pink-100 dark:bg-pink-900/50 text-pink-700 dark:text-pink-300'
     }
     return colors[groupId] || 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
   }
