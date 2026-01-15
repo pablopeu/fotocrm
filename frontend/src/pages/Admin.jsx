@@ -4,6 +4,12 @@ import { useModal } from '../hooks/useModal'
 
 const API_BASE = import.meta.env.VITE_API_URL || './api/index.php'
 
+// Helper para capitalizar primera letra
+const capitalize = (str) => {
+  if (!str) return ''
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase()
+}
+
 function apiUrl(route) {
   return `${API_BASE}?route=${route.replace(/^\//, '')}`
 }
@@ -484,16 +490,8 @@ function UploadPhotos({ tagGroups, authParams, onRefresh, showSuccess, showError
           </svg>
         </button>
 
-        {/* Foto - ancho automático según imagen */}
-        <div className="h-full bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden flex items-center justify-center flex-shrink-0">
-          {currentPhoto && (
-            <img
-              src={currentPhoto.url}
-              alt={currentText}
-              className="h-full w-auto max-w-md object-contain"
-            />
-          )}
-        </div>
+        {/* Foto con zoom */}
+        <ZoomableImage src={currentPhoto?.url} alt={currentText} />
 
         {/* Flecha derecha */}
         <button
@@ -562,6 +560,100 @@ function UploadPhotos({ tagGroups, authParams, onRefresh, showSuccess, showError
           />
         ))}
       </div>
+    </div>
+  )
+}
+
+// ==================
+// Zoomable Image - Imagen con zoom y drag
+// ==================
+function ZoomableImage({ src, alt }) {
+  const containerRef = useRef(null)
+  const [scale, setScale] = useState(1)
+  const [position, setPosition] = useState({ x: 0, y: 0 })
+  const [isDragging, setIsDragging] = useState(false)
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
+
+  // Resetear cuando cambia la imagen
+  useEffect(() => {
+    setScale(1)
+    setPosition({ x: 0, y: 0 })
+  }, [src])
+
+  const handleWheel = (e) => {
+    e.preventDefault()
+    const delta = e.deltaY > 0 ? -0.1 : 0.1
+    setScale(prev => Math.min(Math.max(prev + delta, 1), 5))
+  }
+
+  const handleMouseDown = (e) => {
+    if (scale > 1) {
+      setIsDragging(true)
+      setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y })
+    }
+  }
+
+  const handleMouseMove = (e) => {
+    if (isDragging) {
+      setPosition({
+        x: e.clientX - dragStart.x,
+        y: e.clientY - dragStart.y
+      })
+    }
+  }
+
+  const handleMouseUp = () => {
+    setIsDragging(false)
+  }
+
+  const handleMouseLeave = () => {
+    setIsDragging(false)
+  }
+
+  const handleDoubleClick = () => {
+    if (scale > 1) {
+      setScale(1)
+      setPosition({ x: 0, y: 0 })
+    } else {
+      setScale(2)
+    }
+  }
+
+  return (
+    <div
+      ref={containerRef}
+      className="h-full bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden flex items-center justify-center flex-shrink-0 relative"
+      onWheel={handleWheel}
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseLeave}
+      onDoubleClick={handleDoubleClick}
+      style={{ cursor: scale > 1 ? (isDragging ? 'grabbing' : 'grab') : 'zoom-in' }}
+    >
+      {src && (
+        <img
+          src={src}
+          alt={alt}
+          className="h-full w-auto max-w-md object-contain select-none"
+          style={{
+            transform: `scale(${scale}) translate(${position.x / scale}px, ${position.y / scale}px)`,
+            transition: isDragging ? 'none' : 'transform 0.1s ease-out'
+          }}
+          draggable={false}
+        />
+      )}
+      {/* Indicador de zoom */}
+      {scale > 1 && (
+        <div className="absolute bottom-2 right-2 px-2 py-1 bg-black/50 text-white text-xs rounded">
+          {Math.round(scale * 100)}% (doble click para resetear)
+        </div>
+      )}
+      {scale === 1 && (
+        <div className="absolute bottom-2 right-2 px-2 py-1 bg-black/50 text-white text-xs rounded opacity-0 hover:opacity-100 transition-opacity">
+          Rueda del mouse para zoom
+        </div>
+      )}
     </div>
   )
 }
@@ -647,7 +739,7 @@ function TagSection({ group, selectedTags, onTagToggle, onCreateTag }) {
                     : 'bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-500'
                 }`}
               >
-                {tag.name}
+                {capitalize(tag.name)}
               </button>
             )
           })}
@@ -857,16 +949,8 @@ function ManagePhotos({ photos, tagGroups, authParams, onRefresh, showSuccess, s
           </svg>
         </button>
 
-        {/* Foto */}
-        <div className="h-full bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden flex items-center justify-center flex-shrink-0">
-          {currentPhoto && (
-            <img
-              src={currentPhoto.url}
-              alt={currentText}
-              className="h-full w-auto max-w-md object-contain"
-            />
-          )}
-        </div>
+        {/* Foto con zoom */}
+        <ZoomableImage src={currentPhoto?.url} alt={currentText} />
 
         {/* Flecha derecha */}
         <button
@@ -1075,7 +1159,7 @@ function TagsManager({ tagGroups, authParams, onRefresh, showSuccess, showError,
 
                   return (
                     <div key={tag.id} className="flex items-center justify-between py-1 px-2 bg-gray-50 dark:bg-gray-700 rounded">
-                      <span className="text-sm text-gray-700 dark:text-gray-300">{tag.name}</span>
+                      <span className="text-sm text-gray-700 dark:text-gray-300">{capitalize(tag.name)}</span>
                       {isConfirming ? (
                         <div className="flex items-center gap-1">
                           <button

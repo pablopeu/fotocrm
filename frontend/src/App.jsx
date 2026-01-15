@@ -1,14 +1,18 @@
 import { useState, useEffect, useCallback } from 'react'
-import Modal from './components/Modal'
 import PhotoModal from './components/PhotoModal'
 import SearchBar from './components/SearchBar'
-import { useModal } from './hooks/useModal'
 import {
   getCategories,
   getPhotos,
   copyImageToClipboard,
   copyTextToClipboard
 } from './services/api'
+
+// Helper para capitalizar primera letra
+const capitalize = (str) => {
+  if (!str) return ''
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase()
+}
 
 // Tabs de tipos principales
 const TIPO_TABS = [
@@ -36,8 +40,6 @@ function App() {
 
   const [viewingPhoto, setViewingPhoto] = useState(null)
 
-  const { isOpen, modalProps, closeModal, showSuccess, showError } = useModal()
-
   // Cargar datos iniciales
   useEffect(() => {
     async function loadData() {
@@ -52,7 +54,6 @@ function App() {
         setFilteredPhotos(photoData.photos || [])
       } catch (error) {
         console.error('Error cargando datos:', error)
-        showError('Error', 'No se pudieron cargar los datos. Verifica la conexión con el servidor.')
       } finally {
         setLoading(false)
       }
@@ -132,24 +133,6 @@ function App() {
 
   const hasActiveFilters = activeTab !== null || selectedEncabado.length > 0 || selectedAcero.length > 0 || selectedExtras.length > 0 || searchQuery
 
-  const handleCopyImage = useCallback(async (photo) => {
-    const result = await copyImageToClipboard(photo.url)
-    if (result.success) {
-      showSuccess('Copiado', result.message)
-    } else {
-      showError('Error', result.message)
-    }
-  }, [showSuccess, showError])
-
-  const handleCopyText = useCallback(async (text) => {
-    const result = await copyTextToClipboard(text || '')
-    if (result.success) {
-      showSuccess('Copiado', 'Descripción copiada al portapapeles')
-    } else {
-      showError('Error', result.message)
-    }
-  }, [showSuccess, showError])
-
   const handleViewPhoto = useCallback((photo) => {
     setViewingPhoto(photo)
   }, [])
@@ -166,7 +149,7 @@ function App() {
                 PEU Cuchillos Artesanales
               </h1>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Buscador interactivo de modelos
+                Buscador interactivo de modelos y materiales
               </p>
             </div>
 
@@ -287,15 +270,6 @@ function App() {
         photo={viewingPhoto}
         isOpen={!!viewingPhoto}
         onClose={() => setViewingPhoto(null)}
-        onCopyImage={handleCopyImage}
-        onCopyText={handleCopyText}
-      />
-
-      {/* Modal de mensajes */}
-      <Modal
-        isOpen={isOpen}
-        onClose={closeModal}
-        {...modalProps}
       />
     </div>
   )
@@ -354,7 +328,7 @@ function MultiSelect({ label, options, selected, onChange }) {
                     onChange={() => handleToggle(option.id)}
                     className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                   />
-                  <span className="text-sm text-gray-700 dark:text-gray-300">{option.name}</span>
+                  <span className="text-sm text-gray-700 dark:text-gray-300">{capitalize(option.name)}</span>
                 </label>
               ))
             )}
@@ -365,20 +339,30 @@ function MultiSelect({ label, options, selected, onChange }) {
   )
 }
 
-// Componente PhotoCard simplificado
+// Componente PhotoCard simplificado con feedback inline
 function PhotoCard({ photo, onCopyImage, onCopyText, onView }) {
   const [imageLoaded, setImageLoaded] = useState(false)
   const [imageError, setImageError] = useState(false)
+  const [imageCopied, setImageCopied] = useState(false)
+  const [textCopied, setTextCopied] = useState(false)
 
   const handleImageClick = async (e) => {
     e.stopPropagation()
-    await onCopyImage(photo)
+    const result = await copyImageToClipboard(photo.url)
+    if (result.success) {
+      setImageCopied(true)
+      setTimeout(() => setImageCopied(false), 1500)
+    }
   }
 
   const handleTextClick = async (e) => {
     e.stopPropagation()
     if (photo.text) {
-      await onCopyText(photo.text)
+      const result = await copyTextToClipboard(photo.text)
+      if (result.success) {
+        setTextCopied(true)
+        setTimeout(() => setTextCopied(false), 1500)
+      }
     }
   }
 
@@ -410,10 +394,16 @@ function PhotoCard({ photo, onCopyImage, onCopyText, onView }) {
               onLoad={() => setImageLoaded(true)}
               onError={() => setImageError(true)}
             />
-            {/* Overlay al hover */}
-            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
-              <span className="opacity-0 group-hover:opacity-100 transition-opacity text-white text-sm font-medium bg-black/50 px-3 py-1 rounded">
-                Copiar imagen
+            {/* Overlay al hover o cuando se copió */}
+            <div className={`absolute inset-0 transition-colors flex items-center justify-center ${
+              imageCopied ? 'bg-green-500/40' : 'bg-black/0 group-hover:bg-black/20'
+            }`}>
+              <span className={`transition-opacity text-white text-sm font-medium px-3 py-1 rounded ${
+                imageCopied
+                  ? 'opacity-100 bg-green-600'
+                  : 'opacity-0 group-hover:opacity-100 bg-black/50'
+              }`}>
+                {imageCopied ? 'Imagen copiada' : 'Copiar imagen'}
               </span>
             </div>
           </>
@@ -422,13 +412,23 @@ function PhotoCard({ photo, onCopyImage, onCopyText, onView }) {
 
       {/* Descripción - clickeable para copiar */}
       <div
-        className="p-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+        className={`p-3 cursor-pointer transition-colors ${
+          textCopied
+            ? 'bg-green-100 dark:bg-green-900/30'
+            : 'hover:bg-gray-50 dark:hover:bg-gray-700'
+        }`}
         onClick={handleTextClick}
         title={photo.text ? "Click para copiar descripción" : ""}
       >
-        <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-3 min-h-[3.75rem]">
-          {photo.text || 'Sin descripción'}
-        </p>
+        {textCopied ? (
+          <p className="text-sm text-green-600 dark:text-green-400 font-medium min-h-[3.75rem] flex items-center justify-center">
+            Descripción copiada
+          </p>
+        ) : (
+          <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-3 min-h-[3.75rem]">
+            {photo.text || 'Sin descripción'}
+          </p>
+        )}
       </div>
     </div>
   )
