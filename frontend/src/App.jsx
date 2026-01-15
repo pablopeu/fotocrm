@@ -275,8 +275,18 @@ function MultiSelect({ label, options, selected, onChange, groupId }) {
 
   const selectedCount = selected.length
 
-  // Obtener colores según el grupo
-  const getGroupColor = () => {
+  // Obtener colores según el grupo (sin selección - más tenue)
+  const getGroupColorEmpty = () => {
+    const colors = {
+      encabado: 'border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400',
+      acero: 'border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300',
+      extras: 'border-orange-300 dark:border-orange-700 bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400'
+    }
+    return colors[groupId] || 'border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300'
+  }
+
+  // Obtener colores según el grupo (con selección - más intenso)
+  const getGroupColorSelected = () => {
     const colors = {
       encabado: 'border-amber-400 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300',
       acero: 'border-gray-400 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200',
@@ -290,9 +300,7 @@ function MultiSelect({ label, options, selected, onChange, groupId }) {
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={`flex items-center gap-2 px-3 py-1.5 text-sm border rounded-lg transition-colors ${
-          selectedCount > 0
-            ? getGroupColor()
-            : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+          selectedCount > 0 ? getGroupColorSelected() : getGroupColorEmpty()
         }`}
       >
         {label}
