@@ -471,6 +471,16 @@ function UploadPhotos({ tagGroups, authParams, onRefresh, showSuccess, showError
   // Vista de edición de fotos
   return (
     <div className="h-full flex flex-col py-2 gap-3">
+      {/* Carrusel de fotos */}
+      <PhotoCarousel
+        photos={uploadedPhotos}
+        currentIndex={currentIndex}
+        onSelectPhoto={async (newIndex) => {
+          await handleSaveCurrentPhoto(false)
+          setCurrentIndex(newIndex)
+        }}
+      />
+
       {/* Área superior: foto con flechas + descripción */}
       <div className="flex gap-4 flex-shrink-0" style={{ height: '40%' }}>
         {/* Flecha izquierda */}
@@ -547,16 +557,6 @@ function UploadPhotos({ tagGroups, authParams, onRefresh, showSuccess, showError
           </button>
         </div>
       </div>
-
-      {/* Carrusel de fotos */}
-      <PhotoCarousel
-        photos={uploadedPhotos}
-        currentIndex={currentIndex}
-        onSelectPhoto={async (newIndex) => {
-          await handleSaveCurrentPhoto(false)
-          setCurrentIndex(newIndex)
-        }}
-      />
 
       {/* Área inferior: 4 secciones de tags */}
       <div className="flex-1 grid grid-cols-4 gap-3 min-h-0">
@@ -681,57 +681,135 @@ function ZoomableImage({ src, alt }) {
 // ==================
 function PhotoCarousel({ photos, currentIndex, onSelectPhoto }) {
   const carouselRef = useRef(null)
+  const [scrollPosition, setScrollPosition] = useState(0)
+  const [isDragging, setIsDragging] = useState(false)
+  const [dragStartX, setDragStartX] = useState(0)
+  const [dragStartScroll, setDragStartScroll] = useState(0)
+
+  const THUMBNAIL_SIZE = 120 // 50% más grande que 80
 
   // Auto-scroll al item actual cuando cambia el índice
   useEffect(() => {
     if (carouselRef.current && photos.length > 0) {
-      const container = carouselRef.current
-      const items = container.querySelectorAll('.carousel-item')
-      const currentItem = items[currentIndex]
+      const containerWidth = carouselRef.current.offsetWidth
+      const itemWidth = THUMBNAIL_SIZE
+      const targetScroll = (currentIndex * itemWidth) - (containerWidth / 2) + (itemWidth / 2)
 
-      if (currentItem) {
-        const containerWidth = container.offsetWidth
-        const itemLeft = currentItem.offsetLeft
-        const itemWidth = currentItem.offsetWidth
-        const scrollPosition = itemLeft - (containerWidth / 2) + (itemWidth / 2)
-
-        container.scrollTo({
-          left: scrollPosition,
-          behavior: 'smooth'
-        })
-      }
+      setScrollPosition(Math.max(0, Math.min(targetScroll, (photos.length * itemWidth) - containerWidth)))
     }
   }, [currentIndex, photos.length])
+
+  // Aplicar scroll position
+  useEffect(() => {
+    if (carouselRef.current) {
+      carouselRef.current.scrollLeft = scrollPosition
+    }
+  }, [scrollPosition])
+
+  const handlePrevious = () => {
+    const containerWidth = carouselRef.current.offsetWidth
+    setScrollPosition(prev => Math.max(0, prev - containerWidth * 0.8))
+  }
+
+  const handleNext = () => {
+    if (!carouselRef.current) return
+    const containerWidth = carouselRef.current.offsetWidth
+    const maxScroll = (photos.length * THUMBNAIL_SIZE) - containerWidth
+    setScrollPosition(prev => Math.min(maxScroll, prev + containerWidth * 0.8))
+  }
+
+  const handleMouseDown = (e) => {
+    setIsDragging(true)
+    setDragStartX(e.clientX)
+    setDragStartScroll(scrollPosition)
+  }
+
+  const handleMouseMove = (e) => {
+    if (!isDragging) return
+    const deltaX = dragStartX - e.clientX
+    const containerWidth = carouselRef.current.offsetWidth
+    const maxScroll = (photos.length * THUMBNAIL_SIZE) - containerWidth
+    setScrollPosition(Math.max(0, Math.min(maxScroll, dragStartScroll + deltaX)))
+  }
+
+  const handleMouseUp = () => {
+    setIsDragging(false)
+  }
+
+  const handleMouseLeave = () => {
+    setIsDragging(false)
+  }
 
   if (!photos || photos.length === 0) {
     return null
   }
 
+  const containerWidth = carouselRef.current?.offsetWidth || 0
+  const maxScroll = (photos.length * THUMBNAIL_SIZE) - containerWidth
+  const canScrollLeft = scrollPosition > 0
+  const canScrollRight = scrollPosition < maxScroll
+
   return (
-    <div className="w-full bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-2">
+    <div className="relative w-full bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+      {/* Flecha izquierda */}
+      {canScrollLeft && (
+        <button
+          onClick={handlePrevious}
+          className="absolute left-2 top-1/2 -translate-y-1/2 z-10 p-2 bg-white/90 dark:bg-gray-700/90 rounded-full shadow-lg hover:bg-white dark:hover:bg-gray-600 transition-colors"
+        >
+          <svg className="w-5 h-5 text-gray-700 dark:text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+      )}
+
+      {/* Container del carrusel */}
       <div
         ref={carouselRef}
-        className="flex gap-2 overflow-x-auto pb-2"
-        style={{ scrollbarWidth: 'thin' }}
+        className="flex overflow-x-hidden cursor-grab active:cursor-grabbing select-none"
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseLeave}
+        style={{ scrollBehavior: isDragging ? 'auto' : 'smooth' }}
       >
         {photos.map((photo, idx) => (
           <button
             key={photo.id}
-            onClick={() => onSelectPhoto(idx)}
-            className={`carousel-item flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-all ${
+            onClick={(e) => {
+              if (!isDragging) {
+                onSelectPhoto(idx)
+              }
+              e.preventDefault()
+            }}
+            className={`flex-shrink-0 overflow-hidden border-2 transition-all ${
               idx === currentIndex
                 ? 'border-blue-500 ring-2 ring-blue-300 dark:ring-blue-700'
                 : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
             }`}
+            style={{ width: `${THUMBNAIL_SIZE}px`, height: `${THUMBNAIL_SIZE}px` }}
           >
             <img
               src={photo.url}
               alt={`Foto ${idx + 1}`}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover pointer-events-none"
+              draggable={false}
             />
           </button>
         ))}
       </div>
+
+      {/* Flecha derecha */}
+      {canScrollRight && (
+        <button
+          onClick={handleNext}
+          className="absolute right-2 top-1/2 -translate-y-1/2 z-10 p-2 bg-white/90 dark:bg-gray-700/90 rounded-full shadow-lg hover:bg-white dark:hover:bg-gray-600 transition-colors"
+        >
+          <svg className="w-5 h-5 text-gray-700 dark:text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+      )}
     </div>
   )
 }
@@ -1008,6 +1086,16 @@ function ManagePhotos({ photos, tagGroups, authParams, onRefresh, showSuccess, s
 
   return (
     <div className="h-full flex flex-col py-2 gap-3">
+      {/* Carrusel de fotos */}
+      <PhotoCarousel
+        photos={photos}
+        currentIndex={currentIndex}
+        onSelectPhoto={async (newIndex) => {
+          await handleSaveCurrentPhoto(false)
+          setCurrentIndex(newIndex)
+        }}
+      />
+
       {/* Área superior: foto con flechas + descripción */}
       <div className="flex gap-4 flex-shrink-0" style={{ height: '40%' }}>
         {/* Flecha izquierda */}
@@ -1080,16 +1168,6 @@ function ManagePhotos({ photos, tagGroups, authParams, onRefresh, showSuccess, s
           </button>
         </div>
       </div>
-
-      {/* Carrusel de fotos */}
-      <PhotoCarousel
-        photos={photos}
-        currentIndex={currentIndex}
-        onSelectPhoto={async (newIndex) => {
-          await handleSaveCurrentPhoto(false)
-          setCurrentIndex(newIndex)
-        }}
-      />
 
       {/* Área inferior: 4 secciones de tags */}
       <div className="flex-1 grid grid-cols-4 gap-3 min-h-0">
