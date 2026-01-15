@@ -472,7 +472,7 @@ function UploadPhotos({ tagGroups, authParams, onRefresh, showSuccess, showError
   return (
     <div className="h-full flex flex-col py-2 gap-3">
       {/* Área superior: foto con flechas + descripción */}
-      <div className="flex gap-4 flex-shrink-0" style={{ height: '45%' }}>
+      <div className="flex gap-4 flex-shrink-0" style={{ height: '40%' }}>
         {/* Flecha izquierda */}
         <button
           onClick={goToPrev}
@@ -547,6 +547,16 @@ function UploadPhotos({ tagGroups, authParams, onRefresh, showSuccess, showError
           </button>
         </div>
       </div>
+
+      {/* Carrusel de fotos */}
+      <PhotoCarousel
+        photos={uploadedPhotos}
+        currentIndex={currentIndex}
+        onSelectPhoto={async (newIndex) => {
+          await handleSaveCurrentPhoto(false)
+          setCurrentIndex(newIndex)
+        }}
+      />
 
       {/* Área inferior: 4 secciones de tags */}
       <div className="flex-1 grid grid-cols-4 gap-3 min-h-0">
@@ -662,6 +672,66 @@ function ZoomableImage({ src, alt }) {
           Rueda del mouse para zoom
         </div>
       )}
+    </div>
+  )
+}
+
+// ==================
+// Photo Carousel - Carrusel de fotos
+// ==================
+function PhotoCarousel({ photos, currentIndex, onSelectPhoto }) {
+  const carouselRef = useRef(null)
+
+  // Auto-scroll al item actual cuando cambia el índice
+  useEffect(() => {
+    if (carouselRef.current && photos.length > 0) {
+      const container = carouselRef.current
+      const items = container.querySelectorAll('.carousel-item')
+      const currentItem = items[currentIndex]
+
+      if (currentItem) {
+        const containerWidth = container.offsetWidth
+        const itemLeft = currentItem.offsetLeft
+        const itemWidth = currentItem.offsetWidth
+        const scrollPosition = itemLeft - (containerWidth / 2) + (itemWidth / 2)
+
+        container.scrollTo({
+          left: scrollPosition,
+          behavior: 'smooth'
+        })
+      }
+    }
+  }, [currentIndex, photos.length])
+
+  if (!photos || photos.length === 0) {
+    return null
+  }
+
+  return (
+    <div className="w-full bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-2">
+      <div
+        ref={carouselRef}
+        className="flex gap-2 overflow-x-auto pb-2"
+        style={{ scrollbarWidth: 'thin' }}
+      >
+        {photos.map((photo, idx) => (
+          <button
+            key={photo.id}
+            onClick={() => onSelectPhoto(idx)}
+            className={`carousel-item flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-all ${
+              idx === currentIndex
+                ? 'border-blue-500 ring-2 ring-blue-300 dark:ring-blue-700'
+                : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
+            }`}
+          >
+            <img
+              src={photo.url}
+              alt={`Foto ${idx + 1}`}
+              className="w-full h-full object-cover"
+            />
+          </button>
+        ))}
+      </div>
     </div>
   )
 }
@@ -939,7 +1009,7 @@ function ManagePhotos({ photos, tagGroups, authParams, onRefresh, showSuccess, s
   return (
     <div className="h-full flex flex-col py-2 gap-3">
       {/* Área superior: foto con flechas + descripción */}
-      <div className="flex gap-4 flex-shrink-0" style={{ height: '45%' }}>
+      <div className="flex gap-4 flex-shrink-0" style={{ height: '40%' }}>
         {/* Flecha izquierda */}
         <button
           onClick={goToPrev}
@@ -1010,6 +1080,16 @@ function ManagePhotos({ photos, tagGroups, authParams, onRefresh, showSuccess, s
           </button>
         </div>
       </div>
+
+      {/* Carrusel de fotos */}
+      <PhotoCarousel
+        photos={photos}
+        currentIndex={currentIndex}
+        onSelectPhoto={async (newIndex) => {
+          await handleSaveCurrentPhoto(false)
+          setCurrentIndex(newIndex)
+        }}
+      />
 
       {/* Área inferior: 4 secciones de tags */}
       <div className="flex-1 grid grid-cols-4 gap-3 min-h-0">
