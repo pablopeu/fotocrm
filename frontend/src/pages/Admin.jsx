@@ -15,6 +15,9 @@ export default function Admin() {
   const [tagGroups, setTagGroups] = useState([])
   const [photos, setPhotos] = useState([])
   const [loading, setLoading] = useState(false)
+  const [showPasswordModal, setShowPasswordModal] = useState(false)
+  const [newPassword, setNewPassword] = useState('')
+  const [pendingSave, setPendingSave] = useState(null) // Función para guardar antes de cambiar tab
 
   const { isOpen, modalProps, closeModal, showSuccess, showError, showConfirm } = useModal()
 
@@ -58,6 +61,40 @@ export default function Admin() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleChangePassword = async () => {
+    if (newPassword.length < 6) {
+      showError('Error', 'La contraseña debe tener al menos 6 caracteres')
+      return
+    }
+
+    try {
+      const response = await fetch(apiUrl('admin/password'), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ new_password: newPassword, ...getAuthParams() })
+      })
+
+      if (response.ok) {
+        setCredentials({ ...credentials, pass: newPassword })
+        setShowPasswordModal(false)
+        setNewPassword('')
+        showSuccess('Éxito', 'Contraseña actualizada')
+      } else {
+        showError('Error', 'No se pudo cambiar la contraseña')
+      }
+    } catch (error) {
+      showError('Error', 'Error de conexión')
+    }
+  }
+
+  const handleTabChange = async (newTab) => {
+    // Si hay una función de guardado pendiente, ejecutarla antes de cambiar
+    if (pendingSave) {
+      await pendingSave()
+    }
+    setActiveTab(newTab)
   }
 
   if (!authenticated) {
@@ -120,7 +157,7 @@ export default function Admin() {
             {tabs.map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => handleTabChange(tab.id)}
                 className={`px-4 py-1.5 font-medium text-sm rounded-lg transition-colors ${
                   activeTab === tab.id
                     ? 'bg-blue-600 text-white'
@@ -134,6 +171,9 @@ export default function Admin() {
 
           <div className="flex items-center gap-4">
             <a href="#/" className="text-sm text-gray-600 dark:text-gray-300 hover:underline">Ver catálogo</a>
+            <button onClick={() => setShowPasswordModal(true)} className="text-sm text-gray-600 dark:text-gray-300 hover:underline">
+              Cambiar contraseña
+            </button>
             <button onClick={() => setAuthenticated(false)} className="text-sm text-red-600 dark:text-red-400 hover:underline">
               Cerrar sesión
             </button>
@@ -150,6 +190,7 @@ export default function Admin() {
               onRefresh={loadData}
               showSuccess={showSuccess}
               showError={showError}
+              setPendingSave={setPendingSave}
             />
           )}
           {activeTab === 'manage' && (
@@ -161,6 +202,7 @@ export default function Admin() {
               showSuccess={showSuccess}
               showError={showError}
               showConfirm={showConfirm}
+              setPendingSave={setPendingSave}
             />
           )}
           {activeTab === 'tags' && (
@@ -176,6 +218,31 @@ export default function Admin() {
         </div>
       </main>
 
+      {/* Modal cambiar contraseña */}
+      {showPasswordModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowPasswordModal(false)}>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-sm mx-4" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Cambiar contraseña</h3>
+            <input
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="Nueva contraseña (mín. 6 caracteres)"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white mb-4"
+              autoComplete="new-password"
+            />
+            <div className="flex gap-2">
+              <button onClick={() => setShowPasswordModal(false)} className="flex-1 px-4 py-2 border border-gray-300 rounded-lg">
+                Cancelar
+              </button>
+              <button onClick={handleChangePassword} className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                Guardar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <Modal isOpen={isOpen} onClose={closeModal} {...modalProps} />
     </div>
   )
@@ -184,7 +251,7 @@ export default function Admin() {
 // ==================
 // Upload Photos - Nueva sección de subida
 // ==================
-function UploadPhotos({ tagGroups, authParams, onRefresh, showSuccess, showError }) {
+function UploadPhotos({ tagGroups, authParams, onRefresh, showSuccess, showError, setPendingSave }) {
   const [uploadedPhotos, setUploadedPhotos] = useState([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [dragOver, setDragOver] = useState(false)
@@ -196,6 +263,14 @@ function UploadPhotos({ tagGroups, authParams, onRefresh, showSuccess, showError
   const [arrowFeedback, setArrowFeedback] = useState(null) // 'prev' | 'next' | null
 
   const currentPhoto = uploadedPhotos[currentIndex]
+
+  // Registrar función de guardado para cuando se cambie de tab
+  useEffect(() => {
+    if (currentPhoto && setPendingSave) {
+      setPendingSave(() => () => handleSaveCurrentPhoto(false))
+    }
+    return () => setPendingSave && setPendingSave(null)
+  }, [currentPhoto, photoTags, photoTexts])
 
   const handleUpload = async (files) => {
     if (!files || files.length === 0) return
@@ -275,14 +350,15 @@ function UploadPhotos({ tagGroups, authParams, onRefresh, showSuccess, showError
 
       if (response.ok) {
         const newTag = await response.json()
-        onRefresh()
-        // Auto-seleccionar el nuevo tag
+        // Auto-seleccionar el nuevo tag SIN perder los anteriores
         if (currentPhoto) {
           setPhotoTags(prev => ({
             ...prev,
             [currentPhoto.id]: [...(prev[currentPhoto.id] || []), newTag.id]
           }))
         }
+        // Refrescar tags después de actualizar el estado local
+        onRefresh()
         return newTag
       } else if (response.status === 401) {
         showError('Sesión expirada', 'Por favor, vuelve a iniciar sesión')
@@ -587,7 +663,7 @@ function TagSection({ group, selectedTags, onTagToggle, onCreateTag }) {
 // ==================
 // Manage Photos - Administrar fotos existentes (misma interfaz que Upload)
 // ==================
-function ManagePhotos({ photos, tagGroups, authParams, onRefresh, showSuccess, showError, showConfirm }) {
+function ManagePhotos({ photos, tagGroups, authParams, onRefresh, showSuccess, showError, showConfirm, setPendingSave }) {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [photoTags, setPhotoTags] = useState({})
   const [photoTexts, setPhotoTexts] = useState({})
@@ -608,6 +684,14 @@ function ManagePhotos({ photos, tagGroups, authParams, onRefresh, showSuccess, s
     setPhotoTags(tags)
     setPhotoTexts(texts)
   }, [photos])
+
+  // Registrar función de guardado para cuando se cambie de tab
+  useEffect(() => {
+    if (currentPhoto && setPendingSave) {
+      setPendingSave(() => () => handleSaveCurrentPhoto(false))
+    }
+    return () => setPendingSave && setPendingSave(null)
+  }, [currentPhoto, photoTags, photoTexts])
 
   const handleTagToggle = (tagId) => {
     if (!currentPhoto) return
@@ -635,13 +719,15 @@ function ManagePhotos({ photos, tagGroups, authParams, onRefresh, showSuccess, s
 
       if (response.ok) {
         const newTag = await response.json()
-        onRefresh()
+        // Auto-seleccionar el nuevo tag SIN perder los anteriores
         if (currentPhoto) {
           setPhotoTags(prev => ({
             ...prev,
             [currentPhoto.id]: [...(prev[currentPhoto.id] || []), newTag.id]
           }))
         }
+        // Refrescar tags después de actualizar el estado local
+        onRefresh()
         return newTag
       } else if (response.status === 401) {
         showError('Sesión expirada', 'Por favor, vuelve a iniciar sesión')

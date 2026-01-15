@@ -17,8 +17,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 // Configuración
 define('DATA_DIR', __DIR__ . '/../data');
 define('UPLOADS_DIR', __DIR__ . '/../uploads');
-define('ADMIN_USER', getenv('ADMIN_USER') ?: 'admin');
-define('ADMIN_PASS', getenv('ADMIN_PASS') ?: 'admin123');
+define('CONFIG_FILE', DATA_DIR . '/config.json');
+
+// Cargar configuración de usuario/contraseña
+function getConfig() {
+    if (file_exists(CONFIG_FILE)) {
+        $config = json_decode(file_get_contents(CONFIG_FILE), true);
+        if ($config) return $config;
+    }
+    return ['user' => 'admin', 'pass' => 'admin123'];
+}
+
+function saveConfig($config) {
+    file_put_contents(CONFIG_FILE, json_encode($config, JSON_PRETTY_PRINT));
+}
+
+$CONFIG = getConfig();
+define('ADMIN_USER', $CONFIG['user']);
+define('ADMIN_PASS', $CONFIG['pass']);
+
+// Leer input UNA sola vez y almacenarlo globalmente
+$RAW_INPUT = file_get_contents('php://input');
+$JSON_INPUT = json_decode($RAW_INPUT, true) ?: [];
 
 if (!is_dir(DATA_DIR)) mkdir(DATA_DIR, 0755, true);
 if (!is_dir(UPLOADS_DIR)) mkdir(UPLOADS_DIR, 0755, true);
@@ -55,17 +75,17 @@ function generateUUID() {
 }
 
 function checkAuth() {
+    global $JSON_INPUT;
     $user = null;
     $pass = null;
 
     // 1. Intentar desde parámetros POST/JSON (método más compatible)
-    $input = json_decode(file_get_contents('php://input'), true) ?: [];
     if (!empty($_POST['auth_user']) && !empty($_POST['auth_pass'])) {
         $user = $_POST['auth_user'];
         $pass = $_POST['auth_pass'];
-    } elseif (!empty($input['auth_user']) && !empty($input['auth_pass'])) {
-        $user = $input['auth_user'];
-        $pass = $input['auth_pass'];
+    } elseif (!empty($JSON_INPUT['auth_user']) && !empty($JSON_INPUT['auth_pass'])) {
+        $user = $JSON_INPUT['auth_user'];
+        $pass = $JSON_INPUT['auth_pass'];
     }
     // 2. Intentar desde query string (para GET requests)
     elseif (!empty($_GET['auth_user']) && !empty($_GET['auth_pass'])) {
@@ -99,7 +119,7 @@ function checkAuth() {
 
     if (!$user || !$pass) {
         http_response_code(401);
-        echo json_encode(['error' => 'Autenticación requerida', 'debug' => 'No credentials found']);
+        echo json_encode(['error' => 'Autenticación requerida']);
         exit;
     }
     if ($user !== ADMIN_USER || $pass !== ADMIN_PASS) {
@@ -116,8 +136,8 @@ function response($data, $code = 200) {
 }
 
 function getInput() {
-    $input = file_get_contents('php://input');
-    return json_decode($input, true) ?: [];
+    global $JSON_INPUT;
+    return $JSON_INPUT;
 }
 
 // Obtener la ruta
@@ -142,6 +162,27 @@ switch (true) {
     case $path === 'admin/verify' && $method === 'GET':
         checkAuth();
         response(['status' => 'ok', 'message' => 'Authenticated']);
+        break;
+
+    // PUT /admin/password - Cambiar contraseña
+    case $path === 'admin/password' && $method === 'PUT':
+        checkAuth();
+        $input = getInput();
+
+        if (empty($input['new_password'])) {
+            response(['error' => 'new_password es requerido'], 400);
+        }
+
+        $newPass = $input['new_password'];
+        if (strlen($newPass) < 6) {
+            response(['error' => 'La contraseña debe tener al menos 6 caracteres'], 400);
+        }
+
+        $config = getConfig();
+        $config['pass'] = $newPass;
+        saveConfig($config);
+
+        response(['status' => 'ok', 'message' => 'Contraseña actualizada']);
         break;
 
     // GET /tags - Obtener grupos de tags
