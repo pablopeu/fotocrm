@@ -3,7 +3,7 @@ name: Deploy to FTP
 on:
   push:
     branches:
-      - '**'  # Todas las branches
+      - main  # Solo deploy en main
   workflow_dispatch:
 
 # Cancelar workflows anteriores cuando hay nuevos pushes
