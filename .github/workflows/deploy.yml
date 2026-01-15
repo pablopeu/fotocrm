@@ -5,9 +5,16 @@ on:
     branches:
       - '**'  # Todas las branches
   workflow_dispatch:
+
+# Cancelar workflows anteriores cuando hay nuevos pushes
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
