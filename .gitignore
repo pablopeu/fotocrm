@@ -12,6 +12,10 @@ frontend/dist/
 uploads/*
 !uploads/.gitkeep
 
+# Data (JSON de producción - no versionar)
+data/*.json
+!data/.gitkeep
+
 # OS files
 .DS_Store
 Thumbs.db
