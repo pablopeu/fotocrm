@@ -43,15 +43,91 @@ $JSON_INPUT = json_decode($RAW_INPUT, true) ?: [];
 if (!is_dir(DATA_DIR)) mkdir(DATA_DIR, 0755, true);
 if (!is_dir(UPLOADS_DIR)) mkdir(UPLOADS_DIR, 0755, true);
 
+// Inicializar archivos JSON si no existen
+function initializeData() {
+    $categoriesFile = DATA_DIR . '/categories.json';
+    $photosFile = DATA_DIR . '/photos.json';
+
+    // Inicializar categories.json si no existe
+    if (!file_exists($categoriesFile)) {
+        $defaultCategories = [
+            'tag_groups' => [
+                [
+                    'id' => 'tipo',
+                    'name' => 'Tipo',
+                    'tags' => []
+                ],
+                [
+                    'id' => 'encabado',
+                    'name' => 'Encabado',
+                    'tags' => []
+                ],
+                [
+                    'id' => 'acero',
+                    'name' => 'Acero',
+                    'tags' => []
+                ],
+                [
+                    'id' => 'extras',
+                    'name' => 'Extras',
+                    'tags' => []
+                ]
+            ]
+        ];
+        file_put_contents($categoriesFile, json_encode($defaultCategories, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+    }
+
+    // Inicializar photos.json si no existe
+    if (!file_exists($photosFile)) {
+        $defaultPhotos = ['photos' => []];
+        file_put_contents($photosFile, json_encode($defaultPhotos, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+    }
+}
+
+// Ejecutar inicialización
+initializeData();
+
 // Funciones de utilidad
 function readJSON($filename) {
     $filepath = DATA_DIR . '/' . $filename;
+
+    // Verificar si el archivo existe
     if (!file_exists($filepath)) {
+        error_log("readJSON: File not found - $filepath");
         return $filename === 'categories.json'
             ? ['tag_groups' => []]
             : ['photos' => []];
     }
-    return json_decode(file_get_contents($filepath), true);
+
+    // Leer el contenido del archivo
+    $content = file_get_contents($filepath);
+    if ($content === false) {
+        error_log("readJSON: Failed to read file - $filepath");
+        return $filename === 'categories.json'
+            ? ['tag_groups' => []]
+            : ['photos' => []];
+    }
+
+    // Decodificar JSON
+    $data = json_decode($content, true);
+
+    // Si hay error en el JSON, devolver estructura por defecto
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        error_log("readJSON: JSON decode error - " . json_last_error_msg() . " in $filepath");
+        return $filename === 'categories.json'
+            ? ['tag_groups' => []]
+            : ['photos' => []];
+    }
+
+    // Si $data es null pero no hubo error, devolver estructura por defecto
+    if ($data === null) {
+        error_log("readJSON: Data is null (valid JSON null) in $filepath");
+        return $filename === 'categories.json'
+            ? ['tag_groups' => []]
+            : ['photos' => []];
+    }
+
+    return $data;
 }
 
 function writeJSON($filename, $data) {

@@ -43,12 +43,12 @@ jobs:
           mkdir -p deploy/api
           cp -r api/* deploy/api/
           cp api/.htaccess deploy/api/ 2>/dev/null || true
-          # Copiar datos JSON
-          mkdir -p deploy/data
-          cp -r data/* deploy/data/
-          # Crear carpeta uploads
-          mkdir -p deploy/uploads
-          touch deploy/uploads/.gitkeep
+          # NO copiar datos JSON - dejar los del servidor
+          # mkdir -p deploy/data
+          # cp -r data/* deploy/data/
+          # NO copiar uploads - dejar los del servidor
+          # mkdir -p deploy/uploads
+          # touch deploy/uploads/.gitkeep
 
       - name: Deploy to FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
@@ -63,3 +63,5 @@ jobs:
             **/.git*
             **/.git*/**
             **/node_modules/**
+            data/**
+            uploads/**
