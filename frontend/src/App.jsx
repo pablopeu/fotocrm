@@ -1,11 +1,9 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
-import PhotoModal from './components/PhotoModal'
+import { useState, useEffect, useRef } from 'react'
 import SearchBar from './components/SearchBar'
 import {
   getCategories,
   getPhotos,
-  copyImageToClipboard,
-  copyTextToClipboard
+  copyImageToClipboard
 } from './services/api'
 
 // Helper para capitalizar primera letra
@@ -37,8 +35,6 @@ function App() {
   const [selectedAcero, setSelectedAcero] = useState([])
   const [selectedExtras, setSelectedExtras] = useState([])
   const [searchQuery, setSearchQuery] = useState('')
-
-  const [viewingPhoto, setViewingPhoto] = useState(null)
 
   // Cargar datos iniciales
   useEffect(() => {
@@ -132,10 +128,6 @@ function App() {
   }, [])
 
   const hasActiveFilters = activeTab !== null || selectedEncabado.length > 0 || selectedAcero.length > 0 || selectedExtras.length > 0 || searchQuery
-
-  const handleViewPhoto = useCallback((photo) => {
-    setViewingPhoto(photo)
-  }, [])
 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex flex-col">
@@ -255,20 +247,13 @@ function App() {
                 <PhotoCard
                   key={photo.id}
                   photo={photo}
-                  onView={handleViewPhoto}
+                  tagGroups={tagGroups}
                 />
               ))}
             </div>
           )}
         </div>
       </main>
-
-      {/* Modal de vista de foto */}
-      <PhotoModal
-        photo={viewingPhoto}
-        isOpen={!!viewingPhoto}
-        onClose={() => setViewingPhoto(null)}
-      />
     </div>
   )
 }
@@ -337,13 +322,12 @@ function MultiSelect({ label, options, selected, onChange }) {
   )
 }
 
-// Componente PhotoCard con zoom, feedback inline
-function PhotoCard({ photo, onView }) {
+// Componente PhotoCard con zoom y tags
+function PhotoCard({ photo, tagGroups }) {
   const containerRef = useRef(null)
   const [imageLoaded, setImageLoaded] = useState(false)
   const [imageError, setImageError] = useState(false)
   const [imageCopied, setImageCopied] = useState(false)
-  const [textCopied, setTextCopied] = useState(false)
   const [scale, setScale] = useState(1)
   const [position, setPosition] = useState({ x: 0, y: 0 })
   const [isDragging, setIsDragging] = useState(false)
@@ -392,7 +376,7 @@ function PhotoCard({ photo, onView }) {
   }
 
   const handleClick = async (e) => {
-    // Solo copiar si no está zoomizado o si no estaba haciendo drag
+    // Solo copiar si no está zoomizado
     if (scale === 1) {
       const result = await copyImageToClipboard(photo.url)
       if (result.success) {
@@ -411,15 +395,32 @@ function PhotoCard({ photo, onView }) {
     }
   }
 
-  const handleTextClick = async (e) => {
-    e.stopPropagation()
-    if (photo.text) {
-      const result = await copyTextToClipboard(photo.text)
-      if (result.success) {
-        setTextCopied(true)
-        setTimeout(() => setTextCopied(false), 1500)
+  // Obtener nombres de tags de la foto
+  const getPhotoTags = () => {
+    const photoTags = photo.tags || []
+    const tagNames = []
+
+    for (const group of tagGroups) {
+      for (const tag of group.tags) {
+        if (photoTags.includes(tag.id)) {
+          tagNames.push({ name: capitalize(tag.name), groupId: group.id })
+        }
       }
     }
+    return tagNames
+  }
+
+  const photoTagsList = getPhotoTags()
+
+  // Colores por grupo
+  const getTagColor = (groupId) => {
+    const colors = {
+      tipo: 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300',
+      encabado: 'bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300',
+      acero: 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200',
+      extras: 'bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300'
+    }
+    return colors[groupId] || 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
   }
 
   return (
@@ -484,24 +485,21 @@ function PhotoCard({ photo, onView }) {
         )}
       </div>
 
-      {/* Descripción - clickeable para copiar */}
-      <div
-        className={`p-3 cursor-pointer transition-colors ${
-          textCopied
-            ? 'bg-green-100 dark:bg-green-900/30'
-            : 'hover:bg-gray-50 dark:hover:bg-gray-700'
-        }`}
-        onClick={handleTextClick}
-        title={photo.text ? "Click para copiar descripción" : ""}
-      >
-        {textCopied ? (
-          <p className="text-sm text-green-600 dark:text-green-400 font-medium min-h-[3.75rem] flex items-center justify-center">
-            Descripción copiada
-          </p>
+      {/* Tags de la foto */}
+      <div className="p-2">
+        {photoTagsList.length > 0 ? (
+          <div className="flex flex-wrap gap-1">
+            {photoTagsList.map((tag, idx) => (
+              <span
+                key={idx}
+                className={`px-2 py-0.5 text-xs rounded-full ${getTagColor(tag.groupId)}`}
+              >
+                {tag.name}
+              </span>
+            ))}
+          </div>
         ) : (
-          <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-3 min-h-[3.75rem]">
-            {photo.text || 'Sin descripción'}
-          </p>
+          <p className="text-xs text-gray-400 italic">Sin tags</p>
         )}
       </div>
     </div>
