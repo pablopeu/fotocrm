@@ -409,12 +409,12 @@ function UploadPhotos({ tagGroups, authParams, onRefresh, showSuccess, showError
         </button>
 
         {/* Foto - ancho automático según imagen */}
-        <div className="h-full bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden flex items-center justify-center">
+        <div className="h-full bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden flex items-center justify-center flex-shrink-0">
           {currentPhoto && (
             <img
               src={currentPhoto.url}
               alt={currentText}
-              className="h-full w-auto object-contain"
+              className="h-full w-auto max-w-md object-contain"
             />
           )}
         </div>
@@ -585,20 +585,114 @@ function TagSection({ group, selectedTags, onTagToggle, onCreateTag }) {
 }
 
 // ==================
-// Manage Photos - Administrar fotos existentes
+// Manage Photos - Administrar fotos existentes (misma interfaz que Upload)
 // ==================
 function ManagePhotos({ photos, tagGroups, authParams, onRefresh, showSuccess, showError, showConfirm }) {
-  const [editingPhoto, setEditingPhoto] = useState(null)
+  const [currentIndex, setCurrentIndex] = useState(0)
+  const [photoTags, setPhotoTags] = useState({})
+  const [photoTexts, setPhotoTexts] = useState({})
+  const [saving, setSaving] = useState(false)
+  const [savedFeedback, setSavedFeedback] = useState(false)
+  const [arrowFeedback, setArrowFeedback] = useState(null)
 
-  const handleDelete = (photo) => {
+  const currentPhoto = photos[currentIndex]
+
+  // Inicializar datos cuando cambian las fotos
+  useEffect(() => {
+    const tags = {}
+    const texts = {}
+    photos.forEach(p => {
+      tags[p.id] = p.tags || []
+      texts[p.id] = p.text || ''
+    })
+    setPhotoTags(tags)
+    setPhotoTexts(texts)
+  }, [photos])
+
+  const handleTagToggle = (tagId) => {
+    if (!currentPhoto) return
+    setPhotoTags(prev => {
+      const current = prev[currentPhoto.id] || []
+      const newTags = current.includes(tagId)
+        ? current.filter(t => t !== tagId)
+        : [...current, tagId]
+      return { ...prev, [currentPhoto.id]: newTags }
+    })
+  }
+
+  const handleTextChange = (text) => {
+    if (!currentPhoto) return
+    setPhotoTexts(prev => ({ ...prev, [currentPhoto.id]: text }))
+  }
+
+  const handleCreateTag = async (groupId, tagName) => {
+    try {
+      const response = await fetch(apiUrl('admin/tags'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ group_id: groupId, name: tagName, ...authParams })
+      })
+
+      if (response.ok) {
+        const newTag = await response.json()
+        onRefresh()
+        if (currentPhoto) {
+          setPhotoTags(prev => ({
+            ...prev,
+            [currentPhoto.id]: [...(prev[currentPhoto.id] || []), newTag.id]
+          }))
+        }
+        return newTag
+      } else if (response.status === 401) {
+        showError('Sesión expirada', 'Por favor, vuelve a iniciar sesión')
+      }
+    } catch (error) {
+      showError('Error', 'Error al crear tag')
+    }
+    return null
+  }
+
+  const handleSaveCurrentPhoto = async (showFeedback = true) => {
+    if (!currentPhoto) return
+
+    setSaving(true)
+    try {
+      const response = await fetch(apiUrl(`admin/photos/${currentPhoto.id}`), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: photoTexts[currentPhoto.id] || '',
+          tags: photoTags[currentPhoto.id] || [],
+          ...authParams
+        })
+      })
+
+      if (response.ok && showFeedback) {
+        setSavedFeedback(true)
+        setTimeout(() => setSavedFeedback(false), 1000)
+      } else if (response.status === 401) {
+        showError('Sesión expirada', 'Por favor, vuelve a iniciar sesión')
+      }
+    } catch (error) {
+      showError('Error', 'Error al guardar')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleDeletePhoto = () => {
+    if (!currentPhoto) return
     showConfirm('Eliminar foto', '¿Eliminar esta foto permanentemente?', async () => {
       try {
         const params = new URLSearchParams(authParams)
-        const response = await fetch(apiUrl(`admin/photos/${photo.id}`) + '&' + params.toString(), {
+        const response = await fetch(apiUrl(`admin/photos/${currentPhoto.id}`) + '&' + params.toString(), {
           method: 'DELETE'
         })
         if (response.ok) {
-          showSuccess('Eliminado', 'Foto eliminada')
+          // Ajustar índice si estamos en la última foto
+          if (currentIndex >= photos.length - 1 && currentIndex > 0) {
+            setCurrentIndex(currentIndex - 1)
+          }
           onRefresh()
         } else if (response.status === 401) {
           showError('Sesión expirada', 'Por favor, vuelve a iniciar sesión')
@@ -609,152 +703,136 @@ function ManagePhotos({ photos, tagGroups, authParams, onRefresh, showSuccess, s
     })
   }
 
-  const handleUpdatePhoto = async () => {
-    if (!editingPhoto) return
-
-    try {
-      const response = await fetch(apiUrl(`admin/photos/${editingPhoto.id}`), {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text: editingPhoto.text,
-          tags: editingPhoto.tags,
-          ...authParams
-        })
-      })
-
-      if (response.ok) {
-        showSuccess('Actualizado', 'Foto actualizada')
-        setEditingPhoto(null)
-        onRefresh()
-      } else if (response.status === 401) {
-        showError('Sesión expirada', 'Por favor, vuelve a iniciar sesión')
-      }
-    } catch (error) {
-      showError('Error', 'Error de conexión')
+  const goToPrev = async () => {
+    if (currentIndex > 0) {
+      await handleSaveCurrentPhoto(false)
+      setArrowFeedback('prev')
+      setTimeout(() => setArrowFeedback(null), 500)
+      setCurrentIndex(currentIndex - 1)
     }
   }
 
-  const getTagName = (tagId) => {
-    for (const group of tagGroups) {
-      const tag = group.tags.find(t => t.id === tagId)
-      if (tag) return tag.name
+  const goToNext = async () => {
+    if (currentIndex < photos.length - 1) {
+      await handleSaveCurrentPhoto(false)
+      setArrowFeedback('next')
+      setTimeout(() => setArrowFeedback(null), 500)
+      setCurrentIndex(currentIndex + 1)
     }
-    return tagId
+  }
+
+  const currentTags = currentPhoto ? (photoTags[currentPhoto.id] || []) : []
+  const currentText = currentPhoto ? (photoTexts[currentPhoto.id] || '') : ''
+
+  if (photos.length === 0) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <div className="text-center text-gray-500">
+          <svg className="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+          <p>No hay fotos en el catálogo</p>
+          <p className="text-sm mt-2">Usa "Subir fotos" para agregar fotos</p>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div className="h-full overflow-y-auto py-4">
-      {photos.length === 0 ? (
-        <div className="text-center py-12 text-gray-500">
-          <p>No hay fotos en el catálogo</p>
-          <p className="text-sm mt-2">Usa la pestaña "Subir fotos" para agregar fotos</p>
+    <div className="h-full flex flex-col py-2 gap-3">
+      {/* Área superior: foto con flechas + descripción */}
+      <div className="flex gap-4 flex-shrink-0" style={{ height: '45%' }}>
+        {/* Flecha izquierda */}
+        <button
+          onClick={goToPrev}
+          disabled={currentIndex === 0}
+          className={`p-2 rounded-full transition-all duration-300 self-center ${
+            arrowFeedback === 'prev'
+              ? 'text-green-500 bg-green-100 dark:bg-green-900/30'
+              : currentIndex === 0
+                ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
+                : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+          }`}
+        >
+          <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+
+        {/* Foto */}
+        <div className="h-full bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden flex items-center justify-center flex-shrink-0">
+          {currentPhoto && (
+            <img
+              src={currentPhoto.url}
+              alt={currentText}
+              className="h-full w-auto max-w-md object-contain"
+            />
+          )}
         </div>
-      ) : (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {photos.map((photo) => (
-            <div key={photo.id} className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-              <img src={photo.url} alt={photo.text} className="w-full h-40 object-cover" />
-              <div className="p-3">
-                <p className="text-sm text-gray-700 dark:text-gray-300 truncate mb-2">
-                  {photo.text || 'Sin descripción'}
-                </p>
-                <div className="flex flex-wrap gap-1 mb-3 min-h-[24px]">
-                  {(photo.tags || []).slice(0, 4).map(tagId => (
-                    <span key={tagId} className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-xs rounded">
-                      {getTagName(tagId)}
-                    </span>
-                  ))}
-                  {(photo.tags || []).length > 4 && (
-                    <span className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-500 text-xs rounded">
-                      +{photo.tags.length - 4}
-                    </span>
-                  )}
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setEditingPhoto({ ...photo, tags: photo.tags || [] })}
-                    className="flex-1 px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
-                  >
-                    Editar
-                  </button>
-                  <button
-                    onClick={() => handleDelete(photo)}
-                    className="px-3 py-1.5 text-sm bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 rounded hover:bg-red-200"
-                  >
-                    Eliminar
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
 
-      {/* Edit Modal */}
-      {editingPhoto && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setEditingPhoto(null)}>
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Editar foto</h3>
+        {/* Flecha derecha */}
+        <button
+          onClick={goToNext}
+          disabled={currentIndex === photos.length - 1}
+          className={`p-2 rounded-full transition-all duration-300 self-center ${
+            arrowFeedback === 'next'
+              ? 'text-green-500 bg-green-100 dark:bg-green-900/30'
+              : currentIndex === photos.length - 1
+                ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
+                : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+          }`}
+        >
+          <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
 
-            <div className="flex gap-4 mb-4">
-              <img src={editingPhoto.url} alt="" className="w-48 h-48 object-cover rounded" />
-              <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Descripción</label>
-                <textarea
-                  value={editingPhoto.text || ''}
-                  onChange={(e) => setEditingPhoto({ ...editingPhoto, text: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  rows={5}
-                />
-              </div>
-            </div>
-
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tags</label>
-              <div className="grid grid-cols-4 gap-3">
-                {tagGroups.map(group => (
-                  <div key={group.id} className="border border-gray-200 dark:border-gray-600 rounded p-2">
-                    <p className="text-xs font-semibold text-gray-500 mb-2">{group.name}</p>
-                    <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto">
-                      {group.tags.map(tag => {
-                        const isSelected = editingPhoto.tags.includes(tag.id)
-                        return (
-                          <button
-                            key={tag.id}
-                            onClick={() => {
-                              const newTags = isSelected
-                                ? editingPhoto.tags.filter(t => t !== tag.id)
-                                : [...editingPhoto.tags, tag.id]
-                              setEditingPhoto({ ...editingPhoto, tags: newTags })
-                            }}
-                            className={`px-2 py-0.5 text-xs rounded-full ${
-                              isSelected
-                                ? 'bg-blue-600 text-white'
-                                : 'bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-200'
-                            }`}
-                          >
-                            {tag.name}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex gap-2">
-              <button onClick={() => setEditingPhoto(null)} className="flex-1 px-4 py-2 border border-gray-300 rounded-lg">
-                Cancelar
-              </button>
-              <button onClick={handleUpdatePhoto} className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                Guardar
-              </button>
-            </div>
+        {/* Descripción y controles */}
+        <div className="flex-1 flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-gray-500 dark:text-gray-400">
+              Foto {currentIndex + 1} de {photos.length}
+            </span>
+            <button
+              onClick={handleDeletePhoto}
+              className="px-3 py-1 text-sm bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-900"
+            >
+              Eliminar foto
+            </button>
           </div>
+          <textarea
+            value={currentText}
+            onChange={(e) => handleTextChange(e.target.value)}
+            placeholder="Descripción de la foto..."
+            rows={3}
+            className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none"
+          />
+          <button
+            onClick={() => handleSaveCurrentPhoto(true)}
+            disabled={saving}
+            className={`w-full px-4 py-2 rounded-lg transition-all duration-300 ${
+              savedFeedback
+                ? 'bg-green-500 text-white'
+                : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600'
+            } disabled:opacity-50`}
+          >
+            {saving ? 'Guardando...' : savedFeedback ? '✓ Guardado' : 'Guardar'}
+          </button>
         </div>
-      )}
+      </div>
+
+      {/* Área inferior: 4 secciones de tags */}
+      <div className="flex-1 grid grid-cols-4 gap-3 min-h-0">
+        {tagGroups.map((group) => (
+          <TagSection
+            key={group.id}
+            group={group}
+            selectedTags={currentTags}
+            onTagToggle={handleTagToggle}
+            onCreateTag={(name) => handleCreateTag(group.id, name)}
+          />
+        ))}
+      </div>
     </div>
   )
 }
