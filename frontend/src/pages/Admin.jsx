@@ -11,7 +11,7 @@ function apiUrl(route) {
 export default function Admin() {
   const [authenticated, setAuthenticated] = useState(false)
   const [credentials, setCredentials] = useState({ user: '', pass: '' })
-  const [activeTab, setActiveTab] = useState('upload')
+  const [activeTab, setActiveTab] = useState('manage')
   const [tagGroups, setTagGroups] = useState([])
   const [photos, setPhotos] = useState([])
   const [loading, setLoading] = useState(false)
@@ -141,8 +141,8 @@ export default function Admin() {
   }
 
   const tabs = [
-    { id: 'upload', label: 'Subir fotos' },
     { id: 'manage', label: 'Administrar fotos' },
+    { id: 'upload', label: 'Subir fotos' },
     { id: 'tags', label: 'Tags' },
   ]
 
@@ -673,16 +673,28 @@ function ManagePhotos({ photos, tagGroups, authParams, onRefresh, showSuccess, s
 
   const currentPhoto = photos[currentIndex]
 
-  // Inicializar datos cuando cambian las fotos
+  // Inicializar datos cuando cambian las fotos (sin sobrescribir los locales)
   useEffect(() => {
-    const tags = {}
-    const texts = {}
-    photos.forEach(p => {
-      tags[p.id] = p.tags || []
-      texts[p.id] = p.text || ''
+    setPhotoTags(prev => {
+      const tags = { ...prev }
+      photos.forEach(p => {
+        // Solo inicializar si no existe en el estado local
+        if (!(p.id in tags)) {
+          tags[p.id] = p.tags || []
+        }
+      })
+      return tags
     })
-    setPhotoTags(tags)
-    setPhotoTexts(texts)
+    setPhotoTexts(prev => {
+      const texts = { ...prev }
+      photos.forEach(p => {
+        // Solo inicializar si no existe en el estado local
+        if (!(p.id in texts)) {
+          texts[p.id] = p.text || ''
+        }
+      })
+      return texts
+    })
   }, [photos])
 
   // Registrar función de guardado para cuando se cambie de tab
@@ -930,6 +942,18 @@ function TagsManager({ tagGroups, authParams, onRefresh, showSuccess, showError,
   const [newTagName, setNewTagName] = useState('')
   const [selectedGroup, setSelectedGroup] = useState('')
   const [editingGroup, setEditingGroup] = useState(null)
+  const [confirmingDelete, setConfirmingDelete] = useState(null) // { groupId, tagId, tagName }
+
+  // Manejar tecla Escape para cancelar confirmación
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && confirmingDelete) {
+        setConfirmingDelete(null)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [confirmingDelete])
 
   const handleCreateTag = async (e) => {
     e.preventDefault()
@@ -957,23 +981,22 @@ function TagsManager({ tagGroups, authParams, onRefresh, showSuccess, showError,
     }
   }
 
-  const handleDeleteTag = (groupId, tagId, tagName) => {
-    showConfirm('Eliminar tag', `¿Eliminar el tag "${tagName}"?`, async () => {
-      try {
-        const params = new URLSearchParams(authParams)
-        const response = await fetch(apiUrl(`admin/tags/${groupId}/${tagId}`) + '&' + params.toString(), {
-          method: 'DELETE'
-        })
-        if (response.ok) {
-          showSuccess('Eliminado', 'Tag eliminado')
-          onRefresh()
-        } else if (response.status === 401) {
-          showError('Sesión expirada', 'Por favor, vuelve a iniciar sesión')
-        }
-      } catch (error) {
-        showError('Error', 'Error de conexión')
+  const handleDeleteTag = async (groupId, tagId) => {
+    try {
+      const params = new URLSearchParams(authParams)
+      const response = await fetch(apiUrl(`admin/tags/${groupId}/${tagId}`) + '&' + params.toString(), {
+        method: 'DELETE'
+      })
+      if (response.ok) {
+        showSuccess('Eliminado', 'Tag eliminado')
+        setConfirmingDelete(null)
+        onRefresh()
+      } else if (response.status === 401) {
+        showError('Sesión expirada', 'Por favor, vuelve a iniciar sesión')
       }
-    })
+    } catch (error) {
+      showError('Error', 'Error de conexión')
+    }
   }
 
   const handleRenameGroup = async () => {
@@ -1047,17 +1070,38 @@ function TagsManager({ tagGroups, authParams, onRefresh, showSuccess, showError,
               <p className="text-sm text-gray-500 italic">Sin tags</p>
             ) : (
               <div className="space-y-1 max-h-48 overflow-y-auto">
-                {[...group.tags].sort((a, b) => a.name.localeCompare(b.name)).map(tag => (
-                  <div key={tag.id} className="flex items-center justify-between py-1 px-2 bg-gray-50 dark:bg-gray-700 rounded">
-                    <span className="text-sm text-gray-700 dark:text-gray-300">{tag.name}</span>
-                    <button
-                      onClick={() => handleDeleteTag(group.id, tag.id, tag.name)}
-                      className="text-xs text-red-600 hover:underline"
-                    >
-                      Eliminar
-                    </button>
-                  </div>
-                ))}
+                {[...group.tags].sort((a, b) => a.name.localeCompare(b.name)).map(tag => {
+                  const isConfirming = confirmingDelete?.tagId === tag.id && confirmingDelete?.groupId === group.id
+
+                  return (
+                    <div key={tag.id} className="flex items-center justify-between py-1 px-2 bg-gray-50 dark:bg-gray-700 rounded">
+                      <span className="text-sm text-gray-700 dark:text-gray-300">{tag.name}</span>
+                      {isConfirming ? (
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => handleDeleteTag(group.id, tag.id)}
+                            className="px-2 py-0.5 text-xs bg-red-600 text-white rounded hover:bg-red-700"
+                          >
+                            Borrar
+                          </button>
+                          <button
+                            onClick={() => setConfirmingDelete(null)}
+                            className="px-2 py-0.5 text-xs bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded hover:bg-gray-400 dark:hover:bg-gray-500"
+                          >
+                            Cancelar
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setConfirmingDelete({ groupId: group.id, tagId: tag.id, tagName: tag.name })}
+                          className="text-xs text-red-600 hover:underline"
+                        >
+                          Eliminar
+                        </button>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             )}
           </div>

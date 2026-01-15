@@ -1,7 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
 import Modal from './components/Modal'
-import TagFilter from './components/TagFilter'
-import PhotoGrid from './components/PhotoGrid'
 import PhotoModal from './components/PhotoModal'
 import SearchBar from './components/SearchBar'
 import { useModal } from './hooks/useModal'
@@ -9,26 +7,34 @@ import {
   getCategories,
   getPhotos,
   copyImageToClipboard,
-  copyTextToClipboard,
-  copyMultipleTexts
+  copyTextToClipboard
 } from './services/api'
+
+// Tabs de tipos principales
+const TIPO_TABS = [
+  { id: 'cocina', label: 'Cocina' },
+  { id: 'asado', label: 'Asado' },
+  { id: 'japones', label: 'Japonés' },
+  { id: 'otros', label: 'Otros' }
+]
+
+// IDs que se consideran "Otros"
+const OTROS_TIPOS = ['outdoor', 'camping', 'caza']
 
 function App() {
   const [tagGroups, setTagGroups] = useState([])
   const [photos, setPhotos] = useState([])
   const [filteredPhotos, setFilteredPhotos] = useState([])
   const [loading, setLoading] = useState(true)
-  const [selectedTags, setSelectedTags] = useState([])
+
+  // Filtros
+  const [activeTab, setActiveTab] = useState(null) // null = todos, o un id de tab
+  const [selectedEncabado, setSelectedEncabado] = useState([])
+  const [selectedAcero, setSelectedAcero] = useState([])
+  const [selectedExtras, setSelectedExtras] = useState([])
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedPhotoIds, setSelectedPhotoIds] = useState([])
+
   const [viewingPhoto, setViewingPhoto] = useState(null)
-  // Sidebar cerrado por defecto en móvil, abierto en desktop
-  const [sidebarOpen, setSidebarOpen] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return window.innerWidth >= 1024 // lg breakpoint
-    }
-    return false
-  })
 
   const { isOpen, modalProps, closeModal, showSuccess, showError } = useModal()
 
@@ -54,15 +60,53 @@ function App() {
     loadData()
   }, [])
 
+  // Obtener tags por grupo
+  const getTagsByGroup = (groupId) => {
+    const group = tagGroups.find(g => g.id === groupId)
+    return group?.tags || []
+  }
+
   // Filtrar fotos cuando cambian los filtros
   useEffect(() => {
     let result = [...photos]
 
-    // Filtrar por tags (AND: la foto debe tener TODOS los tags seleccionados)
-    if (selectedTags.length > 0) {
+    // Filtrar por tab de tipo
+    if (activeTab) {
+      if (activeTab === 'otros') {
+        // Filtrar fotos que tengan algún tag de "otros" tipos
+        result = result.filter(photo => {
+          const photoTags = photo.tags || []
+          return OTROS_TIPOS.some(tipo => photoTags.includes(tipo))
+        })
+      } else {
+        result = result.filter(photo => {
+          const photoTags = photo.tags || []
+          return photoTags.includes(activeTab)
+        })
+      }
+    }
+
+    // Filtrar por encabado (OR dentro del grupo)
+    if (selectedEncabado.length > 0) {
       result = result.filter(photo => {
         const photoTags = photo.tags || []
-        return selectedTags.every(tag => photoTags.includes(tag))
+        return selectedEncabado.some(tag => photoTags.includes(tag))
+      })
+    }
+
+    // Filtrar por acero (OR dentro del grupo)
+    if (selectedAcero.length > 0) {
+      result = result.filter(photo => {
+        const photoTags = photo.tags || []
+        return selectedAcero.some(tag => photoTags.includes(tag))
+      })
+    }
+
+    // Filtrar por extras (OR dentro del grupo)
+    if (selectedExtras.length > 0) {
+      result = result.filter(photo => {
+        const photoTags = photo.tags || []
+        return selectedExtras.some(tag => photoTags.includes(tag))
       })
     }
 
@@ -75,37 +119,18 @@ function App() {
     }
 
     setFilteredPhotos(result)
-    setSelectedPhotoIds([])
-  }, [photos, selectedTags, searchQuery])
+  }, [photos, activeTab, selectedEncabado, selectedAcero, selectedExtras, searchQuery])
 
   // Handlers
-  const handleTagToggle = useCallback((tagId) => {
-    setSelectedTags(prev =>
-      prev.includes(tagId)
-        ? prev.filter(t => t !== tagId)
-        : [...prev, tagId]
-    )
+  const handleResetFilters = useCallback(() => {
+    setActiveTab(null)
+    setSelectedEncabado([])
+    setSelectedAcero([])
+    setSelectedExtras([])
+    setSearchQuery('')
   }, [])
 
-  const handleClearAllTags = useCallback(() => {
-    setSelectedTags([])
-  }, [])
-
-  const handleToggleSelect = useCallback((photoId) => {
-    setSelectedPhotoIds(prev =>
-      prev.includes(photoId)
-        ? prev.filter(id => id !== photoId)
-        : [...prev, photoId]
-    )
-  }, [])
-
-  const handleSelectAll = useCallback(() => {
-    setSelectedPhotoIds(filteredPhotos.map(p => p.id))
-  }, [filteredPhotos])
-
-  const handleClearSelection = useCallback(() => {
-    setSelectedPhotoIds([])
-  }, [])
+  const hasActiveFilters = activeTab !== null || selectedEncabado.length > 0 || selectedAcero.length > 0 || selectedExtras.length > 0 || searchQuery
 
   const handleCopyImage = useCallback(async (photo) => {
     const result = await copyImageToClipboard(photo.url)
@@ -116,198 +141,146 @@ function App() {
     }
   }, [showSuccess, showError])
 
-  const handleCopyText = useCallback(async (photo) => {
-    const result = await copyTextToClipboard(photo.text || '')
+  const handleCopyText = useCallback(async (text) => {
+    const result = await copyTextToClipboard(text || '')
     if (result.success) {
-      showSuccess('Copiado', result.message)
+      showSuccess('Copiado', 'Descripción copiada al portapapeles')
     } else {
       showError('Error', result.message)
     }
   }, [showSuccess, showError])
 
-  const handleCopySelected = useCallback(async (type) => {
-    const selectedPhotos = filteredPhotos.filter(p => selectedPhotoIds.includes(p.id))
-
-    if (type === 'text') {
-      const texts = selectedPhotos.map(p => p.text).filter(Boolean)
-      const result = await copyMultipleTexts(texts)
-      if (result.success) {
-        showSuccess('Copiado', `${texts.length} texto(s) copiado(s) al portapapeles`)
-      } else {
-        showError('Error', result.message)
-      }
-    } else {
-      if (selectedPhotos.length > 0) {
-        const result = await copyImageToClipboard(selectedPhotos[0].url)
-        if (result.success) {
-          showSuccess('Copiado', selectedPhotos.length > 1
-            ? 'Primera imagen copiada (los navegadores solo permiten copiar una imagen a la vez)'
-            : 'Imagen copiada al portapapeles'
-          )
-        } else {
-          showError('Error', result.message)
-        }
-      }
-    }
-  }, [filteredPhotos, selectedPhotoIds, showSuccess, showError])
-
   const handleViewPhoto = useCallback((photo) => {
     setViewingPhoto(photo)
   }, [])
 
-  // Helper para obtener nombre de tag
-  const getTagName = (tagId) => {
-    for (const group of tagGroups) {
-      const tag = group.tags.find(t => t.id === tagId)
-      if (tag) return tag.name
-    }
-    return tagId
-  }
-
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex flex-col">
-      {/* Header */}
+      {/* Header con título y tabs */}
       <header className="bg-white dark:bg-gray-800 shadow-sm sticky top-0 z-40">
-        <div className="flex items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 lg:hidden"
-              aria-label="Toggle sidebar"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
+        <div className="px-4 py-3">
+          {/* Primera fila: título y buscador */}
+          <div className="flex items-center justify-between mb-3">
             <div>
               <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-                FotoCRM
+                PEU Cuchillos Artesanales
               </h1>
-              <p className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">
-                Catálogo de cuchillos artesanales
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Buscador interactivo de modelos
               </p>
+            </div>
+
+            <div className="w-48">
+              <SearchBar
+                value={searchQuery}
+                onChange={setSearchQuery}
+                placeholder="Buscar..."
+              />
             </div>
           </div>
 
-          <div className="flex-1 max-w-md mx-4">
-            <SearchBar
-              value={searchQuery}
-              onChange={setSearchQuery}
-              placeholder="Buscar en el catálogo..."
-            />
+          {/* Segunda fila: Tabs de tipo */}
+          <div className="flex items-center gap-1 border-b border-gray-200 dark:border-gray-700 pb-3">
+            <button
+              onClick={() => setActiveTab(null)}
+              className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+                activeTab === null
+                  ? 'bg-blue-600 text-white'
+                  : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+              }`}
+            >
+              Todos
+            </button>
+            {TIPO_TABS.map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+                  activeTab === tab.id
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
 
-          <a
-            href="#/admin"
-            className="px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
-          >
-            Admin
-          </a>
+          {/* Tercera fila: Selectboxes de filtros */}
+          <div className="flex items-center gap-3 pt-3 flex-wrap">
+            {/* Encabado */}
+            <MultiSelect
+              label="Encabado"
+              options={getTagsByGroup('encabado')}
+              selected={selectedEncabado}
+              onChange={setSelectedEncabado}
+            />
+
+            {/* Acero */}
+            <MultiSelect
+              label="Acero"
+              options={getTagsByGroup('acero')}
+              selected={selectedAcero}
+              onChange={setSelectedAcero}
+            />
+
+            {/* Extras */}
+            <MultiSelect
+              label="Extras"
+              options={getTagsByGroup('extras')}
+              selected={selectedExtras}
+              onChange={setSelectedExtras}
+            />
+
+            {/* Botón resetear */}
+            {hasActiveFilters && (
+              <button
+                onClick={handleResetFilters}
+                className="px-3 py-1.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+              >
+                Resetear filtros
+              </button>
+            )}
+          </div>
         </div>
       </header>
 
       {/* Main content */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar */}
-        <aside
-          className={`
-            fixed lg:static inset-y-0 left-0 z-30
-            w-64 bg-white dark:bg-gray-800 shadow-lg lg:shadow-none
-            transform transition-transform duration-300 ease-in-out
-            ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-            mt-[57px] lg:mt-0
-          `}
-        >
-          <div className="h-full overflow-y-auto p-4">
-            <TagFilter
-              tagGroups={tagGroups}
-              selectedTags={selectedTags}
-              onTagToggle={handleTagToggle}
-              onClearAll={handleClearAllTags}
-            />
+      <main className="flex-1 overflow-y-auto p-4 lg:p-6">
+        <div className="max-w-7xl mx-auto">
+          {/* Info de resultados */}
+          <div className="mb-4 text-sm text-gray-500 dark:text-gray-400">
+            {filteredPhotos.length} foto{filteredPhotos.length !== 1 ? 's' : ''} encontrada{filteredPhotos.length !== 1 ? 's' : ''}
           </div>
-        </aside>
 
-        {/* Overlay para cerrar sidebar en móvil */}
-        {sidebarOpen && (
-          <div
-            className="fixed inset-0 bg-black/50 z-20 lg:hidden"
-            onClick={() => setSidebarOpen(false)}
-          />
-        )}
-
-        {/* Content area */}
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6">
-          <div className="max-w-7xl mx-auto">
-            {/* Filtros activos */}
-            {(selectedTags.length > 0 || searchQuery) && (
-              <div className="flex flex-wrap items-center gap-2 mb-4">
-                <span className="text-sm text-gray-500 dark:text-gray-400">Filtros:</span>
-
-                {selectedTags.map(tagId => (
-                  <span
-                    key={tagId}
-                    className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-sm rounded"
-                  >
-                    {getTagName(tagId)}
-                    <button
-                      onClick={() => handleTagToggle(tagId)}
-                      className="hover:text-blue-600 dark:hover:text-blue-100"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </span>
-                ))}
-
-                {searchQuery && (
-                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 text-sm rounded">
-                    "{searchQuery}"
-                    <button
-                      onClick={() => setSearchQuery('')}
-                      className="hover:text-purple-600 dark:hover:text-purple-100"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </span>
-                )}
-
-                <button
-                  onClick={() => {
-                    setSelectedTags([])
-                    setSearchQuery('')
-                  }}
-                  className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 underline"
-                >
-                  Limpiar todo
-                </button>
-              </div>
-            )}
-
-            {/* Info de resultados */}
-            <div className="mb-4 text-sm text-gray-500 dark:text-gray-400">
-              {filteredPhotos.length} foto{filteredPhotos.length !== 1 ? 's' : ''} encontrada{filteredPhotos.length !== 1 ? 's' : ''}
+          {/* Grid de fotos */}
+          {loading ? (
+            <div className="flex items-center justify-center h-64">
+              <div className="w-12 h-12 border-4 border-gray-300 border-t-blue-500 rounded-full animate-spin" />
             </div>
-
-            {/* Grid de fotos */}
-            <PhotoGrid
-              photos={filteredPhotos}
-              selectedIds={selectedPhotoIds}
-              onToggleSelect={handleToggleSelect}
-              onSelectAll={handleSelectAll}
-              onClearSelection={handleClearSelection}
-              onCopyImage={handleCopyImage}
-              onCopyText={handleCopyText}
-              onCopySelected={handleCopySelected}
-              onViewPhoto={handleViewPhoto}
-              loading={loading}
-            />
-          </div>
-        </main>
-      </div>
+          ) : filteredPhotos.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-64 text-gray-500 dark:text-gray-400">
+              <svg className="w-16 h-16 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <p className="text-lg font-medium">No hay fotos</p>
+              <p className="text-sm">Ajusta los filtros para ver resultados</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {filteredPhotos.map(photo => (
+                <PhotoCard
+                  key={photo.id}
+                  photo={photo}
+                  onCopyImage={handleCopyImage}
+                  onCopyText={handleCopyText}
+                  onView={handleViewPhoto}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </main>
 
       {/* Modal de vista de foto */}
       <PhotoModal
@@ -324,6 +297,139 @@ function App() {
         onClose={closeModal}
         {...modalProps}
       />
+    </div>
+  )
+}
+
+// Componente MultiSelect para filtros
+function MultiSelect({ label, options, selected, onChange }) {
+  const [isOpen, setIsOpen] = useState(false)
+
+  const handleToggle = (id) => {
+    if (selected.includes(id)) {
+      onChange(selected.filter(s => s !== id))
+    } else {
+      onChange([...selected, id])
+    }
+  }
+
+  const selectedCount = selected.length
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className={`flex items-center gap-2 px-3 py-1.5 text-sm border rounded-lg transition-colors ${
+          selectedCount > 0
+            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+            : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+        }`}
+      >
+        {label}
+        {selectedCount > 0 && (
+          <span className="px-1.5 py-0.5 text-xs bg-blue-600 text-white rounded-full">
+            {selectedCount}
+          </span>
+        )}
+        <svg className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {isOpen && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
+          <div className="absolute top-full left-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-20 min-w-[180px] max-h-60 overflow-y-auto">
+            {options.length === 0 ? (
+              <p className="px-3 py-2 text-sm text-gray-500 italic">Sin opciones</p>
+            ) : (
+              options.map(option => (
+                <label
+                  key={option.id}
+                  className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selected.includes(option.id)}
+                    onChange={() => handleToggle(option.id)}
+                    className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="text-sm text-gray-700 dark:text-gray-300">{option.name}</span>
+                </label>
+              ))
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+// Componente PhotoCard simplificado
+function PhotoCard({ photo, onCopyImage, onCopyText, onView }) {
+  const [imageLoaded, setImageLoaded] = useState(false)
+  const [imageError, setImageError] = useState(false)
+
+  const handleImageClick = async (e) => {
+    e.stopPropagation()
+    await onCopyImage(photo)
+  }
+
+  const handleTextClick = async (e) => {
+    e.stopPropagation()
+    if (photo.text) {
+      await onCopyText(photo.text)
+    }
+  }
+
+  return (
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden border border-gray-200 dark:border-gray-700">
+      {/* Imagen - clickeable para copiar */}
+      <div
+        className="aspect-square bg-gray-100 dark:bg-gray-700 cursor-pointer relative overflow-hidden group"
+        onClick={handleImageClick}
+        title="Click para copiar imagen"
+      >
+        {!imageLoaded && !imageError && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="w-8 h-8 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin" />
+          </div>
+        )}
+        {imageError ? (
+          <div className="absolute inset-0 flex items-center justify-center text-gray-400">
+            <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+          </div>
+        ) : (
+          <>
+            <img
+              src={photo.url}
+              alt={photo.text || 'Foto de cuchillo'}
+              className={`w-full h-full object-cover transition-all duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'} group-hover:scale-105`}
+              onLoad={() => setImageLoaded(true)}
+              onError={() => setImageError(true)}
+            />
+            {/* Overlay al hover */}
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+              <span className="opacity-0 group-hover:opacity-100 transition-opacity text-white text-sm font-medium bg-black/50 px-3 py-1 rounded">
+                Copiar imagen
+              </span>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Descripción - clickeable para copiar */}
+      <div
+        className="p-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+        onClick={handleTextClick}
+        title={photo.text ? "Click para copiar descripción" : ""}
+      >
+        <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-3 min-h-[3.75rem]">
+          {photo.text || 'Sin descripción'}
+        </p>
+      </div>
     </div>
   )
 }

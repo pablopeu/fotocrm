@@ -56,45 +56,41 @@ export async function healthCheck() {
 
 export async function copyImageToClipboard(imageUrl) {
   try {
-    // Obtener la imagen como blob
-    const response = await fetch(imageUrl)
-    const blob = await response.blob()
-
     // Verificar si el navegador soporta la API de clipboard con imágenes
-    if (navigator.clipboard && navigator.clipboard.write) {
-      const item = new ClipboardItem({
-        [blob.type]: blob
-      })
-      await navigator.clipboard.write([item])
-      return { success: true, message: 'Imagen copiada al portapapeles' }
+    if (!navigator.clipboard || !navigator.clipboard.write) {
+      return { success: false, message: 'Tu navegador no soporta copiar imágenes' }
     }
 
-    // Fallback: crear un canvas y copiar
+    // Siempre usar canvas para convertir a PNG (los navegadores solo soportan PNG en clipboard)
     const img = new Image()
     img.crossOrigin = 'anonymous'
 
     return new Promise((resolve) => {
       img.onload = async () => {
-        const canvas = document.createElement('canvas')
-        canvas.width = img.naturalWidth
-        canvas.height = img.naturalHeight
-        const ctx = canvas.getContext('2d')
-        ctx.drawImage(img, 0, 0)
-
         try {
-          const dataUrl = canvas.toDataURL('image/png')
-          const res = await fetch(dataUrl)
-          const pngBlob = await res.blob()
+          const canvas = document.createElement('canvas')
+          canvas.width = img.naturalWidth
+          canvas.height = img.naturalHeight
+          const ctx = canvas.getContext('2d')
+          ctx.drawImage(img, 0, 0)
 
-          if (navigator.clipboard && navigator.clipboard.write) {
-            const item = new ClipboardItem({ 'image/png': pngBlob })
-            await navigator.clipboard.write([item])
-            resolve({ success: true, message: 'Imagen copiada al portapapeles' })
-          } else {
-            resolve({ success: false, message: 'Tu navegador no soporta copiar imágenes' })
-          }
+          // Convertir canvas a blob PNG
+          canvas.toBlob(async (pngBlob) => {
+            if (!pngBlob) {
+              resolve({ success: false, message: 'Error al procesar la imagen' })
+              return
+            }
+
+            try {
+              const item = new ClipboardItem({ 'image/png': pngBlob })
+              await navigator.clipboard.write([item])
+              resolve({ success: true, message: 'Imagen copiada al portapapeles' })
+            } catch (err) {
+              resolve({ success: false, message: 'Error al copiar imagen: ' + err.message })
+            }
+          }, 'image/png')
         } catch (err) {
-          resolve({ success: false, message: 'Error al copiar imagen: ' + err.message })
+          resolve({ success: false, message: 'Error al procesar imagen: ' + err.message })
         }
       }
 
