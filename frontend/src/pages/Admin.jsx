@@ -405,23 +405,19 @@ function UploadPhotos({ tagGroups, authParams, onRefresh, showSuccess, showError
   }
 
   const goToPrev = async () => {
-    if (currentIndex > 0) {
-      await handleSaveCurrentPhoto(false)
-      // Feedback visual verde en flecha
-      setArrowFeedback('prev')
-      setTimeout(() => setArrowFeedback(null), 500)
-      setCurrentIndex(currentIndex - 1)
-    }
+    await handleSaveCurrentPhoto(false)
+    setArrowFeedback('prev')
+    setTimeout(() => setArrowFeedback(null), 500)
+    // Continuo: si está en la primera, va a la última
+    setCurrentIndex(currentIndex === 0 ? uploadedPhotos.length - 1 : currentIndex - 1)
   }
 
   const goToNext = async () => {
-    if (currentIndex < uploadedPhotos.length - 1) {
-      await handleSaveCurrentPhoto(false)
-      // Feedback visual verde en flecha
-      setArrowFeedback('next')
-      setTimeout(() => setArrowFeedback(null), 500)
-      setCurrentIndex(currentIndex + 1)
-    }
+    await handleSaveCurrentPhoto(false)
+    setArrowFeedback('next')
+    setTimeout(() => setArrowFeedback(null), 500)
+    // Continuo: si está en la última, va a la primera
+    setCurrentIndex(currentIndex === uploadedPhotos.length - 1 ? 0 : currentIndex + 1)
   }
 
   const currentTags = currentPhoto ? (photoTags[currentPhoto.id] || []) : []
@@ -486,13 +482,10 @@ function UploadPhotos({ tagGroups, authParams, onRefresh, showSuccess, showError
         {/* Flecha izquierda */}
         <button
           onClick={goToPrev}
-          disabled={currentIndex === 0}
           className={`p-2 rounded-full transition-all duration-300 self-center ${
             arrowFeedback === 'prev'
               ? 'text-green-500 bg-green-100 dark:bg-green-900/30'
-              : currentIndex === 0
-                ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
-                : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+              : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
           }`}
         >
           <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -506,13 +499,10 @@ function UploadPhotos({ tagGroups, authParams, onRefresh, showSuccess, showError
         {/* Flecha derecha */}
         <button
           onClick={goToNext}
-          disabled={currentIndex === uploadedPhotos.length - 1}
           className={`p-2 rounded-full transition-all duration-300 self-center ${
             arrowFeedback === 'next'
               ? 'text-green-500 bg-green-100 dark:bg-green-900/30'
-              : currentIndex === uploadedPhotos.length - 1
-                ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
-                : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+              : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
           }`}
         >
           <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -686,20 +676,9 @@ function PhotoCarousel({ photos, currentIndex, onSelectPhoto }) {
   const [dragStartX, setDragStartX] = useState(0)
   const [dragStartScroll, setDragStartScroll] = useState(0)
 
-  const THUMBNAIL_SIZE = 120 // 50% más grande que 80
+  const THUMBNAIL_SIZE = 120
 
-  // Auto-scroll al item actual cuando cambia el índice
-  useEffect(() => {
-    if (carouselRef.current && photos.length > 0) {
-      const containerWidth = carouselRef.current.offsetWidth
-      const itemWidth = THUMBNAIL_SIZE
-      const targetScroll = (currentIndex * itemWidth) - (containerWidth / 2) + (itemWidth / 2)
-
-      setScrollPosition(Math.max(0, Math.min(targetScroll, (photos.length * itemWidth) - containerWidth)))
-    }
-  }, [currentIndex, photos.length])
-
-  // Aplicar scroll position
+  // Aplicar scroll position sin límites (continuo)
   useEffect(() => {
     if (carouselRef.current) {
       carouselRef.current.scrollLeft = scrollPosition
@@ -708,14 +687,13 @@ function PhotoCarousel({ photos, currentIndex, onSelectPhoto }) {
 
   const handlePrevious = () => {
     const containerWidth = carouselRef.current.offsetWidth
-    setScrollPosition(prev => Math.max(0, prev - containerWidth * 0.8))
+    setScrollPosition(prev => prev - containerWidth * 0.8)
   }
 
   const handleNext = () => {
     if (!carouselRef.current) return
     const containerWidth = carouselRef.current.offsetWidth
-    const maxScroll = (photos.length * THUMBNAIL_SIZE) - containerWidth
-    setScrollPosition(prev => Math.min(maxScroll, prev + containerWidth * 0.8))
+    setScrollPosition(prev => prev + containerWidth * 0.8)
   }
 
   const handleMouseDown = (e) => {
@@ -727,9 +705,8 @@ function PhotoCarousel({ photos, currentIndex, onSelectPhoto }) {
   const handleMouseMove = (e) => {
     if (!isDragging) return
     const deltaX = dragStartX - e.clientX
-    const containerWidth = carouselRef.current.offsetWidth
-    const maxScroll = (photos.length * THUMBNAIL_SIZE) - containerWidth
-    setScrollPosition(Math.max(0, Math.min(maxScroll, dragStartScroll + deltaX)))
+    // Sin límites, se queda donde lo sueltes
+    setScrollPosition(dragStartScroll + deltaX)
   }
 
   const handleMouseUp = () => {
@@ -744,24 +721,20 @@ function PhotoCarousel({ photos, currentIndex, onSelectPhoto }) {
     return null
   }
 
-  const containerWidth = carouselRef.current?.offsetWidth || 0
-  const maxScroll = (photos.length * THUMBNAIL_SIZE) - containerWidth
-  const canScrollLeft = scrollPosition > 0
-  const canScrollRight = scrollPosition < maxScroll
+  // Triplicar las fotos para efecto continuo
+  const triplePhotos = [...photos, ...photos, ...photos]
 
   return (
     <div className="relative w-full bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-      {/* Flecha izquierda */}
-      {canScrollLeft && (
-        <button
-          onClick={handlePrevious}
-          className="absolute left-2 top-1/2 -translate-y-1/2 z-10 p-2 bg-white/90 dark:bg-gray-700/90 rounded-full shadow-lg hover:bg-white dark:hover:bg-gray-600 transition-colors"
-        >
-          <svg className="w-5 h-5 text-gray-700 dark:text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-        </button>
-      )}
+      {/* Flecha izquierda - siempre visible */}
+      <button
+        onClick={handlePrevious}
+        className="absolute left-2 top-1/2 -translate-y-1/2 z-10 p-2 bg-white/90 dark:bg-gray-700/90 rounded-full shadow-lg hover:bg-white dark:hover:bg-gray-600 transition-colors"
+      >
+        <svg className="w-5 h-5 text-gray-700 dark:text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+        </svg>
+      </button>
 
       {/* Container del carrusel */}
       <div
@@ -771,45 +744,45 @@ function PhotoCarousel({ photos, currentIndex, onSelectPhoto }) {
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseLeave}
-        style={{ scrollBehavior: isDragging ? 'auto' : 'smooth' }}
       >
-        {photos.map((photo, idx) => (
-          <button
-            key={photo.id}
-            onClick={(e) => {
-              if (!isDragging) {
-                onSelectPhoto(idx)
-              }
-              e.preventDefault()
-            }}
-            className={`flex-shrink-0 overflow-hidden border-2 transition-all ${
-              idx === currentIndex
-                ? 'border-blue-500 ring-2 ring-blue-300 dark:ring-blue-700'
-                : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
-            }`}
-            style={{ width: `${THUMBNAIL_SIZE}px`, height: `${THUMBNAIL_SIZE}px` }}
-          >
-            <img
-              src={photo.url}
-              alt={`Foto ${idx + 1}`}
-              className="w-full h-full object-cover pointer-events-none"
-              draggable={false}
-            />
-          </button>
-        ))}
+        {triplePhotos.map((photo, idx) => {
+          const originalIdx = idx % photos.length
+          return (
+            <button
+              key={`${photo.id}-${idx}`}
+              onClick={(e) => {
+                if (!isDragging) {
+                  onSelectPhoto(originalIdx)
+                }
+                e.preventDefault()
+              }}
+              className={`flex-shrink-0 overflow-hidden border-2 transition-all ${
+                originalIdx === currentIndex
+                  ? 'border-blue-500 ring-2 ring-blue-300 dark:ring-blue-700'
+                  : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
+              }`}
+              style={{ width: `${THUMBNAIL_SIZE}px`, height: `${THUMBNAIL_SIZE}px` }}
+            >
+              <img
+                src={photo.url}
+                alt={`Foto ${originalIdx + 1}`}
+                className="w-full h-full object-cover pointer-events-none"
+                draggable={false}
+              />
+            </button>
+          )
+        })}
       </div>
 
-      {/* Flecha derecha */}
-      {canScrollRight && (
-        <button
-          onClick={handleNext}
-          className="absolute right-2 top-1/2 -translate-y-1/2 z-10 p-2 bg-white/90 dark:bg-gray-700/90 rounded-full shadow-lg hover:bg-white dark:hover:bg-gray-600 transition-colors"
-        >
-          <svg className="w-5 h-5 text-gray-700 dark:text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-          </svg>
-        </button>
-      )}
+      {/* Flecha derecha - siempre visible */}
+      <button
+        onClick={handleNext}
+        className="absolute right-2 top-1/2 -translate-y-1/2 z-10 p-2 bg-white/90 dark:bg-gray-700/90 rounded-full shadow-lg hover:bg-white dark:hover:bg-gray-600 transition-colors"
+      >
+        <svg className="w-5 h-5 text-gray-700 dark:text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+        </svg>
+      </button>
     </div>
   )
 }
@@ -1050,21 +1023,19 @@ function ManagePhotos({ photos, tagGroups, authParams, onRefresh, showSuccess, s
   }
 
   const goToPrev = async () => {
-    if (currentIndex > 0) {
-      await handleSaveCurrentPhoto(false)
-      setArrowFeedback('prev')
-      setTimeout(() => setArrowFeedback(null), 500)
-      setCurrentIndex(currentIndex - 1)
-    }
+    await handleSaveCurrentPhoto(false)
+    setArrowFeedback('prev')
+    setTimeout(() => setArrowFeedback(null), 500)
+    // Continuo: si está en la primera, va a la última
+    setCurrentIndex(currentIndex === 0 ? photos.length - 1 : currentIndex - 1)
   }
 
   const goToNext = async () => {
-    if (currentIndex < photos.length - 1) {
-      await handleSaveCurrentPhoto(false)
-      setArrowFeedback('next')
-      setTimeout(() => setArrowFeedback(null), 500)
-      setCurrentIndex(currentIndex + 1)
-    }
+    await handleSaveCurrentPhoto(false)
+    setArrowFeedback('next')
+    setTimeout(() => setArrowFeedback(null), 500)
+    // Continuo: si está en la última, va a la primera
+    setCurrentIndex(currentIndex === photos.length - 1 ? 0 : currentIndex + 1)
   }
 
   const currentTags = currentPhoto ? (photoTags[currentPhoto.id] || []) : []
@@ -1101,13 +1072,10 @@ function ManagePhotos({ photos, tagGroups, authParams, onRefresh, showSuccess, s
         {/* Flecha izquierda */}
         <button
           onClick={goToPrev}
-          disabled={currentIndex === 0}
           className={`p-2 rounded-full transition-all duration-300 self-center ${
             arrowFeedback === 'prev'
               ? 'text-green-500 bg-green-100 dark:bg-green-900/30'
-              : currentIndex === 0
-                ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
-                : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+              : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
           }`}
         >
           <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1121,13 +1089,10 @@ function ManagePhotos({ photos, tagGroups, authParams, onRefresh, showSuccess, s
         {/* Flecha derecha */}
         <button
           onClick={goToNext}
-          disabled={currentIndex === photos.length - 1}
           className={`p-2 rounded-full transition-all duration-300 self-center ${
             arrowFeedback === 'next'
               ? 'text-green-500 bg-green-100 dark:bg-green-900/30'
-              : currentIndex === photos.length - 1
-                ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
-                : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+              : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
           }`}
         >
           <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">

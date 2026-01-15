@@ -134,15 +134,44 @@ function App() {
       {/* Header con título y tabs */}
       <header className="bg-white dark:bg-gray-800 shadow-sm sticky top-0 z-40">
         <div className="px-4 py-3">
-          {/* Primera fila: título y buscador */}
+          {/* Primera fila: título, tabs y buscador */}
           <div className="flex items-center justify-between mb-3">
-            <div>
-              <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-                PEU Cuchillos Artesanales
-              </h1>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Buscador interactivo de modelos y materiales
-              </p>
+            <div className="flex items-center gap-6">
+              <div>
+                <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+                  PEU Cuchillos Artesanales
+                </h1>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Buscador interactivo de modelos y materiales
+                </p>
+              </div>
+
+              {/* Tabs de tipo */}
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setActiveTab(null)}
+                  className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+                    activeTab === null
+                      ? 'bg-blue-600 text-white'
+                      : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  Todos
+                </button>
+                {TIPO_TABS.map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+                      activeTab === tab.id
+                        ? 'bg-blue-600 text-white'
+                        : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className="w-48">
@@ -154,35 +183,8 @@ function App() {
             </div>
           </div>
 
-          {/* Segunda fila: Tabs de tipo */}
-          <div className="flex items-center gap-1 border-b border-gray-200 dark:border-gray-700 pb-3">
-            <button
-              onClick={() => setActiveTab(null)}
-              className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
-                activeTab === null
-                  ? 'bg-blue-600 text-white'
-                  : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-              }`}
-            >
-              Todos
-            </button>
-            {TIPO_TABS.map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
-                  activeTab === tab.id
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Tercera fila: Selectboxes de filtros */}
-          <div className="flex items-center gap-3 pt-3 flex-wrap">
+          {/* Segunda fila: Selectboxes de filtros */}
+          <div className="flex items-center gap-3 pt-2 border-t border-gray-200 dark:border-gray-700 flex-wrap">
             {/* Encabado */}
             <MultiSelect
               label="Encabado"
@@ -280,7 +282,7 @@ function MultiSelect({ label, options, selected, onChange, groupId }) {
     const colors = {
       encabado: 'border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400',
       acero: 'border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300',
-      extras: 'border-orange-300 dark:border-orange-700 bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400'
+      extras: 'border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400'
     }
     return colors[groupId] || 'border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300'
   }
@@ -290,7 +292,7 @@ function MultiSelect({ label, options, selected, onChange, groupId }) {
     const colors = {
       encabado: 'border-amber-400 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300',
       acero: 'border-gray-400 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200',
-      extras: 'border-orange-400 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300'
+      extras: 'border-green-400 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
     }
     return colors[groupId] || 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
   }
@@ -463,7 +465,7 @@ function PhotoCard({ photo, tagGroups }) {
       tipo: 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300',
       encabado: 'bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300',
       acero: 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200',
-      extras: 'bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300',
+      extras: 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300',
       unknown: 'bg-pink-100 dark:bg-pink-900/50 text-pink-700 dark:text-pink-300'
     }
     return colors[groupId] || 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
