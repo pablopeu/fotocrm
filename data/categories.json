@@ -36,13 +36,8 @@
       ]
     },
     {
-      "id": "extra1",
-      "name": "Extra 1",
-      "tags": []
-    },
-    {
-      "id": "extra2",
-      "name": "Extra 2",
+      "id": "extras",
+      "name": "Extras",
       "tags": []
     }
   ]

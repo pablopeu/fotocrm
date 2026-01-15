@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Modal from '../components/Modal'
 import { useModal } from '../hooks/useModal'
 
@@ -11,14 +11,13 @@ function apiUrl(route) {
 export default function Admin() {
   const [authenticated, setAuthenticated] = useState(false)
   const [credentials, setCredentials] = useState({ user: '', pass: '' })
-  const [activeTab, setActiveTab] = useState('photos')
+  const [activeTab, setActiveTab] = useState('upload')
   const [tagGroups, setTagGroups] = useState([])
   const [photos, setPhotos] = useState([])
   const [loading, setLoading] = useState(false)
 
   const { isOpen, modalProps, closeModal, showSuccess, showError, showConfirm } = useModal()
 
-  // Credenciales para enviar en body (más compatible con hostings restrictivos)
   const getAuthParams = () => ({
     auth_user: credentials.user,
     auth_pass: credentials.pass
@@ -27,7 +26,6 @@ export default function Admin() {
   const handleLogin = async (e) => {
     e.preventDefault()
     try {
-      // Verificar credenciales con un endpoint admin
       const params = new URLSearchParams({
         auth_user: credentials.user,
         auth_pass: credentials.pass
@@ -105,10 +103,16 @@ export default function Admin() {
     )
   }
 
+  const tabs = [
+    { id: 'upload', label: 'Subir fotos' },
+    { id: 'manage', label: 'Administrar fotos' },
+    { id: 'tags', label: 'Tags' },
+  ]
+
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
-      <header className="bg-white dark:bg-gray-800 shadow">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+    <div className="h-screen bg-gray-100 dark:bg-gray-900 flex flex-col overflow-hidden">
+      <header className="bg-white dark:bg-gray-800 shadow flex-shrink-0">
+        <div className="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
           <h1 className="text-xl font-bold text-gray-900 dark:text-white">FotoCRM Admin</h1>
           <div className="flex items-center gap-4">
             <a href="#/" className="text-sm text-gray-600 dark:text-gray-300 hover:underline">Ver catálogo</a>
@@ -119,46 +123,57 @@ export default function Admin() {
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-4 py-4">
-        <div className="flex gap-2 border-b border-gray-200 dark:border-gray-700">
-          {['photos', 'tags'].map((tab) => (
+      <div className="max-w-7xl mx-auto px-4 py-2 w-full flex-shrink-0">
+        <div className="flex gap-1 border-b border-gray-200 dark:border-gray-700">
+          {tabs.map((tab) => (
             <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
               className={`px-4 py-2 font-medium text-sm border-b-2 -mb-px transition-colors ${
-                activeTab === tab
+                activeTab === tab.id
                   ? 'border-blue-500 text-blue-600 dark:text-blue-400'
                   : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700'
               }`}
             >
-              {tab === 'photos' ? 'Fotos' : 'Tags'}
+              {tab.label}
             </button>
           ))}
         </div>
       </div>
 
-      <main className="max-w-7xl mx-auto px-4 pb-8">
-        {activeTab === 'photos' && (
-          <PhotosManager
-            photos={photos}
-            tagGroups={tagGroups}
-            authParams={getAuthParams()}
-            onRefresh={loadData}
-            showSuccess={showSuccess}
-            showError={showError}
-            showConfirm={showConfirm}
-          />
-        )}
-        {activeTab === 'tags' && (
-          <TagsManager
-            tagGroups={tagGroups}
-            authParams={getAuthParams()}
-            onRefresh={loadData}
-            showSuccess={showSuccess}
-            showError={showError}
-            showConfirm={showConfirm}
-          />
-        )}
+      <main className="flex-1 overflow-hidden">
+        <div className="max-w-7xl mx-auto px-4 h-full">
+          {activeTab === 'upload' && (
+            <UploadPhotos
+              tagGroups={tagGroups}
+              authParams={getAuthParams()}
+              onRefresh={loadData}
+              showSuccess={showSuccess}
+              showError={showError}
+            />
+          )}
+          {activeTab === 'manage' && (
+            <ManagePhotos
+              photos={photos}
+              tagGroups={tagGroups}
+              authParams={getAuthParams()}
+              onRefresh={loadData}
+              showSuccess={showSuccess}
+              showError={showError}
+              showConfirm={showConfirm}
+            />
+          )}
+          {activeTab === 'tags' && (
+            <TagsManager
+              tagGroups={tagGroups}
+              authParams={getAuthParams()}
+              onRefresh={loadData}
+              showSuccess={showSuccess}
+              showError={showError}
+              showConfirm={showConfirm}
+            />
+          )}
+        </div>
       </main>
 
       <Modal isOpen={isOpen} onClose={closeModal} {...modalProps} />
@@ -167,20 +182,18 @@ export default function Admin() {
 }
 
 // ==================
-// Photos Manager
+// Upload Photos - Nueva sección de subida
 // ==================
-function PhotosManager({ photos, tagGroups, authParams, onRefresh, showSuccess, showError, showConfirm }) {
-  const [uploading, setUploading] = useState(false)
+function UploadPhotos({ tagGroups, authParams, onRefresh, showSuccess, showError }) {
+  const [uploadedPhotos, setUploadedPhotos] = useState([])
+  const [currentIndex, setCurrentIndex] = useState(0)
   const [dragOver, setDragOver] = useState(false)
-  const [selectedTags, setSelectedTags] = useState([])
-  const [uploadText, setUploadText] = useState('')
-  const [editingPhoto, setEditingPhoto] = useState(null)
+  const [uploading, setUploading] = useState(false)
+  const [photoTags, setPhotoTags] = useState({}) // { photoId: [tagIds] }
+  const [photoTexts, setPhotoTexts] = useState({}) // { photoId: text }
+  const [saving, setSaving] = useState(false)
 
-  const handleTagToggle = (tagId) => {
-    setSelectedTags(prev =>
-      prev.includes(tagId) ? prev.filter(t => t !== tagId) : [...prev, tagId]
-    )
-  }
+  const currentPhoto = uploadedPhotos[currentIndex]
 
   const handleUpload = async (files) => {
     if (!files || files.length === 0) return
@@ -190,9 +203,8 @@ function PhotosManager({ photos, tagGroups, authParams, onRefresh, showSuccess, 
     for (const file of files) {
       formData.append('photos[]', file)
     }
-    formData.append('tags', selectedTags.join(','))
-    formData.append('text', uploadText)
-    // Auth en FormData (compatible con hostings restrictivos)
+    formData.append('tags', '')
+    formData.append('text', '')
     formData.append('auth_user', authParams.auth_user)
     formData.append('auth_pass', authParams.auth_pass)
 
@@ -203,10 +215,19 @@ function PhotosManager({ photos, tagGroups, authParams, onRefresh, showSuccess, 
       })
 
       if (response.ok) {
-        showSuccess('Éxito', `${files.length} foto(s) subida(s)`)
-        setSelectedTags([])
-        setUploadText('')
-        onRefresh()
+        const data = await response.json()
+        const newPhotos = data.photos || []
+        setUploadedPhotos(prev => [...prev, ...newPhotos])
+        // Inicializar tags y textos vacíos para las nuevas fotos
+        const newTags = {}
+        const newTexts = {}
+        newPhotos.forEach(p => {
+          newTags[p.id] = []
+          newTexts[p.id] = ''
+        })
+        setPhotoTags(prev => ({ ...prev, ...newTags }))
+        setPhotoTexts(prev => ({ ...prev, ...newTexts }))
+        showSuccess('Éxito', `${newPhotos.length} foto(s) subida(s)`)
       } else if (response.status === 401) {
         showError('Sesión expirada', 'Por favor, vuelve a iniciar sesión')
       } else {
@@ -226,8 +247,336 @@ function PhotosManager({ photos, tagGroups, authParams, onRefresh, showSuccess, 
     handleUpload(e.dataTransfer.files)
   }
 
+  const handleTagToggle = (tagId) => {
+    if (!currentPhoto) return
+    setPhotoTags(prev => {
+      const current = prev[currentPhoto.id] || []
+      const newTags = current.includes(tagId)
+        ? current.filter(t => t !== tagId)
+        : [...current, tagId]
+      return { ...prev, [currentPhoto.id]: newTags }
+    })
+  }
+
+  const handleTextChange = (text) => {
+    if (!currentPhoto) return
+    setPhotoTexts(prev => ({ ...prev, [currentPhoto.id]: text }))
+  }
+
+  const handleCreateTag = async (groupId, tagName) => {
+    try {
+      const response = await fetch(apiUrl('admin/tags'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ group_id: groupId, name: tagName, ...authParams })
+      })
+
+      if (response.ok) {
+        const newTag = await response.json()
+        onRefresh()
+        // Auto-seleccionar el nuevo tag
+        if (currentPhoto) {
+          setPhotoTags(prev => ({
+            ...prev,
+            [currentPhoto.id]: [...(prev[currentPhoto.id] || []), newTag.id]
+          }))
+        }
+        return newTag
+      } else if (response.status === 401) {
+        showError('Sesión expirada', 'Por favor, vuelve a iniciar sesión')
+      }
+    } catch (error) {
+      showError('Error', 'Error al crear tag')
+    }
+    return null
+  }
+
+  const handleSaveCurrentPhoto = async () => {
+    if (!currentPhoto) return
+
+    setSaving(true)
+    try {
+      const response = await fetch(apiUrl(`admin/photos/${currentPhoto.id}`), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: photoTexts[currentPhoto.id] || '',
+          tags: photoTags[currentPhoto.id] || [],
+          ...authParams
+        })
+      })
+
+      if (response.ok) {
+        showSuccess('Guardado', 'Foto actualizada')
+      } else if (response.status === 401) {
+        showError('Sesión expirada', 'Por favor, vuelve a iniciar sesión')
+      }
+    } catch (error) {
+      showError('Error', 'Error al guardar')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const goToPrev = () => {
+    if (currentIndex > 0) {
+      handleSaveCurrentPhoto()
+      setCurrentIndex(currentIndex - 1)
+    }
+  }
+
+  const goToNext = () => {
+    if (currentIndex < uploadedPhotos.length - 1) {
+      handleSaveCurrentPhoto()
+      setCurrentIndex(currentIndex + 1)
+    }
+  }
+
+  const currentTags = currentPhoto ? (photoTags[currentPhoto.id] || []) : []
+  const currentText = currentPhoto ? (photoTexts[currentPhoto.id] || '') : ''
+
+  // Si no hay fotos subidas, mostrar área de drop
+  if (uploadedPhotos.length === 0) {
+    return (
+      <div className="h-full flex items-center justify-center p-4">
+        <div
+          onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={handleDrop}
+          className={`w-full max-w-2xl border-2 border-dashed rounded-xl p-12 text-center transition-colors ${
+            dragOver ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-300 dark:border-gray-600'
+          }`}
+        >
+          {uploading ? (
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-10 h-10 border-3 border-blue-500 border-t-transparent rounded-full animate-spin" />
+              <span className="text-gray-600 dark:text-gray-300">Subiendo fotos...</span>
+            </div>
+          ) : (
+            <>
+              <svg className="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <p className="text-lg text-gray-600 dark:text-gray-300 mb-3">Arrastra las fotos aquí</p>
+              <p className="text-sm text-gray-400 mb-4">o</p>
+              <label className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg cursor-pointer hover:bg-blue-700 transition-colors">
+                Seleccionar archivos
+                <input
+                  type="file"
+                  multiple
+                  accept="image/jpeg,image/png,image/webp"
+                  className="hidden"
+                  onChange={(e) => handleUpload(e.target.files)}
+                />
+              </label>
+            </>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  // Vista de edición de fotos
+  return (
+    <div className="h-full flex flex-col py-2 gap-3">
+      {/* Área superior: foto con flechas + descripción */}
+      <div className="flex gap-4 flex-shrink-0" style={{ height: '45%' }}>
+        {/* Navegación y foto */}
+        <div className="flex items-center gap-2 flex-1">
+          {/* Flecha izquierda */}
+          <button
+            onClick={goToPrev}
+            disabled={currentIndex === 0}
+            className={`p-2 rounded-full transition-colors ${
+              currentIndex === 0
+                ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
+                : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+            }`}
+          >
+            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+
+          {/* Foto */}
+          <div className="flex-1 h-full bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden flex items-center justify-center">
+            {currentPhoto && (
+              <img
+                src={currentPhoto.url}
+                alt={currentText}
+                className="max-w-full max-h-full object-contain"
+              />
+            )}
+          </div>
+
+          {/* Flecha derecha */}
+          <button
+            onClick={goToNext}
+            disabled={currentIndex === uploadedPhotos.length - 1}
+            className={`p-2 rounded-full transition-colors ${
+              currentIndex === uploadedPhotos.length - 1
+                ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
+                : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+            }`}
+          >
+            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Descripción y controles */}
+        <div className="w-72 flex flex-col gap-2">
+          <div className="text-sm text-gray-500 dark:text-gray-400">
+            Foto {currentIndex + 1} de {uploadedPhotos.length}
+          </div>
+          <textarea
+            value={currentText}
+            onChange={(e) => handleTextChange(e.target.value)}
+            placeholder="Descripción de la foto..."
+            rows={3}
+            className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none"
+          />
+          <div className="flex gap-2">
+            <button
+              onClick={handleSaveCurrentPhoto}
+              disabled={saving}
+              className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+            >
+              {saving ? 'Guardando...' : 'Guardar'}
+            </button>
+            <label className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer text-center">
+              + Fotos
+              <input
+                type="file"
+                multiple
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                onChange={(e) => handleUpload(e.target.files)}
+              />
+            </label>
+          </div>
+        </div>
+      </div>
+
+      {/* Área inferior: 4 secciones de tags */}
+      <div className="flex-1 grid grid-cols-4 gap-3 min-h-0">
+        {tagGroups.map((group) => (
+          <TagSection
+            key={group.id}
+            group={group}
+            selectedTags={currentTags}
+            onTagToggle={handleTagToggle}
+            onCreateTag={(name) => handleCreateTag(group.id, name)}
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ==================
+// Tag Section - Sección individual de tags
+// ==================
+function TagSection({ group, selectedTags, onTagToggle, onCreateTag }) {
+  const [search, setSearch] = useState('')
+  const [creating, setCreating] = useState(false)
+
+  // Ordenar tags alfabéticamente
+  const sortedTags = [...group.tags].sort((a, b) => a.name.localeCompare(b.name))
+
+  // Filtrar por búsqueda
+  const filteredTags = search
+    ? sortedTags.filter(t => t.name.toLowerCase().includes(search.toLowerCase()))
+    : sortedTags
+
+  // Verificar si el search es un tag nuevo
+  const searchMatchesExisting = sortedTags.some(
+    t => t.name.toLowerCase() === search.toLowerCase()
+  )
+  const canCreate = search.trim() && !searchMatchesExisting
+
+  const handleCreate = async () => {
+    if (!canCreate) return
+    setCreating(true)
+    await onCreateTag(search.trim())
+    setSearch('')
+    setCreating(false)
+  }
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && canCreate) {
+      e.preventDefault()
+      handleCreate()
+    }
+  }
+
+  return (
+    <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 flex flex-col overflow-hidden">
+      {/* Header con nombre del grupo */}
+      <div className="px-3 py-2 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 flex-shrink-0">
+        <h3 className="font-semibold text-gray-700 dark:text-gray-200 text-sm">{group.name}</h3>
+      </div>
+
+      {/* Input de búsqueda/creación */}
+      <div className="px-2 py-2 border-b border-gray-100 dark:border-gray-700 flex-shrink-0">
+        <div className="flex gap-1">
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Buscar o crear..."
+            className="flex-1 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+          />
+          {canCreate && (
+            <button
+              onClick={handleCreate}
+              disabled={creating}
+              className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
+            >
+              {creating ? '...' : '+'}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Lista de tags con scroll */}
+      <div className="flex-1 overflow-y-auto p-2">
+        <div className="flex flex-wrap gap-1">
+          {filteredTags.map((tag) => {
+            const isSelected = selectedTags.includes(tag.id)
+            return (
+              <button
+                key={tag.id}
+                onClick={() => onTagToggle(tag.id)}
+                className={`px-2 py-1 text-xs rounded-full transition-colors ${
+                  isSelected
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-500'
+                }`}
+              >
+                {tag.name}
+              </button>
+            )
+          })}
+          {filteredTags.length === 0 && !canCreate && (
+            <p className="text-xs text-gray-400 italic">Sin tags</p>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ==================
+// Manage Photos - Administrar fotos existentes
+// ==================
+function ManagePhotos({ photos, tagGroups, authParams, onRefresh, showSuccess, showError, showConfirm }) {
+  const [editingPhoto, setEditingPhoto] = useState(null)
+
   const handleDelete = (photo) => {
-    showConfirm('Eliminar foto', '¿Eliminar esta foto?', async () => {
+    showConfirm('Eliminar foto', '¿Eliminar esta foto permanentemente?', async () => {
       try {
         const params = new URLSearchParams(authParams)
         const response = await fetch(apiUrl(`admin/photos/${photo.id}`) + '&' + params.toString(), {
@@ -280,171 +629,100 @@ function PhotosManager({ photos, tagGroups, authParams, onRefresh, showSuccess, 
   }
 
   return (
-    <div className="space-y-6">
-      {/* Upload Area */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Subir fotos</h2>
-
-        {/* Tags selector */}
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Seleccionar tags para las fotos:
-          </label>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            {tagGroups.map(group => (
-              <div key={group.id}>
-                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">{group.name}</p>
-                <div className="space-y-1 max-h-32 overflow-y-auto">
-                  {group.tags.map(tag => (
-                    <label key={tag.id} className="flex items-center gap-2 text-sm cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={selectedTags.includes(tag.id)}
-                        onChange={() => handleTagToggle(tag.id)}
-                        className="w-4 h-4 rounded border-gray-300 text-blue-600"
-                      />
-                      <span className="text-gray-700 dark:text-gray-300">{tag.name}</span>
-                    </label>
+    <div className="h-full overflow-y-auto py-4">
+      {photos.length === 0 ? (
+        <div className="text-center py-12 text-gray-500">
+          <p>No hay fotos en el catálogo</p>
+          <p className="text-sm mt-2">Usa la pestaña "Subir fotos" para agregar fotos</p>
+        </div>
+      ) : (
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {photos.map((photo) => (
+            <div key={photo.id} className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+              <img src={photo.url} alt={photo.text} className="w-full h-40 object-cover" />
+              <div className="p-3">
+                <p className="text-sm text-gray-700 dark:text-gray-300 truncate mb-2">
+                  {photo.text || 'Sin descripción'}
+                </p>
+                <div className="flex flex-wrap gap-1 mb-3 min-h-[24px]">
+                  {(photo.tags || []).slice(0, 4).map(tagId => (
+                    <span key={tagId} className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-xs rounded">
+                      {getTagName(tagId)}
+                    </span>
                   ))}
-                  {group.tags.length === 0 && (
-                    <p className="text-xs text-gray-400 italic">Sin tags</p>
+                  {(photo.tags || []).length > 4 && (
+                    <span className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-500 text-xs rounded">
+                      +{photo.tags.length - 4}
+                    </span>
                   )}
                 </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Description */}
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Descripción:
-          </label>
-          <input
-            type="text"
-            value={uploadText}
-            onChange={(e) => setUploadText(e.target.value)}
-            placeholder="Descripción para la(s) foto(s)"
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-          />
-        </div>
-
-        {/* Drop zone */}
-        <div
-          onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={handleDrop}
-          className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-            dragOver ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-300 dark:border-gray-600'
-          }`}
-        >
-          {uploading ? (
-            <div className="flex items-center justify-center gap-2">
-              <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-              <span>Subiendo...</span>
-            </div>
-          ) : (
-            <>
-              <p className="text-gray-600 dark:text-gray-300 mb-2">Arrastra fotos aquí o</p>
-              <label className="inline-block px-4 py-2 bg-blue-600 text-white rounded-lg cursor-pointer hover:bg-blue-700">
-                Seleccionar archivos
-                <input
-                  type="file"
-                  multiple
-                  accept="image/jpeg,image/png,image/webp"
-                  className="hidden"
-                  onChange={(e) => handleUpload(e.target.files)}
-                />
-              </label>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* Photos List */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-          Fotos ({photos.length})
-        </h2>
-
-        {photos.length === 0 ? (
-          <p className="text-gray-500 text-center py-8">No hay fotos</p>
-        ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {photos.map((photo) => (
-              <div key={photo.id} className="bg-gray-50 dark:bg-gray-700 rounded-lg overflow-hidden">
-                <img src={photo.url} alt={photo.text} className="w-full h-32 object-cover" />
-                <div className="p-3">
-                  <p className="text-sm text-gray-700 dark:text-gray-300 truncate mb-1">
-                    {photo.text || 'Sin descripción'}
-                  </p>
-                  <div className="flex flex-wrap gap-1 mb-2">
-                    {(photo.tags || []).map(tagId => (
-                      <span key={tagId} className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-xs rounded">
-                        {getTagName(tagId)}
-                      </span>
-                    ))}
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setEditingPhoto({ ...photo, tags: photo.tags || [] })}
-                      className="flex-1 px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-200"
-                    >
-                      Editar
-                    </button>
-                    <button
-                      onClick={() => handleDelete(photo)}
-                      className="flex-1 px-2 py-1 text-xs bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 rounded hover:bg-red-200"
-                    >
-                      Eliminar
-                    </button>
-                  </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setEditingPhoto({ ...photo, tags: photo.tags || [] })}
+                    className="flex-1 px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+                  >
+                    Editar
+                  </button>
+                  <button
+                    onClick={() => handleDelete(photo)}
+                    className="px-3 py-1.5 text-sm bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 rounded hover:bg-red-200"
+                  >
+                    Eliminar
+                  </button>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Edit Modal */}
       {editingPhoto && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setEditingPhoto(null)}>
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Editar foto</h3>
 
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Descripción</label>
-              <textarea
-                value={editingPhoto.text || ''}
-                onChange={(e) => setEditingPhoto({ ...editingPhoto, text: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                rows={3}
-              />
+            <div className="flex gap-4 mb-4">
+              <img src={editingPhoto.url} alt="" className="w-48 h-48 object-cover rounded" />
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Descripción</label>
+                <textarea
+                  value={editingPhoto.text || ''}
+                  onChange={(e) => setEditingPhoto({ ...editingPhoto, text: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  rows={5}
+                />
+              </div>
             </div>
 
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tags</label>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-4 gap-3">
                 {tagGroups.map(group => (
-                  <div key={group.id}>
-                    <p className="text-xs font-semibold text-gray-500 mb-1">{group.name}</p>
-                    <div className="space-y-1 max-h-24 overflow-y-auto">
-                      {group.tags.map(tag => (
-                        <label key={tag.id} className="flex items-center gap-2 text-sm cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={editingPhoto.tags.includes(tag.id)}
-                            onChange={() => {
-                              const newTags = editingPhoto.tags.includes(tag.id)
+                  <div key={group.id} className="border border-gray-200 dark:border-gray-600 rounded p-2">
+                    <p className="text-xs font-semibold text-gray-500 mb-2">{group.name}</p>
+                    <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto">
+                      {group.tags.map(tag => {
+                        const isSelected = editingPhoto.tags.includes(tag.id)
+                        return (
+                          <button
+                            key={tag.id}
+                            onClick={() => {
+                              const newTags = isSelected
                                 ? editingPhoto.tags.filter(t => t !== tag.id)
                                 : [...editingPhoto.tags, tag.id]
                               setEditingPhoto({ ...editingPhoto, tags: newTags })
                             }}
-                            className="w-4 h-4 rounded border-gray-300 text-blue-600"
-                          />
-                          <span className="text-gray-700 dark:text-gray-300">{tag.name}</span>
-                        </label>
-                      ))}
+                            className={`px-2 py-0.5 text-xs rounded-full ${
+                              isSelected
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-200'
+                            }`}
+                          >
+                            {tag.name}
+                          </button>
+                        )
+                      })}
                     </div>
                   </div>
                 ))}
@@ -467,7 +745,7 @@ function PhotosManager({ photos, tagGroups, authParams, onRefresh, showSuccess, 
 }
 
 // ==================
-// Tags Manager
+// Tags Manager - Gestión de tags
 // ==================
 function TagsManager({ tagGroups, authParams, onRefresh, showSuccess, showError, showConfirm }) {
   const [newTagName, setNewTagName] = useState('')
@@ -542,9 +820,9 @@ function TagsManager({ tagGroups, authParams, onRefresh, showSuccess, showError,
   }
 
   return (
-    <div className="space-y-6">
+    <div className="h-full overflow-y-auto py-4 space-y-6">
       {/* Create Tag */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Crear nuevo tag</h2>
         <form onSubmit={handleCreateTag} className="flex gap-4">
           <select
@@ -566,14 +844,14 @@ function TagsManager({ tagGroups, authParams, onRefresh, showSuccess, showError,
             className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             required
           />
-          <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+          <button type="submit" className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
             Crear
           </button>
         </form>
       </div>
 
       {/* Tag Groups */}
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
         {tagGroups.map(group => (
           <div key={group.id} className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
             <div className="flex items-center justify-between mb-3">
@@ -589,8 +867,8 @@ function TagsManager({ tagGroups, authParams, onRefresh, showSuccess, showError,
             {group.tags.length === 0 ? (
               <p className="text-sm text-gray-500 italic">Sin tags</p>
             ) : (
-              <div className="space-y-1">
-                {group.tags.map(tag => (
+              <div className="space-y-1 max-h-48 overflow-y-auto">
+                {[...group.tags].sort((a, b) => a.name.localeCompare(b.name)).map(tag => (
                   <div key={tag.id} className="flex items-center justify-between py-1 px-2 bg-gray-50 dark:bg-gray-700 rounded">
                     <span className="text-sm text-gray-700 dark:text-gray-300">{tag.name}</span>
                     <button
