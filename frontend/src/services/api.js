@@ -20,9 +20,9 @@ async function fetchJSON(url, options = {}) {
   return response.json()
 }
 
-// Categorías
+// Tags (antes llamado Categorías)
 export async function getCategories() {
-  return fetchJSON('/categories')
+  return fetchJSON('/tags')
 }
 
 // Fotos
