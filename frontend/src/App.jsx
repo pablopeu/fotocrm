@@ -45,11 +45,14 @@ function App() {
           getCategories(),
           getPhotos()
         ])
-        setTagGroups(catData.tag_groups || [])
-        setPhotos(photoData.photos || [])
-        setFilteredPhotos(photoData.photos || [])
+        console.log('catData:', catData)
+        console.log('photoData:', photoData)
+        setTagGroups(catData?.tag_groups || [])
+        setPhotos(photoData?.photos || [])
+        setFilteredPhotos(photoData?.photos || [])
       } catch (error) {
         console.error('Error cargando datos:', error)
+        console.error('Error completo:', error)
       } finally {
         setLoading(false)
       }

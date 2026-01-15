@@ -4,6 +4,9 @@ async function fetchJSON(url, options = {}) {
   // Convertir /path a route=path
   const route = url.startsWith('/') ? url.slice(1) : url
   const fullUrl = `${API_BASE}${route}`
+
+  console.log('Fetching:', fullUrl)
+
   const response = await fetch(fullUrl, {
     headers: {
       'Content-Type': 'application/json',
@@ -12,12 +15,17 @@ async function fetchJSON(url, options = {}) {
     ...options,
   })
 
+  console.log('Response status:', response.status)
+
   if (!response.ok) {
     const error = await response.json().catch(() => ({ error: 'Error desconocido' }))
+    console.error('API Error:', error)
     throw new Error(error.error || `HTTP ${response.status}`)
   }
 
-  return response.json()
+  const data = await response.json()
+  console.log('Response data:', data)
+  return data
 }
 
 // Tags (antes llamado Categorías)
