@@ -580,11 +580,20 @@ function ZoomableImage({ src, alt }) {
     setPosition({ x: 0, y: 0 })
   }, [src])
 
-  const handleWheel = (e) => {
-    e.preventDefault()
-    const delta = e.deltaY > 0 ? -0.1 : 0.1
-    setScale(prev => Math.min(Math.max(prev + delta, 1), 5))
-  }
+  // Event listener para wheel con { passive: false } para evitar error de consola
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    const handleWheel = (e) => {
+      e.preventDefault()
+      const delta = e.deltaY > 0 ? -0.1 : 0.1
+      setScale(prev => Math.min(Math.max(prev + delta, 1), 5))
+    }
+
+    container.addEventListener('wheel', handleWheel, { passive: false })
+    return () => container.removeEventListener('wheel', handleWheel)
+  }, [])
 
   const handleMouseDown = (e) => {
     if (scale > 1) {
@@ -623,7 +632,6 @@ function ZoomableImage({ src, alt }) {
     <div
       ref={containerRef}
       className="h-full bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden flex items-center justify-center flex-shrink-0 relative"
-      onWheel={handleWheel}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}

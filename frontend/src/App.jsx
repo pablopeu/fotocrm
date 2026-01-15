@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import PhotoModal from './components/PhotoModal'
 import SearchBar from './components/SearchBar'
 import {
@@ -255,8 +255,6 @@ function App() {
                 <PhotoCard
                   key={photo.id}
                   photo={photo}
-                  onCopyImage={handleCopyImage}
-                  onCopyText={handleCopyText}
                   onView={handleViewPhoto}
                 />
               ))}
@@ -339,19 +337,77 @@ function MultiSelect({ label, options, selected, onChange }) {
   )
 }
 
-// Componente PhotoCard simplificado con feedback inline
-function PhotoCard({ photo, onCopyImage, onCopyText, onView }) {
+// Componente PhotoCard con zoom, feedback inline
+function PhotoCard({ photo, onView }) {
+  const containerRef = useRef(null)
   const [imageLoaded, setImageLoaded] = useState(false)
   const [imageError, setImageError] = useState(false)
   const [imageCopied, setImageCopied] = useState(false)
   const [textCopied, setTextCopied] = useState(false)
+  const [scale, setScale] = useState(1)
+  const [position, setPosition] = useState({ x: 0, y: 0 })
+  const [isDragging, setIsDragging] = useState(false)
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
 
-  const handleImageClick = async (e) => {
-    e.stopPropagation()
-    const result = await copyImageToClipboard(photo.url)
-    if (result.success) {
-      setImageCopied(true)
-      setTimeout(() => setImageCopied(false), 1500)
+  // Resetear zoom cuando cambia la foto
+  useEffect(() => {
+    setScale(1)
+    setPosition({ x: 0, y: 0 })
+  }, [photo.url])
+
+  // Event listener para wheel con { passive: false }
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    const handleWheel = (e) => {
+      e.preventDefault()
+      const delta = e.deltaY > 0 ? -0.15 : 0.15
+      setScale(prev => Math.min(Math.max(prev + delta, 1), 5))
+    }
+
+    container.addEventListener('wheel', handleWheel, { passive: false })
+    return () => container.removeEventListener('wheel', handleWheel)
+  }, [])
+
+  const handleMouseDown = (e) => {
+    if (scale > 1) {
+      e.preventDefault()
+      setIsDragging(true)
+      setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y })
+    }
+  }
+
+  const handleMouseMove = (e) => {
+    if (isDragging) {
+      setPosition({
+        x: e.clientX - dragStart.x,
+        y: e.clientY - dragStart.y
+      })
+    }
+  }
+
+  const handleMouseUp = () => {
+    setIsDragging(false)
+  }
+
+  const handleClick = async (e) => {
+    // Solo copiar si no está zoomizado o si no estaba haciendo drag
+    if (scale === 1) {
+      const result = await copyImageToClipboard(photo.url)
+      if (result.success) {
+        setImageCopied(true)
+        setTimeout(() => setImageCopied(false), 1500)
+      }
+    }
+  }
+
+  const handleDoubleClick = () => {
+    if (scale > 1) {
+      setScale(1)
+      setPosition({ x: 0, y: 0 })
+    } else {
+      setScale(2.5)
     }
   }
 
@@ -368,11 +424,18 @@ function PhotoCard({ photo, onCopyImage, onCopyText, onView }) {
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden border border-gray-200 dark:border-gray-700">
-      {/* Imagen - clickeable para copiar */}
+      {/* Imagen con zoom */}
       <div
-        className="aspect-square bg-gray-100 dark:bg-gray-700 cursor-pointer relative overflow-hidden group"
-        onClick={handleImageClick}
-        title="Click para copiar imagen"
+        ref={containerRef}
+        className="aspect-square bg-gray-100 dark:bg-gray-700 relative overflow-hidden"
+        onClick={handleClick}
+        onDoubleClick={handleDoubleClick}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+        style={{ cursor: scale > 1 ? (isDragging ? 'grabbing' : 'grab') : 'pointer' }}
+        title={scale === 1 ? "Click para copiar, rueda para zoom" : "Drag para mover, doble click para resetear"}
       >
         {!imageLoaded && !imageError && (
           <div className="absolute inset-0 flex items-center justify-center">
@@ -390,22 +453,33 @@ function PhotoCard({ photo, onCopyImage, onCopyText, onView }) {
             <img
               src={photo.url}
               alt={photo.text || 'Foto de cuchillo'}
-              className={`w-full h-full object-cover transition-all duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'} group-hover:scale-105`}
+              className={`w-full h-full object-cover select-none ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+              style={{
+                transform: `scale(${scale}) translate(${position.x / scale}px, ${position.y / scale}px)`,
+                transition: isDragging ? 'none' : 'transform 0.15s ease-out'
+              }}
               onLoad={() => setImageLoaded(true)}
               onError={() => setImageError(true)}
+              draggable={false}
             />
-            {/* Overlay al hover o cuando se copió */}
-            <div className={`absolute inset-0 transition-colors flex items-center justify-center ${
-              imageCopied ? 'bg-green-500/40' : 'bg-black/0 group-hover:bg-black/20'
-            }`}>
-              <span className={`transition-opacity text-white text-sm font-medium px-3 py-1 rounded ${
-                imageCopied
-                  ? 'opacity-100 bg-green-600'
-                  : 'opacity-0 group-hover:opacity-100 bg-black/50'
+            {/* Overlay de feedback */}
+            {scale === 1 && (
+              <div className={`absolute inset-0 transition-colors flex items-center justify-center pointer-events-none ${
+                imageCopied ? 'bg-green-500/40' : ''
               }`}>
-                {imageCopied ? 'Imagen copiada' : 'Copiar imagen'}
-              </span>
-            </div>
+                {imageCopied && (
+                  <span className="text-white text-sm font-medium px-3 py-1 rounded bg-green-600">
+                    Imagen copiada
+                  </span>
+                )}
+              </div>
+            )}
+            {/* Indicador de zoom */}
+            {scale > 1 && (
+              <div className="absolute bottom-1 right-1 px-1.5 py-0.5 bg-black/60 text-white text-xs rounded">
+                {Math.round(scale * 100)}%
+              </div>
+            )}
           </>
         )}
       </div>
