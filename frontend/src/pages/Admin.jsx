@@ -784,14 +784,19 @@ function ZoomableImage({ src, alt }) {
   }, [src])
 
   // Event listener para wheel con { passive: false } para evitar error de consola
+  // Solo hace zoom con Ctrl + Scroll, sino scrollea la página
   useEffect(() => {
     const container = containerRef.current
     if (!container) return
 
     const handleWheel = (e) => {
-      e.preventDefault()
-      const delta = e.deltaY > 0 ? -0.1 : 0.1
-      setScale(prev => Math.min(Math.max(prev + delta, 1), 5))
+      // Solo hacer zoom si se presiona Ctrl
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault()
+        const delta = e.deltaY > 0 ? -0.1 : 0.1
+        setScale(prev => Math.min(Math.max(prev + delta, 1), 5))
+      }
+      // Si no hay Ctrl, dejar que el scroll normal funcione (no hacer preventDefault)
     }
 
     container.addEventListener('wheel', handleWheel, { passive: false })
@@ -862,7 +867,7 @@ function ZoomableImage({ src, alt }) {
       )}
       {scale === 1 && (
         <div className="absolute bottom-2 right-2 px-2 py-1 bg-black/50 text-white text-xs rounded opacity-0 hover:opacity-100 transition-opacity">
-          Rueda del mouse para zoom
+          Ctrl + Scroll para zoom
         </div>
       )}
     </div>
@@ -1603,6 +1608,7 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
   const [loading, setLoading] = useState(false)
   const [creating, setCreating] = useState(false)
   const [backupToDelete, setBackupToDelete] = useState(null)
+  const [createdBackupFeedback, setCreatedBackupFeedback] = useState(null) // Filename del backup recién creado
   const [logo, setLogo] = useState(null)
   const [uploadingLogo, setUploadingLogo] = useState(false)
 
@@ -1655,7 +1661,15 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
       })
 
       if (response.ok) {
-        showSuccess('Éxito', 'Backup creado correctamente')
+        const data = await response.json()
+        const newBackupFilename = data.backup?.filename
+
+        // Feedback visual
+        if (newBackupFilename) {
+          setCreatedBackupFeedback(newBackupFilename)
+          setTimeout(() => setCreatedBackupFeedback(null), 2000)
+        }
+
         await loadBackups()
       } else if (response.status === 401) {
         showError('Sesión expirada', 'Por favor, vuelve a iniciar sesión')
@@ -1792,11 +1806,17 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
             <p className="text-gray-500 dark:text-gray-400">No hay backups disponibles</p>
           ) : (
             <div className="space-y-2">
-              {backups.map((backup) => (
-                <div
-                  key={backup.filename}
-                  className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
-                >
+              {backups.map((backup) => {
+                const wasCreated = createdBackupFeedback === backup.filename
+                return (
+                  <div
+                    key={backup.filename}
+                    className={`flex items-center justify-between p-3 rounded-lg transition-all duration-500 ${
+                      wasCreated
+                        ? 'bg-green-100 dark:bg-green-900/30'
+                        : 'bg-gray-50 dark:bg-gray-700'
+                    }`}
+                  >
                   <div className="flex-1">
                     <p className="text-sm font-medium text-gray-900 dark:text-white">
                       {backup.filename}
@@ -1846,7 +1866,8 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
                     )}
                   </div>
                 </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>
