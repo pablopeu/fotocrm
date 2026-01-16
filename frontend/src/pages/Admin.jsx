@@ -1719,7 +1719,6 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
       if (response.ok) {
         const data = await response.json()
         setLogo(data.logo)
-        showSuccess('Éxito', 'Logo actualizado')
         // Notificar al componente padre para que actualice el logo en el header público
         if (onLogoChange) onLogoChange()
       } else if (response.status === 401) {
@@ -1744,7 +1743,6 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
 
       if (response.ok) {
         setLogo(null)
-        showSuccess('Éxito', 'Logo eliminado')
         // Notificar al componente padre para que actualice el logo en el header público
         if (onLogoChange) onLogoChange()
       } else if (response.status === 401) {

@@ -626,7 +626,8 @@ switch (true) {
         $files = array_diff(scandir(BACKUPS_DIR), ['.', '..']);
         $backups = [];
         foreach ($files as $file) {
-            if (pathinfo($file, PATHINFO_EXTENSION) === 'gz') {
+            $ext = pathinfo($file, PATHINFO_EXTENSION);
+            if ($ext === 'zip' || $ext === 'gz') { // Soportar ambos formatos
                 $fullPath = BACKUPS_DIR . '/' . $file;
                 $backups[] = [
                     'filename' => $file,
@@ -652,13 +653,13 @@ switch (true) {
 
         // Verificar límite de 5 backups
         $files = array_diff(scandir(BACKUPS_DIR), ['.', '..']);
-        $existingBackups = array_filter($files, fn($f) => pathinfo($f, PATHINFO_EXTENSION) === 'gz');
+        $existingBackups = array_filter($files, fn($f) => pathinfo($f, PATHINFO_EXTENSION) === 'zip');
         if (count($existingBackups) >= 5) {
             response(['error' => 'Límite de 5 backups alcanzado. Elimina uno antes de crear otro.'], 400);
         }
 
         $timestamp = date('Y-m-d_His');
-        $filename = "backup_{$timestamp}.tar.gz";
+        $filename = "backup_{$timestamp}.zip";
         $backupPath = BACKUPS_DIR . '/' . $filename;
 
         // Verificar que las carpetas existan
@@ -669,33 +670,53 @@ switch (true) {
             response(['error' => 'Carpeta /uploads no existe'], 500);
         }
 
-        // Crear tar.gz de /data y /uploads
-        $parentDir = dirname(__DIR__);
+        // Crear ZIP usando ZipArchive (compatible con hosting compartido)
+        if (!class_exists('ZipArchive')) {
+            response(['error' => 'ZipArchive no está disponible en este servidor'], 500);
+        }
 
-        // Comando tar para crear backup con ruta absoluta
-        $command = sprintf(
-            "cd %s && tar -czf %s data uploads 2>&1",
-            escapeshellarg($parentDir),
-            escapeshellarg($backupPath)
-        );
+        $zip = new ZipArchive();
+        if ($zip->open($backupPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+            response(['error' => 'No se pudo crear el archivo de backup'], 500);
+        }
 
-        exec($command, $output, $returnCode);
+        // Función recursiva para agregar carpetas al ZIP
+        $addFolderToZip = function($folder, $zipPath = '') use (&$addFolderToZip, $zip) {
+            $files = scandir($folder);
+            foreach ($files as $file) {
+                if ($file === '.' || $file === '..') continue;
 
-        if ($returnCode !== 0) {
-            response([
-                'error' => 'Error al crear backup',
-                'details' => implode("\n", $output),
-                'command' => $command,
-                'return_code' => $returnCode
-            ], 500);
+                $fullPath = $folder . '/' . $file;
+                $zipFilePath = $zipPath ? $zipPath . '/' . $file : $file;
+
+                if (is_dir($fullPath)) {
+                    $zip->addEmptyDir($zipFilePath);
+                    $addFolderToZip($fullPath, $zipFilePath);
+                } else {
+                    $zip->addFile($fullPath, $zipFilePath);
+                }
+            }
+        };
+
+        // Agregar carpetas data y uploads al ZIP
+        try {
+            $zip->addEmptyDir('data');
+            $addFolderToZip(DATA_DIR, 'data');
+
+            $zip->addEmptyDir('uploads');
+            $addFolderToZip(UPLOADS_DIR, 'uploads');
+
+            $zip->close();
+        } catch (Exception $e) {
+            $zip->close();
+            if (file_exists($backupPath)) {
+                unlink($backupPath);
+            }
+            response(['error' => 'Error al crear backup: ' . $e->getMessage()], 500);
         }
 
         if (!file_exists($backupPath)) {
-            response([
-                'error' => 'Backup no se creó correctamente',
-                'command' => $command,
-                'output' => implode("\n", $output)
-            ], 500);
+            response(['error' => 'Backup no se creó correctamente'], 500);
         }
 
         response([
@@ -713,8 +734,8 @@ switch (true) {
         checkAuth();
 
         $filename = $matches[1];
-        // Validar que sea un archivo .tar.gz
-        if (!preg_match('/^backup_[\d_-]+\.tar\.gz$/', $filename)) {
+        // Validar que sea un archivo .zip o .tar.gz
+        if (!preg_match('/^backup_[\d_-]+\.(zip|tar\.gz)$/', $filename)) {
             response(['error' => 'Nombre de archivo inválido'], 400);
         }
 
@@ -724,7 +745,8 @@ switch (true) {
         }
 
         // Enviar archivo para descarga
-        header('Content-Type: application/gzip');
+        $contentType = (pathinfo($filename, PATHINFO_EXTENSION) === 'zip') ? 'application/zip' : 'application/gzip';
+        header('Content-Type: ' . $contentType);
         header('Content-Disposition: attachment; filename="' . $filename . '"');
         header('Content-Length: ' . filesize($filePath));
         readfile($filePath);
@@ -735,8 +757,8 @@ switch (true) {
         checkAuth();
 
         $filename = $matches[1];
-        // Validar que sea un archivo .tar.gz
-        if (!preg_match('/^backup_[\d_-]+\.tar\.gz$/', $filename)) {
+        // Validar que sea un archivo .zip o .tar.gz
+        if (!preg_match('/^backup_[\d_-]+\.(zip|tar\.gz)$/', $filename)) {
             response(['error' => 'Nombre de archivo inválido'], 400);
         }
 
