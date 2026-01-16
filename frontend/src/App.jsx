@@ -159,96 +159,175 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex flex-col">
-      {/* Header con título y tabs */}
+      {/* Header unificado */}
       <header className="bg-white dark:bg-gray-800 shadow-sm sticky top-0 z-40">
         <div className="px-4 py-3">
-          {/* Primera fila: título, tabs y buscador */}
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-6">
-              <div>
-                <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-                  PEU Cuchillos Artesanales
-                </h1>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Buscador interactivo de modelos y materiales
-                </p>
-              </div>
+          {/* Mobile: Layout vertical */}
+          <div className="lg:hidden">
+            {/* Título y subtítulo */}
+            <div className="mb-3">
+              <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+                PEU Cuchillos Artesanales
+              </h1>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Buscador interactivo de modelos y materiales
+              </p>
+            </div>
 
-              {/* Tabs de tipo */}
-              <div className="flex items-center gap-1">
+            {/* Tabs de tipo */}
+            <div className="flex items-center gap-1 mb-3 flex-wrap">
+              <button
+                onClick={() => setActiveTab(null)}
+                className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+                  activeTab === null
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`}
+              >
+                Todos
+              </button>
+              {TIPO_TABS.map(tab => (
                 <button
-                  onClick={() => setActiveTab(null)}
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
                   className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
-                    activeTab === null
+                    activeTab === tab.id
                       ? 'bg-blue-600 text-white'
                       : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                   }`}
                 >
-                  Todos
+                  {tab.label}
                 </button>
-                {TIPO_TABS.map(tab => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
-                      activeTab === tab.id
-                        ? 'bg-blue-600 text-white'
-                        : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
+              ))}
             </div>
 
-            <div className="w-48">
+            {/* Selectboxes */}
+            <div className="flex items-center gap-2 mb-3 flex-wrap">
+              <MultiSelect
+                label="Encabado"
+                options={getTagsByGroup('encabado')}
+                selected={selectedEncabado}
+                onChange={setSelectedEncabado}
+                groupId="encabado"
+              />
+              <MultiSelect
+                label="Acero"
+                options={getTagsByGroup('acero')}
+                selected={selectedAcero}
+                onChange={setSelectedAcero}
+                groupId="acero"
+              />
+              <MultiSelect
+                label="Tipo de Cuchillo"
+                options={getTagsByGroup('extras')}
+                selected={selectedExtras}
+                onChange={setSelectedExtras}
+                groupId="extras"
+              />
+              {hasActiveFilters && (
+                <button
+                  onClick={handleResetFilters}
+                  className="px-3 py-1.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                >
+                  Resetear
+                </button>
+              )}
+            </div>
+
+            {/* Buscador alineado a la derecha */}
+            <div className="flex justify-end">
+              <div className="w-full max-w-xs">
+                <SearchBar
+                  value={searchQuery}
+                  onChange={setSearchQuery}
+                  placeholder="Buscar..."
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Desktop: Layout horizontal en una línea */}
+          <div className="hidden lg:flex items-center gap-4">
+            {/* Título y subtítulo */}
+            <div className="flex-shrink-0">
+              <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+                PEU Cuchillos Artesanales
+              </h1>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Buscador interactivo de modelos y materiales
+              </p>
+            </div>
+
+            {/* Tabs de tipo */}
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <button
+                onClick={() => setActiveTab(null)}
+                className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+                  activeTab === null
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`}
+              >
+                Todos
+              </button>
+              {TIPO_TABS.map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+                    activeTab === tab.id
+                      ? 'bg-blue-600 text-white'
+                      : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Selectboxes */}
+            <div className="flex items-center gap-3 flex-shrink-0">
+              <MultiSelect
+                label="Encabado"
+                options={getTagsByGroup('encabado')}
+                selected={selectedEncabado}
+                onChange={setSelectedEncabado}
+                groupId="encabado"
+              />
+              <MultiSelect
+                label="Acero"
+                options={getTagsByGroup('acero')}
+                selected={selectedAcero}
+                onChange={setSelectedAcero}
+                groupId="acero"
+              />
+              <MultiSelect
+                label="Tipo de Cuchillo"
+                options={getTagsByGroup('extras')}
+                selected={selectedExtras}
+                onChange={setSelectedExtras}
+                groupId="extras"
+              />
+            </div>
+
+            {/* Botón resetear */}
+            {hasActiveFilters && (
+              <button
+                onClick={handleResetFilters}
+                className="px-3 py-1.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors flex-shrink-0"
+              >
+                Resetear filtros
+              </button>
+            )}
+
+            {/* Buscador al final */}
+            <div className="w-48 ml-auto">
               <SearchBar
                 value={searchQuery}
                 onChange={setSearchQuery}
                 placeholder="Buscar..."
               />
             </div>
-          </div>
-
-          {/* Segunda fila: Selectboxes de filtros */}
-          <div className="flex items-center gap-3 pt-2 border-t border-gray-200 dark:border-gray-700 flex-wrap">
-            {/* Encabado */}
-            <MultiSelect
-              label="Encabado"
-              options={getTagsByGroup('encabado')}
-              selected={selectedEncabado}
-              onChange={setSelectedEncabado}
-              groupId="encabado"
-            />
-
-            {/* Acero */}
-            <MultiSelect
-              label="Acero"
-              options={getTagsByGroup('acero')}
-              selected={selectedAcero}
-              onChange={setSelectedAcero}
-              groupId="acero"
-            />
-
-            {/* Tipo de Cuchillo */}
-            <MultiSelect
-              label="Tipo de Cuchillo"
-              options={getTagsByGroup('extras')}
-              selected={selectedExtras}
-              onChange={setSelectedExtras}
-              groupId="extras"
-            />
-
-            {/* Botón resetear */}
-            {hasActiveFilters && (
-              <button
-                onClick={handleResetFilters}
-                className="px-3 py-1.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-              >
-                Resetear filtros
-              </button>
-            )}
           </div>
         </div>
       </header>
