@@ -37,6 +37,7 @@ function App() {
   const [photos, setPhotos] = useState([])
   const [filteredPhotos, setFilteredPhotos] = useState([])
   const [loading, setLoading] = useState(true)
+  const [logo, setLogo] = useState(null)
 
   // Filtros
   const [activeTab, setActiveTab] = useState(null) // null = todos, o un id de tab
@@ -44,6 +45,23 @@ function App() {
   const [selectedAcero, setSelectedAcero] = useState([])
   const [selectedExtras, setSelectedExtras] = useState([])
   const [searchQuery, setSearchQuery] = useState('')
+
+  // Cargar configuración (logo)
+  useEffect(() => {
+    async function loadConfig() {
+      try {
+        const API_BASE = import.meta.env.VITE_API_URL || './api/index.php'
+        const response = await fetch(`${API_BASE}?route=config`)
+        if (response.ok) {
+          const data = await response.json()
+          setLogo(data.logo || null)
+        }
+      } catch (error) {
+        console.error('Error al cargar configuración:', error)
+      }
+    }
+    loadConfig()
+  }, [])
 
   // Cargar datos iniciales
   useEffect(() => {
@@ -165,13 +183,18 @@ function App() {
           {/* Mobile: Layout vertical */}
           <div className="lg:hidden">
             {/* Título y subtítulo */}
-            <div className="mb-3">
-              <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-                PEU Cuchillos Artesanales
-              </h1>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Buscador interactivo de modelos y materiales
-              </p>
+            <div className="mb-3 flex items-center gap-3">
+              {logo && (
+                <img src={logo} alt="Logo" className="h-10 object-contain" />
+              )}
+              <div>
+                <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+                  PEU Cuchillos Artesanales
+                </h1>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Buscador interactivo de modelos y materiales
+                </p>
+              </div>
             </div>
 
             {/* Tabs de tipo */}
@@ -248,14 +271,19 @@ function App() {
 
           {/* Desktop: Layout horizontal en una línea */}
           <div className="hidden lg:flex items-center gap-4">
-            {/* Título y subtítulo */}
-            <div className="flex-shrink-0">
-              <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-                PEU Cuchillos Artesanales
-              </h1>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Buscador interactivo de modelos y materiales
-              </p>
+            {/* Logo y Título */}
+            <div className="flex items-center gap-3 flex-shrink-0">
+              {logo && (
+                <img src={logo} alt="Logo" className="h-12 object-contain" />
+              )}
+              <div>
+                <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+                  PEU Cuchillos Artesanales
+                </h1>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Buscador interactivo de modelos y materiales
+                </p>
+              </div>
             </div>
 
             {/* Tabs de tipo */}

@@ -150,6 +150,7 @@ export default function Admin() {
     { id: 'manage', label: 'Administrar fotos' },
     { id: 'upload', label: 'Subir fotos' },
     { id: 'tags', label: 'Tags' },
+    { id: 'config', label: 'Configuración' },
   ]
 
   return (
@@ -221,6 +222,13 @@ export default function Admin() {
               showConfirm={showConfirm}
             />
           )}
+          {activeTab === 'config' && (
+            <Configuration
+              authParams={getAuthParams()}
+              showSuccess={showSuccess}
+              showError={showError}
+            />
+          )}
         </div>
       </main>
 
@@ -270,6 +278,7 @@ function UploadPhotos({ tagGroups, authParams, onRefresh, showSuccess, showError
   const [savedFeedback, setSavedFeedback] = useState(false) // Para feedback visual verde
   const [arrowFeedback, setArrowFeedback] = useState(null) // 'prev' | 'next' | null
   const [bucketToDelete, setBucketToDelete] = useState(null) // ID del bucket esperando confirmación
+  const [deletedBucketFeedback, setDeletedBucketFeedback] = useState(null) // ID del bucket recién eliminado
 
   const currentPhoto = uploadedPhotos[currentIndex]
 
@@ -512,6 +521,10 @@ function UploadPhotos({ tagGroups, authParams, onRefresh, showSuccess, showError
       })
 
       if (response.ok) {
+        // Feedback visual
+        setDeletedBucketFeedback(bucketId)
+        setTimeout(() => setDeletedBucketFeedback(null), 1000)
+
         // Si el bucket eliminado es el activo, limpiar la vista
         if (activeBucketId === bucketId) {
           setActiveBucketId(null)
@@ -524,7 +537,6 @@ function UploadPhotos({ tagGroups, authParams, onRefresh, showSuccess, showError
         // Recargar buckets
         await loadBuckets()
         setBucketToDelete(null)
-        showSuccess('Éxito', 'Bucket eliminado')
       } else if (response.status === 401) {
         showError('Sesión expirada', 'Por favor, vuelve a iniciar sesión')
       } else {
@@ -546,14 +558,17 @@ function UploadPhotos({ tagGroups, authParams, onRefresh, showSuccess, showError
         const isActive = bucket && bucket.id === activeBucketId
         const isEmpty = !bucket
         const isAwaitingConfirmation = bucket && bucketToDelete === bucket.id
+        const wasDeleted = bucket && deletedBucketFeedback === bucket.id
 
         return (
           <div key={index} className="relative flex items-center gap-1">
             <button
               onClick={() => bucket && handleChangeBucket(bucket.id)}
               disabled={isEmpty}
-              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                isActive
+              className={`px-4 py-2 text-sm font-medium rounded-lg transition-all duration-300 ${
+                wasDeleted
+                  ? 'bg-red-500 text-white'
+                  : isActive
                   ? 'bg-blue-600 text-white'
                   : isEmpty
                   ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 cursor-not-allowed'
@@ -1575,6 +1590,306 @@ function TagsManager({ tagGroups, authParams, onRefresh, showSuccess, showError,
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+// ==================
+// Configuration - Configuración del sistema (backups, logo)
+// ==================
+function Configuration({ authParams, showSuccess, showError }) {
+  const [backups, setBackups] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [creating, setCreating] = useState(false)
+  const [backupToDelete, setBackupToDelete] = useState(null)
+  const [logo, setLogo] = useState(null)
+  const [uploadingLogo, setUploadingLogo] = useState(false)
+
+  useEffect(() => {
+    loadBackups()
+    loadConfig()
+  }, [])
+
+  const loadBackups = async () => {
+    setLoading(true)
+    try {
+      const params = new URLSearchParams(authParams)
+      const response = await fetch(apiUrl('admin/backups') + '&' + params.toString())
+      if (response.ok) {
+        const data = await response.json()
+        setBackups(data.backups || [])
+      } else if (response.status === 401) {
+        showError('Sesión expirada', 'Por favor, vuelve a iniciar sesión')
+      }
+    } catch (error) {
+      showError('Error', 'Error al cargar backups')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const loadConfig = async () => {
+    try {
+      const response = await fetch(apiUrl('config'))
+      if (response.ok) {
+        const data = await response.json()
+        setLogo(data.logo || null)
+      }
+    } catch (error) {
+      console.error('Error al cargar configuración:', error)
+    }
+  }
+
+  const handleCreateBackup = async () => {
+    if (backups.length >= 5) {
+      showError('Límite alcanzado', 'Debes eliminar un backup antes de crear uno nuevo')
+      return
+    }
+
+    setCreating(true)
+    try {
+      const params = new URLSearchParams(authParams)
+      const response = await fetch(apiUrl('admin/backups') + '&' + params.toString(), {
+        method: 'POST'
+      })
+
+      if (response.ok) {
+        showSuccess('Éxito', 'Backup creado correctamente')
+        await loadBackups()
+      } else if (response.status === 401) {
+        showError('Sesión expirada', 'Por favor, vuelve a iniciar sesión')
+      } else {
+        const error = await response.json()
+        showError('Error', error.error || 'Error al crear backup')
+      }
+    } catch (error) {
+      showError('Error', 'Error de conexión')
+    } finally {
+      setCreating(false)
+    }
+  }
+
+  const handleDownloadBackup = (filename) => {
+    const params = new URLSearchParams(authParams)
+    window.location.href = apiUrl(`admin/backups/${filename}`) + '&' + params.toString()
+  }
+
+  const handleDeleteBackup = async (filename) => {
+    try {
+      const params = new URLSearchParams(authParams)
+      const response = await fetch(apiUrl(`admin/backups/${filename}`) + '&' + params.toString(), {
+        method: 'DELETE'
+      })
+
+      if (response.ok) {
+        showSuccess('Éxito', 'Backup eliminado')
+        setBackupToDelete(null)
+        await loadBackups()
+      } else if (response.status === 401) {
+        showError('Sesión expirada', 'Por favor, vuelve a iniciar sesión')
+      } else {
+        showError('Error', 'Error al eliminar backup')
+      }
+    } catch (error) {
+      showError('Error', 'Error de conexión')
+    }
+  }
+
+  const handleUploadLogo = async (file) => {
+    if (!file) return
+
+    setUploadingLogo(true)
+    try {
+      const formData = new FormData()
+      formData.append('logo', file)
+      formData.append('auth_user', authParams.auth_user)
+      formData.append('auth_pass', authParams.auth_pass)
+
+      const response = await fetch(apiUrl('admin/config/logo'), {
+        method: 'POST',
+        body: formData
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setLogo(data.logo)
+        showSuccess('Éxito', 'Logo actualizado')
+        // Recargar la página para mostrar el nuevo logo
+        window.location.reload()
+      } else if (response.status === 401) {
+        showError('Sesión expirada', 'Por favor, vuelve a iniciar sesión')
+      } else {
+        const error = await response.json()
+        showError('Error', error.error || 'Error al subir logo')
+      }
+    } catch (error) {
+      showError('Error', 'Error de conexión')
+    } finally {
+      setUploadingLogo(false)
+    }
+  }
+
+  const handleDeleteLogo = async () => {
+    try {
+      const params = new URLSearchParams(authParams)
+      const response = await fetch(apiUrl('admin/config/logo') + '&' + params.toString(), {
+        method: 'DELETE'
+      })
+
+      if (response.ok) {
+        setLogo(null)
+        showSuccess('Éxito', 'Logo eliminado')
+        // Recargar la página para ocultar el logo
+        window.location.reload()
+      } else if (response.status === 401) {
+        showError('Sesión expirada', 'Por favor, vuelve a iniciar sesión')
+      } else {
+        showError('Error', 'Error al eliminar logo')
+      }
+    } catch (error) {
+      showError('Error', 'Error de conexión')
+    }
+  }
+
+  const formatFileSize = (bytes) => {
+    if (bytes < 1024) return bytes + ' B'
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB'
+    return (bytes / (1024 * 1024)).toFixed(2) + ' MB'
+  }
+
+  return (
+    <div className="h-full overflow-y-auto py-6 px-4">
+      <div className="max-w-4xl mx-auto space-y-8">
+        {/* Sección de Backups */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Backups</h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+            Los backups incluyen las carpetas /data y /uploads. Se conservan máximo 5 backups.
+          </p>
+
+          <div className="flex items-center gap-4 mb-6">
+            <button
+              onClick={handleCreateBackup}
+              disabled={creating || backups.length >= 5}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {creating ? 'Creando...' : 'Crear Backup'}
+            </button>
+            {backups.length >= 5 && (
+              <span className="text-sm text-amber-600 dark:text-amber-400">
+                Límite alcanzado. Elimina un backup para crear uno nuevo.
+              </span>
+            )}
+          </div>
+
+          {loading ? (
+            <p className="text-gray-500">Cargando backups...</p>
+          ) : backups.length === 0 ? (
+            <p className="text-gray-500 dark:text-gray-400">No hay backups disponibles</p>
+          ) : (
+            <div className="space-y-2">
+              {backups.map((backup) => (
+                <div
+                  key={backup.filename}
+                  className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
+                >
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">
+                      {backup.filename}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {backup.created_at} • {formatFileSize(backup.size)}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {backupToDelete === backup.filename ? (
+                      <>
+                        <span className="text-xs text-red-600 dark:text-red-400 mr-2">¿Eliminar?</span>
+                        <button
+                          onClick={() => handleDeleteBackup(backup.filename)}
+                          className="px-3 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
+                        >
+                          Sí
+                        </button>
+                        <button
+                          onClick={() => setBackupToDelete(null)}
+                          className="px-3 py-1 text-xs bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded hover:bg-gray-400 dark:hover:bg-gray-500"
+                        >
+                          No
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => handleDownloadBackup(backup.filename)}
+                          className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded"
+                          title="Descargar"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => setBackupToDelete(backup.filename)}
+                          className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+                          title="Eliminar"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Sección de Logo */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Logo del Sitio</h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+            Sube un logo que se mostrará en el header del sitio. Formatos: JPG, PNG, SVG, WEBP (máx 2MB).
+          </p>
+
+          {logo ? (
+            <div className="space-y-4">
+              <div className="flex items-center gap-4">
+                <img src={logo} alt="Logo" className="h-12 object-contain" />
+                <button
+                  onClick={handleDeleteLogo}
+                  className="px-4 py-2 bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-900"
+                >
+                  Eliminar logo
+                </button>
+              </div>
+              <label className="inline-block px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer">
+                Cambiar logo
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => handleUploadLogo(e.target.files[0])}
+                  disabled={uploadingLogo}
+                />
+              </label>
+            </div>
+          ) : (
+            <label className="inline-block px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer">
+              {uploadingLogo ? 'Subiendo...' : 'Subir logo'}
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => handleUploadLogo(e.target.files[0])}
+                disabled={uploadingLogo}
+              />
+            </label>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

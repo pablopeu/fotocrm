@@ -17,6 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 // Configuración
 define('DATA_DIR', __DIR__ . '/../data');
 define('UPLOADS_DIR', __DIR__ . '/../uploads');
+define('BACKUPS_DIR', __DIR__ . '/../backups');
 define('CONFIG_FILE', DATA_DIR . '/config.json');
 
 // Cargar configuración de usuario/contraseña
@@ -602,6 +603,198 @@ switch (true) {
         $data['photos'] = array_values($data['photos']);
         writeJSON('photos.json', $data);
         response(['message' => 'Foto eliminada']);
+        break;
+
+    // GET /config - Obtener configuración pública (logo, etc)
+    case $path === 'config' && $method === 'GET':
+        $config = getConfig();
+        $publicConfig = [];
+        if (isset($config['logo'])) {
+            $publicConfig['logo'] = $config['logo'];
+        }
+        response($publicConfig);
+        break;
+
+    // GET /admin/backups - Listar backups disponibles
+    case $path === 'admin/backups' && $method === 'GET':
+        checkAuth();
+
+        if (!is_dir(BACKUPS_DIR)) {
+            mkdir(BACKUPS_DIR, 0755, true);
+        }
+
+        $files = array_diff(scandir(BACKUPS_DIR), ['.', '..']);
+        $backups = [];
+        foreach ($files as $file) {
+            if (pathinfo($file, PATHINFO_EXTENSION) === 'gz') {
+                $fullPath = BACKUPS_DIR . '/' . $file;
+                $backups[] = [
+                    'filename' => $file,
+                    'size' => filesize($fullPath),
+                    'created_at' => date('Y-m-d H:i:s', filemtime($fullPath))
+                ];
+            }
+        }
+
+        // Ordenar por fecha de creación descendente
+        usort($backups, fn($a, $b) => strtotime($b['created_at']) - strtotime($a['created_at']));
+
+        response(['backups' => $backups]);
+        break;
+
+    // POST /admin/backups - Crear nuevo backup
+    case $path === 'admin/backups' && $method === 'POST':
+        checkAuth();
+
+        if (!is_dir(BACKUPS_DIR)) {
+            mkdir(BACKUPS_DIR, 0755, true);
+        }
+
+        // Verificar límite de 5 backups
+        $files = array_diff(scandir(BACKUPS_DIR), ['.', '..']);
+        $existingBackups = array_filter($files, fn($f) => pathinfo($f, PATHINFO_EXTENSION) === 'gz');
+        if (count($existingBackups) >= 5) {
+            response(['error' => 'Límite de 5 backups alcanzado. Elimina uno antes de crear otro.'], 400);
+        }
+
+        $timestamp = date('Y-m-d_His');
+        $filename = "backup_{$timestamp}.tar.gz";
+        $backupPath = BACKUPS_DIR . '/' . $filename;
+
+        // Crear tar.gz de /data y /uploads
+        $dataDir = DATA_DIR;
+        $uploadsDir = UPLOADS_DIR;
+        $parentDir = dirname(__DIR__);
+
+        // Comando tar para crear backup
+        $command = "cd " . escapeshellarg($parentDir) . " && tar -czf " . escapeshellarg($backupPath) . " data uploads 2>&1";
+        exec($command, $output, $returnCode);
+
+        if ($returnCode !== 0) {
+            response(['error' => 'Error al crear backup', 'details' => implode("\n", $output)], 500);
+        }
+
+        if (!file_exists($backupPath)) {
+            response(['error' => 'Backup no se creó correctamente'], 500);
+        }
+
+        response([
+            'message' => 'Backup creado',
+            'backup' => [
+                'filename' => $filename,
+                'size' => filesize($backupPath),
+                'created_at' => date('Y-m-d H:i:s', filemtime($backupPath))
+            ]
+        ], 201);
+        break;
+
+    // GET /admin/backups/{filename} - Descargar backup
+    case preg_match('/^admin\/backups\/([a-zA-Z0-9_\-\.]+)$/', $path, $matches) && $method === 'GET':
+        checkAuth();
+
+        $filename = $matches[1];
+        // Validar que sea un archivo .tar.gz
+        if (!preg_match('/^backup_[\d_-]+\.tar\.gz$/', $filename)) {
+            response(['error' => 'Nombre de archivo inválido'], 400);
+        }
+
+        $filePath = BACKUPS_DIR . '/' . $filename;
+        if (!file_exists($filePath)) {
+            response(['error' => 'Backup no encontrado'], 404);
+        }
+
+        // Enviar archivo para descarga
+        header('Content-Type: application/gzip');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Content-Length: ' . filesize($filePath));
+        readfile($filePath);
+        exit;
+
+    // DELETE /admin/backups/{filename} - Eliminar backup
+    case preg_match('/^admin\/backups\/([a-zA-Z0-9_\-\.]+)$/', $path, $matches) && $method === 'DELETE':
+        checkAuth();
+
+        $filename = $matches[1];
+        // Validar que sea un archivo .tar.gz
+        if (!preg_match('/^backup_[\d_-]+\.tar\.gz$/', $filename)) {
+            response(['error' => 'Nombre de archivo inválido'], 400);
+        }
+
+        $filePath = BACKUPS_DIR . '/' . $filename;
+        if (!file_exists($filePath)) {
+            response(['error' => 'Backup no encontrado'], 404);
+        }
+
+        if (!unlink($filePath)) {
+            response(['error' => 'Error al eliminar backup'], 500);
+        }
+
+        response(['message' => 'Backup eliminado']);
+        break;
+
+    // POST /admin/config/logo - Subir logo del sitio
+    case $path === 'admin/config/logo' && $method === 'POST':
+        checkAuth();
+
+        if (empty($_FILES['logo'])) {
+            response(['error' => 'No se subió archivo'], 400);
+        }
+
+        $file = $_FILES['logo'];
+        $allowedTypes = ['image/jpeg', 'image/png', 'image/svg+xml', 'image/webp'];
+
+        if (!in_array($file['type'], $allowedTypes)) {
+            response(['error' => 'Tipo de archivo no permitido'], 400);
+        }
+
+        if ($file['size'] > 2 * 1024 * 1024) { // 2MB max
+            response(['error' => 'Archivo muy grande (max 2MB)'], 400);
+        }
+
+        $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
+        $filename = 'logo.' . strtolower($ext);
+        $destination = UPLOADS_DIR . '/' . $filename;
+
+        // Eliminar logo anterior si existe
+        $config = getConfig();
+        if (isset($config['logo'])) {
+            $oldLogoPath = UPLOADS_DIR . '/' . basename($config['logo']);
+            if (file_exists($oldLogoPath)) {
+                unlink($oldLogoPath);
+            }
+        }
+
+        if (!move_uploaded_file($file['tmp_name'], $destination)) {
+            response(['error' => 'Error al guardar archivo'], 500);
+        }
+
+        // Actualizar config
+        $config['logo'] = 'uploads/' . $filename;
+        if (!file_put_contents(CONFIG_FILE, json_encode($config, JSON_PRETTY_PRINT))) {
+            response(['error' => 'Error al guardar configuración'], 500);
+        }
+
+        response(['message' => 'Logo actualizado', 'logo' => $config['logo']], 201);
+        break;
+
+    // DELETE /admin/config/logo - Eliminar logo del sitio
+    case $path === 'admin/config/logo' && $method === 'DELETE':
+        checkAuth();
+
+        $config = getConfig();
+        if (!isset($config['logo'])) {
+            response(['error' => 'No hay logo configurado'], 404);
+        }
+
+        $logoPath = UPLOADS_DIR . '/' . basename($config['logo']);
+        if (file_exists($logoPath)) {
+            unlink($logoPath);
+        }
+
+        unset($config['logo']);
+        file_put_contents(CONFIG_FILE, json_encode($config, JSON_PRETTY_PRINT));
+
+        response(['message' => 'Logo eliminado']);
         break;
 
     default:
