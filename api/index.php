@@ -283,6 +283,24 @@ switch (true) {
         response(readJSON('buckets.json'));
         break;
 
+    // DELETE /admin/buckets/{id} - Eliminar un bucket (no las fotos, solo el bucket)
+    case preg_match('/^admin\/buckets\/([a-zA-Z0-9-]+)$/', $path, $matches) && $method === 'DELETE':
+        checkAuth();
+
+        $bucketId = $matches[1];
+        $data = readJSON('buckets.json');
+
+        $originalCount = count($data['buckets']);
+        $data['buckets'] = array_values(array_filter($data['buckets'], fn($b) => $b['id'] !== $bucketId));
+
+        if (count($data['buckets']) === $originalCount) {
+            response(['error' => 'Bucket no encontrado'], 404);
+        }
+
+        writeJSON('buckets.json', $data);
+        response(['message' => 'Bucket eliminado']);
+        break;
+
     // GET /photos/{id}
     case preg_match('/^photos\/([a-zA-Z0-9-]+)$/', $path, $matches) && $method === 'GET':
         $data = readJSON('photos.json');

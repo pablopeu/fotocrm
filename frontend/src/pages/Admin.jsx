@@ -269,6 +269,7 @@ function UploadPhotos({ tagGroups, authParams, onRefresh, showSuccess, showError
   const [saving, setSaving] = useState(false)
   const [savedFeedback, setSavedFeedback] = useState(false) // Para feedback visual verde
   const [arrowFeedback, setArrowFeedback] = useState(null) // 'prev' | 'next' | null
+  const [bucketToDelete, setBucketToDelete] = useState(null) // ID del bucket esperando confirmación
 
   const currentPhoto = uploadedPhotos[currentIndex]
 
@@ -503,6 +504,37 @@ function UploadPhotos({ tagGroups, authParams, onRefresh, showSuccess, showError
     }
   }
 
+  const handleDeleteBucket = async (bucketId) => {
+    try {
+      const params = new URLSearchParams(authParams)
+      const response = await fetch(apiUrl(`admin/buckets/${bucketId}`) + '&' + params.toString(), {
+        method: 'DELETE'
+      })
+
+      if (response.ok) {
+        // Si el bucket eliminado es el activo, limpiar la vista
+        if (activeBucketId === bucketId) {
+          setActiveBucketId(null)
+          setUploadedPhotos([])
+          setCurrentIndex(0)
+          setPhotoTags({})
+          setPhotoTexts({})
+        }
+
+        // Recargar buckets
+        await loadBuckets()
+        setBucketToDelete(null)
+        showSuccess('Éxito', 'Bucket eliminado')
+      } else if (response.status === 401) {
+        showError('Sesión expirada', 'Por favor, vuelve a iniciar sesión')
+      } else {
+        showError('Error', 'Error al eliminar bucket')
+      }
+    } catch (error) {
+      showError('Error', 'Error de conexión')
+    }
+  }
+
   const currentTags = currentPhoto ? (photoTags[currentPhoto.id] || []) : []
   const currentText = currentPhoto ? (photoTexts[currentPhoto.id] || '') : ''
 
@@ -513,23 +545,57 @@ function UploadPhotos({ tagGroups, authParams, onRefresh, showSuccess, showError
         const bucket = buckets[index]
         const isActive = bucket && bucket.id === activeBucketId
         const isEmpty = !bucket
+        const isAwaitingConfirmation = bucket && bucketToDelete === bucket.id
 
         return (
-          <button
-            key={index}
-            onClick={() => bucket && handleChangeBucket(bucket.id)}
-            disabled={isEmpty}
-            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-              isActive
-                ? 'bg-blue-600 text-white'
-                : isEmpty
-                ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 cursor-not-allowed'
-                : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-            }`}
-          >
-            Bucket {index + 1}
-            {bucket && ` (${bucket.photos.length})`}
-          </button>
+          <div key={index} className="relative flex items-center gap-1">
+            <button
+              onClick={() => bucket && handleChangeBucket(bucket.id)}
+              disabled={isEmpty}
+              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                isActive
+                  ? 'bg-blue-600 text-white'
+                  : isEmpty
+                  ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 cursor-not-allowed'
+                  : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+              }`}
+            >
+              Bucket {index + 1}
+              {bucket && ` (${bucket.photos.length})`}
+            </button>
+            {bucket && (
+              isAwaitingConfirmation ? (
+                <div className="flex items-center gap-1 bg-red-100 dark:bg-red-900/50 px-2 py-1 rounded-lg">
+                  <span className="text-xs text-red-600 dark:text-red-400">¿Eliminar?</span>
+                  <button
+                    onClick={() => handleDeleteBucket(bucket.id)}
+                    className="text-xs px-2 py-0.5 bg-red-600 text-white rounded hover:bg-red-700"
+                  >
+                    Sí
+                  </button>
+                  <button
+                    onClick={() => setBucketToDelete(null)}
+                    className="text-xs px-2 py-0.5 bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded hover:bg-gray-400 dark:hover:bg-gray-500"
+                  >
+                    No
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setBucketToDelete(bucket.id)
+                  }}
+                  className="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                  title="Eliminar bucket"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
+              )
+            )}
+          </div>
         )
       })}
     </div>
@@ -1012,8 +1078,17 @@ function ManagePhotos({ photos, tagGroups, authParams, onRefresh, showSuccess, s
   const [saving, setSaving] = useState(false)
   const [savedFeedback, setSavedFeedback] = useState(false)
   const [arrowFeedback, setArrowFeedback] = useState(null)
+  const [showOnlyUntagged, setShowOnlyUntagged] = useState(false)
 
-  const currentPhoto = photos[currentIndex]
+  // Filtrar fotos sin tags si está activo el filtro
+  const filteredPhotos = showOnlyUntagged
+    ? photos.filter(p => {
+        const tags = photoTags[p.id] || p.tags || []
+        return tags.length === 0
+      })
+    : photos
+
+  const currentPhoto = filteredPhotos[currentIndex]
 
   // Inicializar datos cuando cambian las fotos (sin sobrescribir los locales)
   useEffect(() => {
@@ -1148,7 +1223,7 @@ function ManagePhotos({ photos, tagGroups, authParams, onRefresh, showSuccess, s
     setArrowFeedback('prev')
     setTimeout(() => setArrowFeedback(null), 500)
     // Continuo: si está en la primera, va a la última
-    setCurrentIndex(currentIndex === 0 ? photos.length - 1 : currentIndex - 1)
+    setCurrentIndex(currentIndex === 0 ? filteredPhotos.length - 1 : currentIndex - 1)
   }
 
   const goToNext = async () => {
@@ -1156,7 +1231,7 @@ function ManagePhotos({ photos, tagGroups, authParams, onRefresh, showSuccess, s
     setArrowFeedback('next')
     setTimeout(() => setArrowFeedback(null), 500)
     // Continuo: si está en la última, va a la primera
-    setCurrentIndex(currentIndex === photos.length - 1 ? 0 : currentIndex + 1)
+    setCurrentIndex(currentIndex === filteredPhotos.length - 1 ? 0 : currentIndex + 1)
   }
 
   const currentTags = currentPhoto ? (photoTags[currentPhoto.id] || []) : []
@@ -1176,11 +1251,30 @@ function ManagePhotos({ photos, tagGroups, authParams, onRefresh, showSuccess, s
     )
   }
 
+  if (filteredPhotos.length === 0) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <div className="text-center text-gray-500">
+          <svg className="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+          <p>No hay fotos sin etiquetar</p>
+          <button
+            onClick={() => setShowOnlyUntagged(false)}
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Mostrar todas las fotos
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="h-full flex flex-col py-2 gap-3">
       {/* Carrusel de fotos */}
       <PhotoCarousel
-        photos={photos}
+        photos={filteredPhotos}
         currentIndex={currentIndex}
         onSelectPhoto={async (newIndex) => {
           await handleSaveCurrentPhoto(false)
@@ -1225,14 +1319,29 @@ function ManagePhotos({ photos, tagGroups, authParams, onRefresh, showSuccess, s
         <div className="flex-1 flex flex-col gap-2">
           <div className="flex items-center justify-between">
             <span className="text-sm text-gray-500 dark:text-gray-400">
-              Foto {currentIndex + 1} de {photos.length}
+              Foto {currentIndex + 1} de {filteredPhotos.length}
             </span>
-            <button
-              onClick={handleDeletePhoto}
-              className="px-3 py-1 text-sm bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-900"
-            >
-              Eliminar foto
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setShowOnlyUntagged(!showOnlyUntagged)
+                  setCurrentIndex(0)
+                }}
+                className={`px-3 py-1 text-sm rounded-lg transition-colors ${
+                  showOnlyUntagged
+                    ? 'bg-blue-600 text-white hover:bg-blue-700'
+                    : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600'
+                }`}
+              >
+                {showOnlyUntagged ? 'Mostrar todas' : 'Fotos sin tag'}
+              </button>
+              <button
+                onClick={handleDeletePhoto}
+                className="px-3 py-1 text-sm bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-900"
+              >
+                Eliminar foto
+              </button>
+            </div>
           </div>
           <textarea
             value={currentText}
