@@ -47,6 +47,7 @@ if (!is_dir(UPLOADS_DIR)) mkdir(UPLOADS_DIR, 0755, true);
 function initializeData() {
     $categoriesFile = DATA_DIR . '/categories.json';
     $photosFile = DATA_DIR . '/photos.json';
+    $bucketsFile = DATA_DIR . '/buckets.json';
 
     // Inicializar categories.json si no existe
     if (!file_exists($categoriesFile)) {
@@ -82,6 +83,12 @@ function initializeData() {
         $defaultPhotos = ['photos' => []];
         file_put_contents($photosFile, json_encode($defaultPhotos, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
     }
+
+    // Inicializar buckets.json si no existe
+    if (!file_exists($bucketsFile)) {
+        $defaultBuckets = ['buckets' => []];
+        file_put_contents($bucketsFile, json_encode($defaultBuckets, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+    }
 }
 
 // Ejecutar inicialización
@@ -91,21 +98,25 @@ initializeData();
 function readJSON($filename) {
     $filepath = DATA_DIR . '/' . $filename;
 
+    // Determinar estructura por defecto
+    $defaultStructure = ['photos' => []];
+    if ($filename === 'categories.json') {
+        $defaultStructure = ['tag_groups' => []];
+    } elseif ($filename === 'buckets.json') {
+        $defaultStructure = ['buckets' => []];
+    }
+
     // Verificar si el archivo existe
     if (!file_exists($filepath)) {
         error_log("readJSON: File not found - $filepath");
-        return $filename === 'categories.json'
-            ? ['tag_groups' => []]
-            : ['photos' => []];
+        return $defaultStructure;
     }
 
     // Leer el contenido del archivo
     $content = file_get_contents($filepath);
     if ($content === false) {
         error_log("readJSON: Failed to read file - $filepath");
-        return $filename === 'categories.json'
-            ? ['tag_groups' => []]
-            : ['photos' => []];
+        return $defaultStructure;
     }
 
     // Decodificar JSON
@@ -114,17 +125,13 @@ function readJSON($filename) {
     // Si hay error en el JSON, devolver estructura por defecto
     if (json_last_error() !== JSON_ERROR_NONE) {
         error_log("readJSON: JSON decode error - " . json_last_error_msg() . " in $filepath");
-        return $filename === 'categories.json'
-            ? ['tag_groups' => []]
-            : ['photos' => []];
+        return $defaultStructure;
     }
 
     // Si $data es null pero no hubo error, devolver estructura por defecto
     if ($data === null) {
         error_log("readJSON: Data is null (valid JSON null) in $filepath");
-        return $filename === 'categories.json'
-            ? ['tag_groups' => []]
-            : ['photos' => []];
+        return $defaultStructure;
     }
 
     return $data;
@@ -269,6 +276,11 @@ switch (true) {
     // GET /photos - Listar fotos
     case $path === 'photos' && $method === 'GET':
         response(readJSON('photos.json'));
+        break;
+
+    // GET /buckets - Obtener buckets de upload
+    case $path === 'buckets' && $method === 'GET':
+        response(readJSON('buckets.json'));
         break;
 
     // GET /photos/{id}
@@ -492,8 +504,32 @@ switch (true) {
             $data['photos'][] = $newPhoto;
         }
 
+        // Guardar fotos en archivo general
         writeJSON('photos.json', $data);
-        response(['photos' => $newPhotos], 201);
+
+        // Crear nuevo bucket con estas fotos
+        if (!empty($newPhotos)) {
+            $bucketsData = readJSON('buckets.json');
+            $newBucket = [
+                'id' => generateUUID(),
+                'created_at' => date('c'),
+                'photos' => $newPhotos
+            ];
+
+            // Agregar al inicio del array (más reciente primero)
+            array_unshift($bucketsData['buckets'], $newBucket);
+
+            // Mantener solo los últimos 5 buckets (FIFO)
+            if (count($bucketsData['buckets']) > 5) {
+                $bucketsData['buckets'] = array_slice($bucketsData['buckets'], 0, 5);
+            }
+
+            writeJSON('buckets.json', $bucketsData);
+
+            response(['photos' => $newPhotos, 'bucket_id' => $newBucket['id']], 201);
+        } else {
+            response(['photos' => $newPhotos], 201);
+        }
         break;
 
     // PUT /admin/photos/{id} - Actualizar foto (tags y texto)

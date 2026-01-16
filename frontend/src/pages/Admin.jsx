@@ -258,6 +258,8 @@ export default function Admin() {
 // Upload Photos - Nueva sección de subida
 // ==================
 function UploadPhotos({ tagGroups, authParams, onRefresh, showSuccess, showError, setPendingSave }) {
+  const [buckets, setBuckets] = useState([])
+  const [activeBucketId, setActiveBucketId] = useState(null)
   const [uploadedPhotos, setUploadedPhotos] = useState([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [dragOver, setDragOver] = useState(false)
@@ -269,6 +271,21 @@ function UploadPhotos({ tagGroups, authParams, onRefresh, showSuccess, showError
   const [arrowFeedback, setArrowFeedback] = useState(null) // 'prev' | 'next' | null
 
   const currentPhoto = uploadedPhotos[currentIndex]
+
+  // Cargar buckets al montar
+  useEffect(() => {
+    loadBuckets()
+  }, [])
+
+  const loadBuckets = async () => {
+    try {
+      const response = await fetch(apiUrl('buckets'))
+      const data = await response.json()
+      setBuckets(data.buckets || [])
+    } catch (error) {
+      console.error('Error cargando buckets:', error)
+    }
+  }
 
   // Registrar función de guardado para cuando se cambie de tab
   useEffect(() => {
@@ -300,7 +317,20 @@ function UploadPhotos({ tagGroups, authParams, onRefresh, showSuccess, showError
       if (response.ok) {
         const data = await response.json()
         const newPhotos = data.photos || []
-        setUploadedPhotos(prev => [...prev, ...newPhotos])
+        const newBucketId = data.bucket_id
+
+        // Recargar buckets
+        await loadBuckets()
+
+        // Activar el nuevo bucket
+        if (newBucketId) {
+          setActiveBucketId(newBucketId)
+        }
+
+        // Cargar fotos del nuevo bucket
+        setUploadedPhotos(newPhotos)
+        setCurrentIndex(0)
+
         // Inicializar tags y textos vacíos para las nuevas fotos
         const newTags = {}
         const newTexts = {}
@@ -308,9 +338,11 @@ function UploadPhotos({ tagGroups, authParams, onRefresh, showSuccess, showError
           newTags[p.id] = []
           newTexts[p.id] = ''
         })
-        setPhotoTags(prev => ({ ...prev, ...newTags }))
-        setPhotoTexts(prev => ({ ...prev, ...newTexts }))
+        setPhotoTags(newTags)
+        setPhotoTexts(newTexts)
+
         showSuccess('Éxito', `${newPhotos.length} foto(s) subida(s)`)
+        onRefresh()
       } else if (response.status === 401) {
         showError('Sesión expirada', 'Por favor, vuelve a iniciar sesión')
       } else {
@@ -420,6 +452,31 @@ function UploadPhotos({ tagGroups, authParams, onRefresh, showSuccess, showError
     setCurrentIndex(currentIndex === uploadedPhotos.length - 1 ? 0 : currentIndex + 1)
   }
 
+  const handleChangeBucket = async (bucketId) => {
+    // Guardar bucket actual si hay fotos
+    if (uploadedPhotos.length > 0 && currentPhoto) {
+      await handleSaveCurrentPhoto(false)
+    }
+
+    // Cambiar al nuevo bucket
+    const bucket = buckets.find(b => b.id === bucketId)
+    if (bucket) {
+      setActiveBucketId(bucketId)
+      setUploadedPhotos(bucket.photos || [])
+      setCurrentIndex(0)
+
+      // Inicializar tags y textos desde las fotos del bucket
+      const newTags = {}
+      const newTexts = {}
+      bucket.photos.forEach(p => {
+        newTags[p.id] = p.tags || []
+        newTexts[p.id] = p.text || ''
+      })
+      setPhotoTags(newTags)
+      setPhotoTexts(newTexts)
+    }
+  }
+
   const currentTags = currentPhoto ? (photoTags[currentPhoto.id] || []) : []
   const currentText = currentPhoto ? (photoTexts[currentPhoto.id] || '') : ''
 
@@ -467,6 +524,33 @@ function UploadPhotos({ tagGroups, authParams, onRefresh, showSuccess, showError
   // Vista de edición de fotos
   return (
     <div className="h-full flex flex-col py-2 gap-3">
+      {/* Sub-header: Botones de Buckets */}
+      <div className="flex gap-2 items-center flex-shrink-0 px-2">
+        {[0, 1, 2, 3, 4].map(index => {
+          const bucket = buckets[index]
+          const isActive = bucket && bucket.id === activeBucketId
+          const isEmpty = !bucket
+
+          return (
+            <button
+              key={index}
+              onClick={() => bucket && handleChangeBucket(bucket.id)}
+              disabled={isEmpty}
+              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                isActive
+                  ? 'bg-blue-600 text-white'
+                  : isEmpty
+                  ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 cursor-not-allowed'
+                  : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+              }`}
+            >
+              Bucket {index + 1}
+              {bucket && ` (${bucket.photos.length})`}
+            </button>
+          )
+        })}
+      </div>
+
       {/* Carrusel de fotos */}
       <PhotoCarousel
         photos={uploadedPhotos}
