@@ -107,16 +107,35 @@ function App() {
       })
     }
 
-    // Filtrar por búsqueda de texto
+    // Filtrar por búsqueda de texto y tags
     if (searchQuery) {
-      const query = searchQuery.toLowerCase()
-      result = result.filter(p =>
-        p.text?.toLowerCase().includes(query)
-      )
+      const query = searchQuery.toLowerCase().trim()
+
+      result = result.filter(photo => {
+        // Buscar en el texto de descripción
+        if (photo.text?.toLowerCase().includes(query)) {
+          return true
+        }
+
+        // Buscar en los tags de la foto
+        const photoTags = photo.tags || []
+        for (const group of tagGroups) {
+          for (const tag of group.tags) {
+            if (photoTags.includes(tag.id)) {
+              // Matchear si el nombre del tag contiene la búsqueda
+              if (tag.name.toLowerCase().includes(query)) {
+                return true
+              }
+            }
+          }
+        }
+
+        return false
+      })
     }
 
     setFilteredPhotos(result)
-  }, [photos, activeTab, selectedEncabado, selectedAcero, selectedExtras, searchQuery])
+  }, [photos, activeTab, selectedEncabado, selectedAcero, selectedExtras, searchQuery, tagGroups])
 
   // Handlers
   const handleResetFilters = useCallback(() => {
