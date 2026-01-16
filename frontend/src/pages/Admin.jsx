@@ -227,6 +227,7 @@ export default function Admin() {
               authParams={getAuthParams()}
               showSuccess={showSuccess}
               showError={showError}
+              onLogoChange={loadData}
             />
           )}
         </div>
@@ -1597,7 +1598,7 @@ function TagsManager({ tagGroups, authParams, onRefresh, showSuccess, showError,
 // ==================
 // Configuration - Configuración del sistema (backups, logo)
 // ==================
-function Configuration({ authParams, showSuccess, showError }) {
+function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
   const [backups, setBackups] = useState([])
   const [loading, setLoading] = useState(false)
   const [creating, setCreating] = useState(false)
@@ -1660,10 +1661,15 @@ function Configuration({ authParams, showSuccess, showError }) {
         showError('Sesión expirada', 'Por favor, vuelve a iniciar sesión')
       } else {
         const error = await response.json()
-        showError('Error', error.error || 'Error al crear backup')
+        const errorMsg = error.details
+          ? `${error.error}\n\nDetalles: ${error.details}\n\nComando: ${error.command || 'N/A'}`
+          : error.error || 'Error al crear backup'
+        showError('Error al crear backup', errorMsg)
+        console.error('Error completo:', error)
       }
     } catch (error) {
-      showError('Error', 'Error de conexión')
+      showError('Error', 'Error de conexión: ' + error.message)
+      console.error('Error de conexión:', error)
     } finally {
       setCreating(false)
     }
@@ -1714,8 +1720,8 @@ function Configuration({ authParams, showSuccess, showError }) {
         const data = await response.json()
         setLogo(data.logo)
         showSuccess('Éxito', 'Logo actualizado')
-        // Recargar la página para mostrar el nuevo logo
-        window.location.reload()
+        // Notificar al componente padre para que actualice el logo en el header público
+        if (onLogoChange) onLogoChange()
       } else if (response.status === 401) {
         showError('Sesión expirada', 'Por favor, vuelve a iniciar sesión')
       } else {
@@ -1739,8 +1745,8 @@ function Configuration({ authParams, showSuccess, showError }) {
       if (response.ok) {
         setLogo(null)
         showSuccess('Éxito', 'Logo eliminado')
-        // Recargar la página para ocultar el logo
-        window.location.reload()
+        // Notificar al componente padre para que actualice el logo en el header público
+        if (onLogoChange) onLogoChange()
       } else if (response.status === 401) {
         showError('Sesión expirada', 'Por favor, vuelve a iniciar sesión')
       } else {

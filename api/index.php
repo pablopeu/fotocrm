@@ -661,21 +661,41 @@ switch (true) {
         $filename = "backup_{$timestamp}.tar.gz";
         $backupPath = BACKUPS_DIR . '/' . $filename;
 
+        // Verificar que las carpetas existan
+        if (!is_dir(DATA_DIR)) {
+            response(['error' => 'Carpeta /data no existe'], 500);
+        }
+        if (!is_dir(UPLOADS_DIR)) {
+            response(['error' => 'Carpeta /uploads no existe'], 500);
+        }
+
         // Crear tar.gz de /data y /uploads
-        $dataDir = DATA_DIR;
-        $uploadsDir = UPLOADS_DIR;
         $parentDir = dirname(__DIR__);
 
-        // Comando tar para crear backup
-        $command = "cd " . escapeshellarg($parentDir) . " && tar -czf " . escapeshellarg($backupPath) . " data uploads 2>&1";
+        // Comando tar para crear backup con ruta absoluta
+        $command = sprintf(
+            "cd %s && tar -czf %s data uploads 2>&1",
+            escapeshellarg($parentDir),
+            escapeshellarg($backupPath)
+        );
+
         exec($command, $output, $returnCode);
 
         if ($returnCode !== 0) {
-            response(['error' => 'Error al crear backup', 'details' => implode("\n", $output)], 500);
+            response([
+                'error' => 'Error al crear backup',
+                'details' => implode("\n", $output),
+                'command' => $command,
+                'return_code' => $returnCode
+            ], 500);
         }
 
         if (!file_exists($backupPath)) {
-            response(['error' => 'Backup no se creó correctamente'], 500);
+            response([
+                'error' => 'Backup no se creó correctamente',
+                'command' => $command,
+                'output' => implode("\n", $output)
+            ], 500);
         }
 
         response([
