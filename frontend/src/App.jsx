@@ -12,6 +12,15 @@ const capitalize = (str) => {
   return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase()
 }
 
+// Helper para normalizar texto (remover acentos)
+const normalizeText = (str) => {
+  if (!str) return ''
+  return str
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+}
+
 // Tabs de tipos principales
 const TIPO_TABS = [
   { id: 'cocina', label: 'Cocina' },
@@ -107,13 +116,13 @@ function App() {
       })
     }
 
-    // Filtrar por búsqueda de texto y tags
+    // Filtrar por búsqueda de texto y tags (ignorando acentos)
     if (searchQuery) {
-      const query = searchQuery.toLowerCase().trim()
+      const normalizedQuery = normalizeText(searchQuery.trim())
 
       result = result.filter(photo => {
         // Buscar en el texto de descripción
-        if (photo.text?.toLowerCase().includes(query)) {
+        if (normalizeText(photo.text || '').includes(normalizedQuery)) {
           return true
         }
 
@@ -122,8 +131,8 @@ function App() {
         for (const group of tagGroups) {
           for (const tag of group.tags) {
             if (photoTags.includes(tag.id)) {
-              // Matchear si el nombre del tag contiene la búsqueda
-              if (tag.name.toLowerCase().includes(query)) {
+              // Matchear si el nombre del tag contiene la búsqueda (sin acentos)
+              if (normalizeText(tag.name).includes(normalizedQuery)) {
                 return true
               }
             }
