@@ -480,42 +480,77 @@ function UploadPhotos({ tagGroups, authParams, onRefresh, showSuccess, showError
   const currentTags = currentPhoto ? (photoTags[currentPhoto.id] || []) : []
   const currentText = currentPhoto ? (photoTexts[currentPhoto.id] || '') : ''
 
+  // Renderizar botones de buckets (siempre visibles)
+  const renderBucketsButtons = () => (
+    <div className="flex gap-2 items-center flex-shrink-0 px-2">
+      {[0, 1, 2, 3, 4].map(index => {
+        const bucket = buckets[index]
+        const isActive = bucket && bucket.id === activeBucketId
+        const isEmpty = !bucket
+
+        return (
+          <button
+            key={index}
+            onClick={() => bucket && handleChangeBucket(bucket.id)}
+            disabled={isEmpty}
+            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+              isActive
+                ? 'bg-blue-600 text-white'
+                : isEmpty
+                ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 cursor-not-allowed'
+                : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+            }`}
+          >
+            Bucket {index + 1}
+            {bucket && ` (${bucket.photos.length})`}
+          </button>
+        )
+      })}
+    </div>
+  )
+
   // Si no hay fotos subidas, mostrar área de drop
   if (uploadedPhotos.length === 0) {
     return (
-      <div className="h-full flex items-center justify-center p-4">
-        <div
-          onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={handleDrop}
-          className={`w-full max-w-2xl border-2 border-dashed rounded-xl p-12 text-center transition-colors ${
-            dragOver ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-300 dark:border-gray-600'
-          }`}
-        >
-          {uploading ? (
-            <div className="flex flex-col items-center gap-3">
-              <div className="w-10 h-10 border-3 border-blue-500 border-t-transparent rounded-full animate-spin" />
-              <span className="text-gray-600 dark:text-gray-300">Subiendo fotos...</span>
-            </div>
-          ) : (
-            <>
-              <svg className="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-              <p className="text-lg text-gray-600 dark:text-gray-300 mb-3">Arrastra las fotos aquí</p>
-              <p className="text-sm text-gray-400 mb-4">o</p>
-              <label className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg cursor-pointer hover:bg-blue-700 transition-colors">
-                Seleccionar archivos
-                <input
-                  type="file"
-                  multiple
-                  accept="image/jpeg,image/png,image/webp"
-                  className="hidden"
-                  onChange={(e) => handleUpload(e.target.files)}
-                />
-              </label>
-            </>
-          )}
+      <div className="h-full flex flex-col py-2 gap-3">
+        {/* Sub-header: Botones de Buckets */}
+        {renderBucketsButtons()}
+
+        {/* Área de drop */}
+        <div className="flex-1 flex items-center justify-center p-4">
+          <div
+            onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={handleDrop}
+            className={`w-full max-w-2xl border-2 border-dashed rounded-xl p-12 text-center transition-colors ${
+              dragOver ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-300 dark:border-gray-600'
+            }`}
+          >
+            {uploading ? (
+              <div className="flex flex-col items-center gap-3">
+                <div className="w-10 h-10 border-3 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                <span className="text-gray-600 dark:text-gray-300">Subiendo fotos...</span>
+              </div>
+            ) : (
+              <>
+                <svg className="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <p className="text-lg text-gray-600 dark:text-gray-300 mb-3">Arrastra las fotos aquí</p>
+                <p className="text-sm text-gray-400 mb-4">o</p>
+                <label className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg cursor-pointer hover:bg-blue-700 transition-colors">
+                  Seleccionar archivos
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    onChange={(e) => handleUpload(e.target.files)}
+                  />
+                </label>
+              </>
+            )}
+          </div>
         </div>
       </div>
     )
@@ -525,31 +560,7 @@ function UploadPhotos({ tagGroups, authParams, onRefresh, showSuccess, showError
   return (
     <div className="h-full flex flex-col py-2 gap-3">
       {/* Sub-header: Botones de Buckets */}
-      <div className="flex gap-2 items-center flex-shrink-0 px-2">
-        {[0, 1, 2, 3, 4].map(index => {
-          const bucket = buckets[index]
-          const isActive = bucket && bucket.id === activeBucketId
-          const isEmpty = !bucket
-
-          return (
-            <button
-              key={index}
-              onClick={() => bucket && handleChangeBucket(bucket.id)}
-              disabled={isEmpty}
-              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                isActive
-                  ? 'bg-blue-600 text-white'
-                  : isEmpty
-                  ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 cursor-not-allowed'
-                  : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-              }`}
-            >
-              Bucket {index + 1}
-              {bucket && ` (${bucket.photos.length})`}
-            </button>
-          )
-        })}
-      </div>
+      {renderBucketsButtons()}
 
       {/* Carrusel de fotos */}
       <PhotoCarousel
