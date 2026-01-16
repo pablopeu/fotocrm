@@ -462,18 +462,44 @@ function UploadPhotos({ tagGroups, authParams, onRefresh, showSuccess, showError
     const bucket = buckets.find(b => b.id === bucketId)
     if (bucket) {
       setActiveBucketId(bucketId)
-      setUploadedPhotos(bucket.photos || [])
-      setCurrentIndex(0)
 
-      // Inicializar tags y textos desde las fotos del bucket
-      const newTags = {}
-      const newTexts = {}
-      bucket.photos.forEach(p => {
-        newTags[p.id] = p.tags || []
-        newTexts[p.id] = p.text || ''
-      })
-      setPhotoTags(newTags)
-      setPhotoTexts(newTexts)
+      // Obtener información actualizada de las fotos desde el servidor
+      try {
+        const response = await fetch(apiUrl('photos'))
+        const photosData = await response.json()
+        const allPhotos = photosData.photos || []
+
+        // Mapear IDs del bucket a fotos actualizadas
+        const photoIds = bucket.photos.map(p => p.id)
+        const updatedPhotos = allPhotos.filter(p => photoIds.includes(p.id))
+
+        setUploadedPhotos(updatedPhotos)
+        setCurrentIndex(0)
+
+        // Inicializar tags y textos desde las fotos actualizadas
+        const newTags = {}
+        const newTexts = {}
+        updatedPhotos.forEach(p => {
+          newTags[p.id] = p.tags || []
+          newTexts[p.id] = p.text || ''
+        })
+        setPhotoTags(newTags)
+        setPhotoTexts(newTexts)
+      } catch (error) {
+        console.error('Error cargando fotos actualizadas:', error)
+        // Fallback: usar las fotos del bucket
+        setUploadedPhotos(bucket.photos || [])
+        setCurrentIndex(0)
+
+        const newTags = {}
+        const newTexts = {}
+        bucket.photos.forEach(p => {
+          newTags[p.id] = p.tags || []
+          newTexts[p.id] = p.text || ''
+        })
+        setPhotoTags(newTags)
+        setPhotoTexts(newTexts)
+      }
     }
   }
 
@@ -643,8 +669,8 @@ function UploadPhotos({ tagGroups, authParams, onRefresh, showSuccess, showError
         </div>
       </div>
 
-      {/* Área inferior: 4 secciones de tags */}
-      <div className="flex-1 grid grid-cols-4 gap-3 min-h-0">
+      {/* Área inferior: 4 secciones de tags - Tipo más pequeño, otros más grandes */}
+      <div className="flex-1 grid gap-3 min-h-0" style={{ gridTemplateColumns: '1fr 2fr 2fr 2fr' }}>
         {tagGroups.map((group) => (
           <TagSection
             key={group.id}
@@ -1229,8 +1255,8 @@ function ManagePhotos({ photos, tagGroups, authParams, onRefresh, showSuccess, s
         </div>
       </div>
 
-      {/* Área inferior: 4 secciones de tags */}
-      <div className="flex-1 grid grid-cols-4 gap-3 min-h-0">
+      {/* Área inferior: 4 secciones de tags - Tipo más pequeño, otros más grandes */}
+      <div className="flex-1 grid gap-3 min-h-0" style={{ gridTemplateColumns: '1fr 2fr 2fr 2fr' }}>
         {tagGroups.map((group) => (
           <TagSection
             key={group.id}

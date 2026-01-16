@@ -203,9 +203,9 @@ function App() {
               groupId="acero"
             />
 
-            {/* Extras */}
+            {/* Tipo de Cuchillo */}
             <MultiSelect
-              label="Extras"
+              label="Tipo de Cuchillo"
               options={getTagsByGroup('extras')}
               selected={selectedExtras}
               onChange={setSelectedExtras}
@@ -323,7 +323,7 @@ function MultiSelect({ label, options, selected, onChange, groupId }) {
             {options.length === 0 ? (
               <p className="px-3 py-2 text-sm text-gray-500 italic">Sin opciones</p>
             ) : (
-              options.map(option => (
+              [...options].sort((a, b) => a.name.localeCompare(b.name)).map(option => (
                 <label
                   key={option.id}
                   className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
