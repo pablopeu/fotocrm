@@ -40,6 +40,7 @@ function App() {
   const [logo, setLogo] = useState(null)
   const [whatsappConfig, setWhatsappConfig] = useState(null)
   const [telegramConfig, setTelegramConfig] = useState(null)
+  const [showConfigurador, setShowConfigurador] = useState(false)
 
   // Filtros
   const [activeTab, setActiveTab] = useState(null) // null = todos, o un id de tab
@@ -47,6 +48,21 @@ function App() {
   const [selectedAcero, setSelectedAcero] = useState([])
   const [selectedExtras, setSelectedExtras] = useState([])
   const [searchQuery, setSearchQuery] = useState('')
+
+  // Fotos seleccionadas para configurador (persisten en cookies)
+  const [selectedPhotos, setSelectedPhotos] = useState(() => {
+    const saved = document.cookie
+      .split('; ')
+      .find(row => row.startsWith('selectedPhotos='))
+    if (saved) {
+      try {
+        return JSON.parse(decodeURIComponent(saved.split('=')[1]))
+      } catch {
+        return []
+      }
+    }
+    return []
+  })
 
   // Cargar configuración (logo, whatsapp, telegram)
   useEffect(() => {
@@ -179,6 +195,35 @@ function App() {
 
   const hasActiveFilters = activeTab !== null || selectedEncabado.length > 0 || selectedAcero.length > 0 || selectedExtras.length > 0 || searchQuery
 
+  // Manejar selección de fotos para configurador
+  const togglePhotoSelection = useCallback((photoId) => {
+    setSelectedPhotos(prev => {
+      let newSelection
+      if (prev.includes(photoId)) {
+        // Deseleccionar
+        newSelection = prev.filter(id => id !== photoId)
+      } else {
+        // Verificar límite de 6
+        if (prev.length >= 6) {
+          return prev // No agregar más de 6
+        }
+        // Seleccionar
+        newSelection = [...prev, photoId]
+      }
+
+      // Guardar en cookies (365 días de expiración)
+      const expires = new Date()
+      expires.setDate(expires.getDate() + 365)
+      document.cookie = `selectedPhotos=${encodeURIComponent(JSON.stringify(newSelection))}; expires=${expires.toUTCString()}; path=/`
+
+      return newSelection
+    })
+  }, [])
+
+  const isPhotoSelected = useCallback((photoId) => {
+    return selectedPhotos.includes(photoId)
+  }, [selectedPhotos])
+
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex flex-col">
       {/* Header unificado */}
@@ -259,6 +304,17 @@ function App() {
                   Resetear
                 </button>
               )}
+              <button
+                onClick={() => setShowConfigurador(true)}
+                className="px-3 py-1.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-1"
+              >
+                Configurador
+                {selectedPhotos.length > 0 && (
+                  <span className="bg-white text-green-600 rounded-full px-1.5 py-0.5 text-xs font-bold">
+                    {selectedPhotos.length}
+                  </span>
+                )}
+              </button>
             </div>
 
             {/* Buscador alineado a la derecha */}
@@ -352,6 +408,19 @@ function App() {
               </button>
             )}
 
+            {/* Botón Configurador */}
+            <button
+              onClick={() => setShowConfigurador(true)}
+              className="px-3 py-1.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-1 flex-shrink-0"
+            >
+              Configurador
+              {selectedPhotos.length > 0 && (
+                <span className="bg-white text-green-600 rounded-full px-1.5 py-0.5 text-xs font-bold">
+                  {selectedPhotos.length}
+                </span>
+              )}
+            </button>
+
             {/* Buscador al final */}
             <div className="w-48 ml-auto">
               <SearchBar
@@ -392,6 +461,9 @@ function App() {
                   key={photo.id}
                   photo={photo}
                   tagGroups={tagGroups}
+                  isSelected={isPhotoSelected(photo.id)}
+                  onToggleSelection={togglePhotoSelection}
+                  selectedCount={selectedPhotos.length}
                 />
               ))}
             </div>
@@ -520,7 +592,7 @@ function MultiSelect({ label, options, selected, onChange, groupId }) {
 }
 
 // Componente PhotoCard con zoom y tags
-function PhotoCard({ photo, tagGroups }) {
+function PhotoCard({ photo, tagGroups, isSelected, onToggleSelection, selectedCount }) {
   const containerRef = useRef(null)
   const [imageLoaded, setImageLoaded] = useState(false)
   const [imageError, setImageError] = useState(false)
@@ -530,6 +602,8 @@ function PhotoCard({ photo, tagGroups }) {
   const [isDragging, setIsDragging] = useState(false)
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
   const [showTooltip, setShowTooltip] = useState(false)
+  const [showLimitMessage, setShowLimitMessage] = useState(false)
+  const [limitMessagePos, setLimitMessagePos] = useState({ x: 0, y: 0 })
 
   // Resetear zoom cuando cambia la foto
   useEffect(() => {
@@ -594,10 +668,21 @@ function PhotoCard({ photo, tagGroups }) {
   const handleClick = async (e) => {
     // Solo copiar si no está zoomizado
     if (scale === 1) {
+      // Copiar imagen al clipboard
       const result = await copyImageToClipboard(photo.url)
       if (result.success) {
         setImageCopied(true)
         setTimeout(() => setImageCopied(false), 1500)
+      }
+
+      // Manejar selección para configurador
+      if (!isSelected && selectedCount >= 6) {
+        // Mostrar mensaje flotante en la posición del click
+        setLimitMessagePos({ x: e.clientX, y: e.clientY })
+        setShowLimitMessage(true)
+        setTimeout(() => setShowLimitMessage(false), 2000)
+      } else {
+        onToggleSelection(photo.id)
       }
     }
   }
@@ -718,9 +803,31 @@ function PhotoCard({ photo, tagGroups }) {
                 Ctrl + Scroll para zoom
               </div>
             )}
+            {/* Checkmark de selección */}
+            {isSelected && (
+              <div className="absolute top-2 right-2 bg-green-600 text-white rounded-full p-1.5 shadow-lg pointer-events-none">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+            )}
           </>
         )}
       </div>
+
+      {/* Mensaje flotante de límite alcanzado */}
+      {showLimitMessage && (
+        <div
+          className="fixed bg-red-600 text-white px-4 py-2 rounded-lg shadow-lg z-50 animate-pulse"
+          style={{
+            left: `${limitMessagePos.x}px`,
+            top: `${limitMessagePos.y}px`,
+            transform: 'translate(-50%, -50%)'
+          }}
+        >
+          Máximo 6 fotos
+        </div>
+      )}
 
       {/* Tags de la foto */}
       <div className="p-2">
