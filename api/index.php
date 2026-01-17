@@ -614,9 +614,6 @@ switch (true) {
         if (isset($config['telegram'])) {
             $publicConfig['telegram'] = $config['telegram'];
         }
-        if (isset($config['meta_tags'])) {
-            $publicConfig['meta_tags'] = $config['meta_tags'];
-        }
         response($publicConfig);
         break;
 
@@ -929,6 +926,25 @@ switch (true) {
 
             if (!file_put_contents(CONFIG_FILE, json_encode($config, JSON_PRETTY_PRINT))) {
                 response(['error' => 'Error al guardar configuración'], 500);
+            }
+
+            // Modificar index.html directamente
+            $indexPath = __DIR__ . '/../index.html';
+            if (file_exists($indexPath)) {
+                $html = file_get_contents($indexPath);
+
+                // Remover metadatos anteriores si existen
+                $html = preg_replace('/<!-- DYNAMIC META START -->.*?<!-- DYNAMIC META END -->/s', '', $html);
+
+                // Insertar nuevos metadatos antes de </head>
+                if (!empty($input['meta_tags'])) {
+                    $metaBlock = "\n    <!-- DYNAMIC META START -->\n    " .
+                                 str_replace("\n", "\n    ", trim($input['meta_tags'])) .
+                                 "\n    <!-- DYNAMIC META END -->\n  ";
+                    $html = str_replace('</head>', $metaBlock . '</head>', $html);
+                }
+
+                file_put_contents($indexPath, $html);
             }
 
             response(['message' => 'Metadatos actualizados']);
