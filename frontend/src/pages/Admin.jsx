@@ -1647,6 +1647,7 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
   const [loading, setLoading] = useState(false)
   const [creating, setCreating] = useState(false)
   const [backupToDelete, setBackupToDelete] = useState(null)
+  const [deletingBackup, setDeletingBackup] = useState(null) // Filename del backup siendo eliminado (para fade out)
   const [createdBackupFeedback, setCreatedBackupFeedback] = useState(null) // Filename del backup recién creado
   const [logo, setLogo] = useState(null)
   const [uploadingLogo, setUploadingLogo] = useState(false)
@@ -1753,24 +1754,33 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
   }
 
   const handleDeleteBackup = async (filename) => {
-    try {
-      const params = new URLSearchParams(authParams)
-      const response = await fetch(apiUrl(`admin/backups/${filename}`) + '&' + params.toString(), {
-        method: 'DELETE'
-      })
+    // Activar animación fade out
+    setDeletingBackup(filename)
+    setBackupToDelete(null)
 
-      if (response.ok) {
-        showSuccess('Éxito', 'Backup eliminado')
-        setBackupToDelete(null)
-        await loadBackups()
-      } else if (response.status === 401) {
-        showError('Sesión expirada', 'Por favor, vuelve a iniciar sesión')
-      } else {
-        showError('Error', 'Error al eliminar backup')
+    // Esperar animación antes de eliminar
+    setTimeout(async () => {
+      try {
+        const params = new URLSearchParams(authParams)
+        const response = await fetch(apiUrl(`admin/backups/${filename}`) + '&' + params.toString(), {
+          method: 'DELETE'
+        })
+
+        if (response.ok) {
+          await loadBackups()
+          setDeletingBackup(null)
+        } else if (response.status === 401) {
+          showError('Sesión expirada', 'Por favor, vuelve a iniciar sesión')
+          setDeletingBackup(null)
+        } else {
+          showError('Error', 'Error al eliminar backup')
+          setDeletingBackup(null)
+        }
+      } catch (error) {
+        showError('Error', 'Error de conexión')
+        setDeletingBackup(null)
       }
-    } catch (error) {
-      showError('Error', 'Error de conexión')
-    }
+    }, 400) // 400ms para la animación
   }
 
   const handleUploadLogo = async (file) => {
@@ -1895,11 +1905,14 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
             <div className="space-y-2">
               {backups.map((backup) => {
                 const wasCreated = createdBackupFeedback === backup.filename
+                const isDeleting = deletingBackup === backup.filename
                 return (
                   <div
                     key={backup.filename}
-                    className={`flex items-center justify-between p-3 rounded-lg transition-all duration-500 ${
-                      wasCreated
+                    className={`flex items-center justify-between p-3 rounded-lg transition-all duration-400 ${
+                      isDeleting
+                        ? 'opacity-0 scale-95'
+                        : wasCreated
                         ? 'bg-green-100 dark:bg-green-900/30'
                         : 'bg-gray-50 dark:bg-gray-700'
                     }`}
