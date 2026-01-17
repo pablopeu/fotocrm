@@ -849,7 +849,8 @@ switch (true) {
     case $path === 'admin/config/contact' && $method === 'POST':
         checkAuth();
 
-        $input = getJSONInput();
+        global $JSON_INPUT;
+        $input = $JSON_INPUT;
         $config = getConfig();
 
         // Validar y actualizar WhatsApp
