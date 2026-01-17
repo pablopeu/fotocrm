@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Modal from '../components/Modal'
 import { useModal } from '../hooks/useModal'
+import SearchBar from '../components/SearchBar/SearchBar'
 
 const API_BASE = import.meta.env.VITE_API_URL || './api/index.php'
 
@@ -8,6 +9,15 @@ const API_BASE = import.meta.env.VITE_API_URL || './api/index.php'
 const capitalize = (str) => {
   if (!str) return ''
   return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase()
+}
+
+// Helper para normalizar texto (remover acentos)
+const normalizeText = (str) => {
+  if (!str) return ''
+  return str
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
 }
 
 function apiUrl(route) {
@@ -924,8 +934,10 @@ function PhotoCarousel({ photos, currentIndex, onSelectPhoto }) {
     return null
   }
 
-  // Triplicar las fotos para efecto continuo
-  const triplePhotos = [...photos, ...photos, ...photos]
+  // Solo triplicar si hay suficientes fotos para scroll continuo
+  const displayPhotos = photos.length >= 5
+    ? [...photos, ...photos, ...photos]
+    : photos
 
   return (
     <div className="relative w-full bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
@@ -948,7 +960,7 @@ function PhotoCarousel({ photos, currentIndex, onSelectPhoto }) {
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseLeave}
       >
-        {triplePhotos.map((photo, idx) => {
+        {displayPhotos.map((photo, idx) => {
           const originalIdx = idx % photos.length
           return (
             <button
@@ -1095,14 +1107,46 @@ function ManagePhotos({ photos, tagGroups, authParams, onRefresh, showSuccess, s
   const [savedFeedback, setSavedFeedback] = useState(false)
   const [arrowFeedback, setArrowFeedback] = useState(null)
   const [showOnlyUntagged, setShowOnlyUntagged] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+
+  // Filtrar fotos por búsqueda y tags
+  let filteredPhotos = photos
+
+  // Filtrar por búsqueda de texto y tags (ignorando acentos)
+  if (searchQuery) {
+    const normalizedQuery = normalizeText(searchQuery.trim())
+
+    filteredPhotos = filteredPhotos.filter(photo => {
+      // Buscar en el texto de descripción
+      const photoText = photoTexts[photo.id] || photo.text || ''
+      if (normalizeText(photoText).includes(normalizedQuery)) {
+        return true
+      }
+
+      // Buscar en los tags de la foto
+      const tags = photoTags[photo.id] || photo.tags || []
+      for (const group of tagGroups) {
+        for (const tag of group.tags) {
+          if (tags.includes(tag.id)) {
+            // Matchear si el nombre del tag contiene la búsqueda (sin acentos)
+            if (normalizeText(tag.name).includes(normalizedQuery)) {
+              return true
+            }
+          }
+        }
+      }
+
+      return false
+    })
+  }
 
   // Filtrar fotos sin tags si está activo el filtro
-  const filteredPhotos = showOnlyUntagged
-    ? photos.filter(p => {
-        const tags = photoTags[p.id] || p.tags || []
-        return tags.length === 0
-      })
-    : photos
+  if (showOnlyUntagged) {
+    filteredPhotos = filteredPhotos.filter(p => {
+      const tags = photoTags[p.id] || p.tags || []
+      return tags.length === 0
+    })
+  }
 
   const currentPhoto = filteredPhotos[currentIndex]
 
@@ -1288,6 +1332,18 @@ function ManagePhotos({ photos, tagGroups, authParams, onRefresh, showSuccess, s
 
   return (
     <div className="h-full flex flex-col py-2 gap-3">
+      {/* Buscador */}
+      <div className="flex-shrink-0">
+        <SearchBar
+          value={searchQuery}
+          onChange={(value) => {
+            setSearchQuery(value)
+            setCurrentIndex(0)
+          }}
+          placeholder="Buscar por descripción o tags..."
+        />
+      </div>
+
       {/* Carrusel de fotos */}
       <PhotoCarousel
         photos={filteredPhotos}
@@ -1449,7 +1505,6 @@ function TagsManager({ tagGroups, authParams, onRefresh, showSuccess, showError,
         method: 'DELETE'
       })
       if (response.ok) {
-        showSuccess('Eliminado', 'Tag eliminado')
         setConfirmingDelete(null)
         onRefresh()
       } else if (response.status === 401) {

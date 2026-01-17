@@ -490,6 +490,7 @@ function PhotoCard({ photo, tagGroups }) {
   const [position, setPosition] = useState({ x: 0, y: 0 })
   const [isDragging, setIsDragging] = useState(false)
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
+  const [showTooltip, setShowTooltip] = useState(false)
 
   // Resetear zoom cuando cambia la foto
   useEffect(() => {
@@ -622,9 +623,12 @@ function PhotoCard({ photo, tagGroups }) {
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
+        onMouseEnter={() => setShowTooltip(true)}
+        onMouseLeave={() => {
+          handleMouseUp()
+          setShowTooltip(false)
+        }}
         style={{ cursor: scale > 1 ? (isDragging ? 'grabbing' : 'grab') : 'pointer' }}
-        title={scale === 1 ? "Click para copiar, rueda para zoom" : "Drag para mover, doble click para resetear"}
       >
         {!imageLoaded && !imageError && (
           <div className="absolute inset-0 flex items-center justify-center">
@@ -670,8 +674,8 @@ function PhotoCard({ photo, tagGroups }) {
               </div>
             )}
             {/* Tooltip de Ctrl + Scroll */}
-            {scale === 1 && (
-              <div className="absolute bottom-1 right-1 px-1.5 py-0.5 bg-black/60 text-white text-xs rounded opacity-0 hover:opacity-100 transition-opacity pointer-events-none">
+            {scale === 1 && showTooltip && (
+              <div className="absolute bottom-1 right-1 px-1.5 py-0.5 bg-black/60 text-white text-xs rounded transition-opacity pointer-events-none">
                 Ctrl + Scroll para zoom
               </div>
             )}
