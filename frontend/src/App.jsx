@@ -87,6 +87,17 @@ function App() {
   const [showBucketDelete, setShowBucketDelete] = useState(null)
   const [showMobileSearch, setShowMobileSearch] = useState(false)
 
+  // Estado global para savedCode (compartido entre página principal y configurador)
+  const [savedCode, setSavedCode] = useState(() => {
+    const saved = document.cookie
+      .split('; ')
+      .find(row => row.startsWith('savedCode='))
+    if (saved) {
+      return saved.split('=')[1] || null
+    }
+    return null
+  })
+
   // Cerrar confirmación con Escape
   useEffect(() => {
     const handleEscape = (e) => {
@@ -116,6 +127,18 @@ function App() {
     expires.setDate(expires.getDate() + 365)
     document.cookie = `activeBucket=${activeBucket}; expires=${expires.toUTCString()}; path=/`
   }, [activeBucket])
+
+  // Guardar savedCode en cookies cuando cambie
+  useEffect(() => {
+    if (savedCode) {
+      const expires = new Date()
+      expires.setDate(expires.getDate() + 365)
+      document.cookie = `savedCode=${savedCode}; expires=${expires.toUTCString()}; path=/`
+    } else {
+      // Borrar cookie si no hay savedCode
+      document.cookie = `savedCode=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/`
+    }
+  }, [savedCode])
 
   // Fotos seleccionadas del bucket activo (para compatibilidad)
   const selectedPhotos = buckets[activeBucket]?.selectedPhotos || []
@@ -305,21 +328,40 @@ function App() {
     return selectedPhotos.includes(photoId)
   }, [selectedPhotos])
 
-  const handleDeleteBucket = useCallback((bucketIndex) => {
-    setBuckets(prev => {
-      const newBuckets = [...prev]
-      newBuckets[bucketIndex] = {
-        selectedPhotos: [],
-        photoConfigs: {}
-      }
-      return newBuckets
-    })
+  const handleDeleteBucket = useCallback(async (bucketIndex) => {
+    const newBuckets = [...buckets]
+    newBuckets[bucketIndex] = {
+      selectedPhotos: [],
+      photoConfigs: {}
+    }
+
+    setBuckets(newBuckets)
     setShowBucketDelete(null)
+
     // Si estamos en el bucket eliminado, cambiar al 0
     if (activeBucket === bucketIndex) {
       setActiveBucket(0)
     }
-  }, [activeBucket])
+
+    // Si existe un savedCode, actualizar automáticamente en el servidor
+    if (savedCode) {
+      setTimeout(async () => {
+        try {
+          const API_BASE = import.meta.env.VITE_API_URL || './api/index.php'
+          await fetch(`${API_BASE}?route=configurator/save`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              buckets: newBuckets,
+              code: savedCode
+            })
+          })
+        } catch (error) {
+          console.error('Error al auto-guardar configuración:', error)
+        }
+      }, 100)
+    }
+  }, [activeBucket, savedCode, buckets])
 
   // Si estamos en el configurador, mostrar esa vista
   if (showConfigurador) {
@@ -335,6 +377,8 @@ function App() {
       showBucketDelete={showBucketDelete}
       setShowBucketDelete={setShowBucketDelete}
       handleDeleteBucket={handleDeleteBucket}
+      savedCode={savedCode}
+      setSavedCode={setSavedCode}
     />
   }
 
@@ -1113,9 +1157,10 @@ function Configurador({
   tagGroups,
   showBucketDelete,
   setShowBucketDelete,
-  handleDeleteBucket
+  handleDeleteBucket,
+  savedCode,
+  setSavedCode
 }) {
-  const [savedCode, setSavedCode] = useState(null)
   const [saving, setSaving] = useState(false)
   const [showShareButtons, setShowShareButtons] = useState(false)
   const [whatsappConfig, setWhatsappConfig] = useState(null)
@@ -1260,20 +1305,6 @@ function Configurador({
     }
   }
 
-  // Wrapper para handleDeleteBucket que guarda después de borrar
-  const handleDeleteBucketAndSave = async (bucketIndex) => {
-    // Borrar el bucket
-    handleDeleteBucket(bucketIndex)
-
-    // Si ya hay un código guardado, actualizar automáticamente
-    if (savedCode) {
-      // Esperar un tick para que el estado se actualice
-      setTimeout(async () => {
-        await handleSaveConfiguration()
-      }, 100)
-    }
-  }
-
   const getShareLink = () => {
     if (!savedCode) return ''
     return `${window.location.origin}${window.location.pathname}?config=${savedCode}`
@@ -1398,7 +1429,7 @@ function Configurador({
                         <p className="text-xs text-gray-900 dark:text-white mb-2">¿Eliminar?</p>
                         <div className="flex gap-1">
                           <button
-                            onClick={() => handleDeleteBucketAndSave(index)}
+                            onClick={() => handleDeleteBucket(index)}
                             className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
                           >
                             Sí
@@ -1475,7 +1506,7 @@ function Configurador({
                           <p className="text-xs text-gray-900 dark:text-white mb-2">¿Eliminar?</p>
                           <div className="flex gap-1">
                             <button
-                              onClick={() => handleDeleteBucketAndSave(index)}
+                              onClick={() => handleDeleteBucket(index)}
                               className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
                             >
                               Sí
