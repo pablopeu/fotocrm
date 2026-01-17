@@ -85,17 +85,23 @@ function App() {
   })
 
   const [showBucketDelete, setShowBucketDelete] = useState(null)
+  const [showMobileSearch, setShowMobileSearch] = useState(false)
 
   // Cerrar confirmación con Escape
   useEffect(() => {
     const handleEscape = (e) => {
-      if (e.key === 'Escape' && showBucketDelete !== null) {
-        setShowBucketDelete(null)
+      if (e.key === 'Escape') {
+        if (showBucketDelete !== null) {
+          setShowBucketDelete(null)
+        }
+        if (showMobileSearch) {
+          setShowMobileSearch(false)
+        }
       }
     }
     window.addEventListener('keydown', handleEscape)
     return () => window.removeEventListener('keydown', handleEscape)
-  }, [showBucketDelete])
+  }, [showBucketDelete, showMobileSearch])
 
   // Guardar buckets en cookies cuando cambien
   useEffect(() => {
@@ -339,19 +345,51 @@ function App() {
         <div className="px-4 py-3">
           {/* Mobile: Layout vertical */}
           <div className="lg:hidden">
-            {/* Título y subtítulo */}
-            <div className="mb-3 flex items-center gap-3">
-              {logo && (
-                <img src={logo} alt="Logo" className="h-10 object-contain" />
-              )}
-              <div>
-                <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-                  PEU Cuchillos Artesanales
-                </h1>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Buscador interactivo de modelos y materiales
-                </p>
+            {/* Título, subtítulo y buscador */}
+            <div className="mb-3">
+              {/* Primera línea: Logo, título e icono de búsqueda */}
+              <div className="flex items-center justify-between gap-3 mb-2">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  {logo && (
+                    <img src={logo} alt="Logo" className="h-10 object-contain flex-shrink-0" />
+                  )}
+                  <div className="min-w-0">
+                    <h1 className="text-xl font-bold text-gray-900 dark:text-white truncate">
+                      PEU Cuchillos Artesanales
+                    </h1>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                      Buscador interactivo de modelos y materiales
+                    </p>
+                  </div>
+                </div>
+                {/* Icono de búsqueda */}
+                <button
+                  onClick={() => setShowMobileSearch(!showMobileSearch)}
+                  className="flex-shrink-0 p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                  aria-label="Buscar"
+                >
+                  {showMobileSearch ? (
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  ) : (
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  )}
+                </button>
               </div>
+
+              {/* Buscador expandible */}
+              {showMobileSearch && (
+                <div className="mb-2">
+                  <SearchBar
+                    value={searchQuery}
+                    onChange={setSearchQuery}
+                    placeholder="Buscar..."
+                  />
+                </div>
+              )}
             </div>
 
             {/* Tabs de tipo */}
@@ -423,17 +461,6 @@ function App() {
                   </span>
                 )}
               </button>
-            </div>
-
-            {/* Buscador alineado a la derecha */}
-            <div className="flex justify-end">
-              <div className="w-full max-w-xs">
-                <SearchBar
-                  value={searchQuery}
-                  onChange={setSearchQuery}
-                  placeholder="Buscar..."
-                />
-              </div>
             </div>
           </div>
 
