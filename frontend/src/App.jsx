@@ -86,6 +86,17 @@ function App() {
 
   const [showBucketDelete, setShowBucketDelete] = useState(null)
 
+  // Cerrar confirmación con Escape
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape' && showBucketDelete !== null) {
+        setShowBucketDelete(null)
+      }
+    }
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [showBucketDelete])
+
   // Guardar buckets en cookies cuando cambien
   useEffect(() => {
     const expires = new Date()
@@ -565,23 +576,30 @@ function App() {
                   )}
                   {/* Confirmación de eliminación inline */}
                   {showBucketDelete === index && (
-                    <div className="absolute top-full mt-1 left-1/2 -translate-x-1/2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-2 z-50 whitespace-nowrap">
-                      <p className="text-xs text-gray-900 dark:text-white mb-2">¿Eliminar?</p>
-                      <div className="flex gap-1">
-                        <button
-                          onClick={() => handleDeleteBucket(index)}
-                          className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
-                        >
-                          Sí
-                        </button>
-                        <button
-                          onClick={() => setShowBucketDelete(null)}
-                          className="px-2 py-1 text-xs bg-gray-200 dark:bg-gray-600 text-gray-900 dark:text-white rounded hover:bg-gray-300 dark:hover:bg-gray-500"
-                        >
-                          No
-                        </button>
+                    <>
+                      {/* Overlay invisible para cerrar al hacer click fuera */}
+                      <div
+                        className="fixed inset-0 z-40"
+                        onClick={() => setShowBucketDelete(null)}
+                      />
+                      <div className="absolute top-full mt-1 left-1/2 -translate-x-1/2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-2 z-50 whitespace-nowrap">
+                        <p className="text-xs text-gray-900 dark:text-white mb-2">¿Eliminar?</p>
+                        <div className="flex gap-1">
+                          <button
+                            onClick={() => handleDeleteBucket(index)}
+                            className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
+                          >
+                            Sí
+                          </button>
+                          <button
+                            onClick={() => setShowBucketDelete(null)}
+                            className="px-2 py-1 text-xs bg-gray-200 dark:bg-gray-600 text-gray-900 dark:text-white rounded hover:bg-gray-300 dark:hover:bg-gray-500"
+                          >
+                            No
+                          </button>
+                        </div>
                       </div>
-                    </div>
+                    </>
                   )}
                 </div>
               ))}
@@ -1018,6 +1036,17 @@ function Configurador({
   const [telegramConfig, setTelegramConfig] = useState(null)
   const [configuratorMessage, setConfiguratorMessage] = useState('')
 
+  // Cerrar confirmación con Escape (en Configurador)
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape' && showBucketDelete !== null) {
+        setShowBucketDelete(null)
+      }
+    }
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [showBucketDelete, setShowBucketDelete])
+
   // Cargar configuración inicial desde URL si existe
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
@@ -1225,23 +1254,30 @@ function Configurador({
                     )}
                     {/* Confirmación de eliminación inline */}
                     {showBucketDelete === index && (
-                      <div className="absolute top-full mt-1 left-1/2 -translate-x-1/2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-2 z-50 whitespace-nowrap">
-                        <p className="text-xs text-gray-900 dark:text-white mb-2">¿Eliminar?</p>
-                        <div className="flex gap-1">
-                          <button
-                            onClick={() => handleDeleteBucket(index)}
-                            className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
-                          >
-                            Sí
-                          </button>
-                          <button
-                            onClick={() => setShowBucketDelete(null)}
-                            className="px-2 py-1 text-xs bg-gray-200 dark:bg-gray-600 text-gray-900 dark:text-white rounded hover:bg-gray-300 dark:hover:bg-gray-500"
-                          >
-                            No
-                          </button>
+                      <>
+                        {/* Overlay invisible para cerrar al hacer click fuera */}
+                        <div
+                          className="fixed inset-0 z-40"
+                          onClick={() => setShowBucketDelete(null)}
+                        />
+                        <div className="absolute top-full mt-1 left-1/2 -translate-x-1/2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-2 z-50 whitespace-nowrap">
+                          <p className="text-xs text-gray-900 dark:text-white mb-2">¿Eliminar?</p>
+                          <div className="flex gap-1">
+                            <button
+                              onClick={() => handleDeleteBucket(index)}
+                              className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
+                            >
+                              Sí
+                            </button>
+                            <button
+                              onClick={() => setShowBucketDelete(null)}
+                              className="px-2 py-1 text-xs bg-gray-200 dark:bg-gray-600 text-gray-900 dark:text-white rounded hover:bg-gray-300 dark:hover:bg-gray-500"
+                            >
+                              No
+                            </button>
+                          </div>
                         </div>
-                      </div>
+                      </>
                     )}
                   </div>
                 ))}
