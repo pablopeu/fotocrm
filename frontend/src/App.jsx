@@ -103,7 +103,7 @@ function App() {
   // Fotos seleccionadas del bucket activo (para compatibilidad)
   const selectedPhotos = buckets[activeBucket]?.selectedPhotos || []
 
-  // Cargar configuración (logo, whatsapp, telegram)
+  // Cargar configuración (logo, whatsapp, telegram) y detectar ?config= en URL
   useEffect(() => {
     async function loadConfig() {
       try {
@@ -120,6 +120,12 @@ function App() {
       }
     }
     loadConfig()
+
+    // Si la URL tiene ?config=, abrir el configurador automáticamente
+    const urlParams = new URLSearchParams(window.location.search)
+    if (urlParams.has('config')) {
+      setShowConfigurador(true)
+    }
   }, [])
 
   // Cargar datos iniciales
@@ -1007,6 +1013,7 @@ function Configurador({
 }) {
   const [savedCode, setSavedCode] = useState(null)
   const [saving, setSaving] = useState(false)
+  const [showShareButtons, setShowShareButtons] = useState(false)
   const [whatsappConfig, setWhatsappConfig] = useState(null)
   const [telegramConfig, setTelegramConfig] = useState(null)
   const [configuratorMessage, setConfiguratorMessage] = useState('')
@@ -1110,14 +1117,26 @@ function Configurador({
       const response = await fetch(`${API_BASE}?route=configurator/save`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ buckets })
+        body: JSON.stringify({
+          buckets,
+          code: savedCode // Si ya existe un código, sobrescribirlo
+        })
       })
 
       if (response.ok) {
         const data = await response.json()
         setSavedCode(data.code)
-        // Actualizar URL sin recargar
-        window.history.pushState({}, '', `?config=${data.code}`)
+
+        // Actualizar URL sin recargar (solo si no estaba ya)
+        if (!savedCode) {
+          window.history.pushState({}, '', `?config=${data.code}`)
+        }
+
+        // Mostrar botones de compartir por 5 segundos
+        setShowShareButtons(true)
+        setTimeout(() => {
+          setShowShareButtons(false)
+        }, 5000)
       }
     } catch (error) {
       console.error('Error al guardar configuración:', error)
@@ -1237,15 +1256,18 @@ function Configurador({
               >
                 Volver
               </button>
-              {!savedCode ? (
-                <button
-                  onClick={handleSaveConfiguration}
-                  disabled={saving}
-                  className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors font-medium disabled:opacity-50"
-                >
-                  {saving ? 'Guardando...' : 'Enviar configuración'}
-                </button>
-              ) : (
+
+              {/* Botón de guardar (siempre visible) */}
+              <button
+                onClick={handleSaveConfiguration}
+                disabled={saving}
+                className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors font-medium disabled:opacity-50"
+              >
+                {saving ? 'Guardando...' : savedCode ? 'Guardar configuración' : 'Enviar configuración'}
+              </button>
+
+              {/* Botones de compartir (visibles por 5 segundos después de guardar) */}
+              {showShareButtons && savedCode && (
                 <>
                   {whatsappConfig?.enabled && whatsappConfig.number && (
                     <a

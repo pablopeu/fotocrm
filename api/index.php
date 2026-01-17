@@ -994,14 +994,29 @@ switch (true) {
             response(['error' => 'Parámetro buckets requerido'], 400);
         }
 
-        // Generar código único
-        $code = generateUniqueConfigCode();
+        // Si viene un código, usarlo (sobrescribir); si no, generar uno nuevo
+        if (!empty($input['code'])) {
+            $code = $input['code'];
+        } else {
+            $code = generateUniqueConfigCode();
+        }
+
         $filepath = CONFIGURATOR_DIR . '/' . $code . '.json';
+
+        // Leer created_at existente si es una actualización
+        $created_at = date('Y-m-d H:i:s');
+        if (file_exists($filepath)) {
+            $existingData = json_decode(file_get_contents($filepath), true);
+            if ($existingData && isset($existingData['created_at'])) {
+                $created_at = $existingData['created_at'];
+            }
+        }
 
         // Guardar configuración
         $configData = [
             'code' => $code,
-            'created_at' => date('Y-m-d H:i:s'),
+            'created_at' => $created_at,
+            'updated_at' => date('Y-m-d H:i:s'),
             'buckets' => $input['buckets']
         ];
 
