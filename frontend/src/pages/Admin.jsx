@@ -784,19 +784,14 @@ function ZoomableImage({ src, alt }) {
   }, [src])
 
   // Event listener para wheel con { passive: false } para evitar error de consola
-  // Solo hace zoom con Ctrl + Scroll, sino scrollea la página
   useEffect(() => {
     const container = containerRef.current
     if (!container) return
 
     const handleWheel = (e) => {
-      // Solo hacer zoom si se presiona Ctrl
-      if (e.ctrlKey || e.metaKey) {
-        e.preventDefault()
-        const delta = e.deltaY > 0 ? -0.1 : 0.1
-        setScale(prev => Math.min(Math.max(prev + delta, 1), 5))
-      }
-      // Si no hay Ctrl, dejar que el scroll normal funcione (no hacer preventDefault)
+      e.preventDefault()
+      const delta = e.deltaY > 0 ? -0.1 : 0.1
+      setScale(prev => Math.min(Math.max(prev + delta, 1), 5))
     }
 
     container.addEventListener('wheel', handleWheel, { passive: false })
@@ -867,7 +862,7 @@ function ZoomableImage({ src, alt }) {
       )}
       {scale === 1 && (
         <div className="absolute bottom-2 right-2 px-2 py-1 bg-black/50 text-white text-xs rounded opacity-0 hover:opacity-100 transition-opacity">
-          Ctrl + Scroll para zoom
+          Rueda del mouse para zoom
         </div>
       )}
     </div>

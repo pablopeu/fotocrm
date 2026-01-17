@@ -498,14 +498,19 @@ function PhotoCard({ photo, tagGroups }) {
   }, [photo.url])
 
   // Event listener para wheel con { passive: false }
+  // Solo hace zoom con Ctrl + Scroll, sino scrollea la página
   useEffect(() => {
     const container = containerRef.current
     if (!container) return
 
     const handleWheel = (e) => {
-      e.preventDefault()
-      const delta = e.deltaY > 0 ? -0.15 : 0.15
-      setScale(prev => Math.min(Math.max(prev + delta, 1), 5))
+      // Solo hacer zoom si se presiona Ctrl o Cmd (Mac)
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault()
+        const delta = e.deltaY > 0 ? -0.15 : 0.15
+        setScale(prev => Math.min(Math.max(prev + delta, 1), 5))
+      }
+      // Sin Ctrl, dejar que el scroll de página funcione normalmente
     }
 
     container.addEventListener('wheel', handleWheel, { passive: false })
@@ -662,6 +667,12 @@ function PhotoCard({ photo, tagGroups }) {
             {scale > 1 && (
               <div className="absolute bottom-1 right-1 px-1.5 py-0.5 bg-black/60 text-white text-xs rounded">
                 {Math.round(scale * 100)}%
+              </div>
+            )}
+            {/* Tooltip de Ctrl + Scroll */}
+            {scale === 1 && (
+              <div className="absolute bottom-1 right-1 px-1.5 py-0.5 bg-black/60 text-white text-xs rounded opacity-0 hover:opacity-100 transition-opacity pointer-events-none">
+                Ctrl + Scroll para zoom
               </div>
             )}
           </>
