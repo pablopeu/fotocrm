@@ -1656,6 +1656,7 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
   const [whatsappConfig, setWhatsappConfig] = useState({ enabled: false, number: '', message: '' })
   const [telegramConfig, setTelegramConfig] = useState({ enabled: false, username: '', message: '' })
   const [savingContact, setSavingContact] = useState(false)
+  const [savedContactFeedback, setSavedContactFeedback] = useState(false)
 
   useEffect(() => {
     loadBackups()
@@ -1843,7 +1844,8 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
       })
 
       if (response.ok) {
-        showSuccess('Guardado', 'Configuración de contacto actualizada')
+        setSavedContactFeedback(true)
+        setTimeout(() => setSavedContactFeedback(false), 2000)
       } else if (response.status === 401) {
         showError('Sesión expirada', 'Por favor, vuelve a iniciar sesión')
       } else {
@@ -2103,9 +2105,13 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
           <button
             onClick={handleSaveContactConfig}
             disabled={savingContact}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            className={`px-4 py-2 rounded-lg transition-all duration-300 ${
+              savedContactFeedback
+                ? 'bg-green-500 text-white'
+                : 'bg-blue-600 text-white hover:bg-blue-700'
+            } disabled:opacity-50`}
           >
-            {savingContact ? 'Guardando...' : 'Guardar Configuración'}
+            {savingContact ? 'Guardando...' : savedContactFeedback ? '✓ Guardado' : 'Guardar Configuración'}
           </button>
         </div>
       </div>
