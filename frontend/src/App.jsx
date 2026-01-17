@@ -1260,6 +1260,20 @@ function Configurador({
     }
   }
 
+  // Wrapper para handleDeleteBucket que guarda después de borrar
+  const handleDeleteBucketAndSave = async (bucketIndex) => {
+    // Borrar el bucket
+    handleDeleteBucket(bucketIndex)
+
+    // Si ya hay un código guardado, actualizar automáticamente
+    if (savedCode) {
+      // Esperar un tick para que el estado se actualice
+      setTimeout(async () => {
+        await handleSaveConfiguration()
+      }, 100)
+    }
+  }
+
   const getShareLink = () => {
     if (!savedCode) return ''
     return `${window.location.origin}${window.location.pathname}?config=${savedCode}`
@@ -1350,7 +1364,7 @@ function Configurador({
                           <p className="text-xs text-gray-900 dark:text-white mb-2">¿Eliminar?</p>
                           <div className="flex gap-1">
                             <button
-                              onClick={() => handleDeleteBucket(index)}
+                              onClick={() => handleDeleteBucketAndSave(index)}
                               className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
                             >
                               Sí
