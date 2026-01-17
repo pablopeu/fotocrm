@@ -627,8 +627,8 @@ function App() {
       {/* Main content */}
       <main className="flex-1 overflow-y-auto p-4 lg:p-6">
         <div className="max-w-7xl mx-auto">
-          {/* Info de resultados y buckets */}
-          <div className="mb-4 flex items-center justify-between gap-4">
+          {/* Info de resultados y buckets - SOLO DESKTOP */}
+          <div className="hidden lg:flex mb-4 items-center justify-between gap-4">
             <div className="text-sm text-gray-500 dark:text-gray-400">
               {filteredPhotos.length} foto{filteredPhotos.length !== 1 ? 's' : ''} encontrada{filteredPhotos.length !== 1 ? 's' : ''}
             </div>
@@ -792,20 +792,23 @@ function MultiSelect({ label, options, selected, onChange, groupId }) {
   }
 
   return (
-    <div className="relative">
+    <div className="relative flex-1">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`flex items-center gap-2 px-3 py-1.5 text-sm border rounded-lg transition-colors ${
-          selectedCount > 0 ? getGroupColorSelected() : getGroupColorEmpty()
+        className={`w-full flex items-center justify-center gap-2 px-3 py-1.5 text-sm rounded-lg transition-all ${
+          selectedCount > 0
+            ? `${getGroupColorSelected()} border-2 lg:border animate-pulse lg:animate-none`
+            : `${getGroupColorEmpty()} border`
         }`}
       >
-        {label}
+        <span className="truncate">{label}</span>
+        {/* Contador solo en desktop */}
         {selectedCount > 0 && (
-          <span className="px-1.5 py-0.5 text-xs bg-blue-600 text-white rounded-full">
+          <span className="hidden lg:inline-block px-1.5 py-0.5 text-xs bg-blue-600 text-white rounded-full flex-shrink-0">
             {selectedCount}
           </span>
         )}
-        <svg className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className={`w-4 h-4 transition-transform flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
         </svg>
       </button>
