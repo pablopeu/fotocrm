@@ -56,15 +56,12 @@ function App() {
         const response = await fetch(`${API_BASE}?route=config`)
         if (response.ok) {
           const data = await response.json()
-          console.log('Config cargada:', data)
           setLogo(data.logo || null)
           setWhatsappConfig(data.whatsapp || null)
           setTelegramConfig(data.telegram || null)
-          console.log('WhatsApp config:', data.whatsapp)
-          console.log('Telegram config:', data.telegram)
         }
       } catch (error) {
-        console.error('Error al cargar configuración:', error)
+        // Error silencioso - no afecta funcionalidad principal
       }
     }
     loadConfig()
@@ -83,7 +80,7 @@ function App() {
         setPhotos(photoData?.photos || [])
         setFilteredPhotos(photoData?.photos || [])
       } catch (error) {
-        console.error('Error cargando datos:', error)
+        // Error silencioso - se muestra UI vacía
       } finally {
         setLoading(false)
       }

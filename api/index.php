@@ -109,14 +109,12 @@ function readJSON($filename) {
 
     // Verificar si el archivo existe
     if (!file_exists($filepath)) {
-        error_log("readJSON: File not found - $filepath");
         return $defaultStructure;
     }
 
     // Leer el contenido del archivo
     $content = file_get_contents($filepath);
     if ($content === false) {
-        error_log("readJSON: Failed to read file - $filepath");
         return $defaultStructure;
     }
 
@@ -125,13 +123,11 @@ function readJSON($filename) {
 
     // Si hay error en el JSON, devolver estructura por defecto
     if (json_last_error() !== JSON_ERROR_NONE) {
-        error_log("readJSON: JSON decode error - " . json_last_error_msg() . " in $filepath");
         return $defaultStructure;
     }
 
     // Si $data es null pero no hubo error, devolver estructura por defecto
     if ($data === null) {
-        error_log("readJSON: Data is null (valid JSON null) in $filepath");
         return $defaultStructure;
     }
 

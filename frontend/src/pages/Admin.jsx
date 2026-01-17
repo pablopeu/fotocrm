@@ -304,7 +304,7 @@ function UploadPhotos({ tagGroups, authParams, onRefresh, showSuccess, showError
       const data = await response.json()
       setBuckets(data.buckets || [])
     } catch (error) {
-      console.error('Error cargando buckets:', error)
+      // Error silencioso
     }
   }
 
@@ -507,7 +507,6 @@ function UploadPhotos({ tagGroups, authParams, onRefresh, showSuccess, showError
         setPhotoTags(newTags)
         setPhotoTexts(newTexts)
       } catch (error) {
-        console.error('Error cargando fotos actualizadas:', error)
         // Fallback: usar las fotos del bucket
         setUploadedPhotos(bucket.photos || [])
         setCurrentIndex(0)
@@ -1690,7 +1689,7 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
         setLogo(data.logo || null)
       }
     } catch (error) {
-      console.error('Error al cargar configuración:', error)
+      // Error silencioso
     }
   }
 
@@ -1704,7 +1703,7 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
         setTelegramConfig(data.telegram || { enabled: false, username: '', message: '' })
       }
     } catch (error) {
-      console.error('Error al cargar configuración de contacto:', error)
+      // Error silencioso
     }
   }
 
@@ -1740,11 +1739,9 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
           ? `${error.error}\n\nDetalles: ${error.details}\n\nComando: ${error.command || 'N/A'}`
           : error.error || 'Error al crear backup'
         showError('Error al crear backup', errorMsg)
-        console.error('Error completo:', error)
       }
     } catch (error) {
       showError('Error', 'Error de conexión: ' + error.message)
-      console.error('Error de conexión:', error)
     } finally {
       setCreating(false)
     }
