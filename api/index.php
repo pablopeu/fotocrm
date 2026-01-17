@@ -18,7 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 define('DATA_DIR', __DIR__ . '/../data');
 define('UPLOADS_DIR', __DIR__ . '/../uploads');
 define('BACKUPS_DIR', __DIR__ . '/../backups');
-define('CONFIGURATOR_DIR', DATA_DIR . '/configurator');
+define('CONFIGURATOR_DIR', DATA_DIR . '/configurador');
 define('CONFIG_FILE', DATA_DIR . '/config.json');
 
 // Cargar configuración de usuario/contraseña

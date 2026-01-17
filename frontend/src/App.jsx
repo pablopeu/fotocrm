@@ -49,20 +49,59 @@ function App() {
   const [selectedExtras, setSelectedExtras] = useState([])
   const [searchQuery, setSearchQuery] = useState('')
 
-  // Fotos seleccionadas para configurador (persisten en cookies)
-  const [selectedPhotos, setSelectedPhotos] = useState(() => {
+  // Sistema de buckets para configurador (persisten en cookies)
+  const [activeBucket, setActiveBucket] = useState(() => {
     const saved = document.cookie
       .split('; ')
-      .find(row => row.startsWith('selectedPhotos='))
+      .find(row => row.startsWith('activeBucket='))
+    if (saved) {
+      try {
+        return parseInt(saved.split('=')[1]) || 0
+      } catch {
+        return 0
+      }
+    }
+    return 0
+  })
+
+  const [buckets, setBuckets] = useState(() => {
+    const saved = document.cookie
+      .split('; ')
+      .find(row => row.startsWith('buckets='))
     if (saved) {
       try {
         return JSON.parse(decodeURIComponent(saved.split('=')[1]))
       } catch {
-        return []
+        return Array(5).fill(null).map(() => ({
+          selectedPhotos: [],
+          photoConfigs: {}
+        }))
       }
     }
-    return []
+    return Array(5).fill(null).map(() => ({
+      selectedPhotos: [],
+      photoConfigs: {}
+    }))
   })
+
+  const [showBucketDelete, setShowBucketDelete] = useState(null)
+
+  // Guardar buckets en cookies cuando cambien
+  useEffect(() => {
+    const expires = new Date()
+    expires.setDate(expires.getDate() + 365)
+    document.cookie = `buckets=${encodeURIComponent(JSON.stringify(buckets))}; expires=${expires.toUTCString()}; path=/`
+  }, [buckets])
+
+  // Guardar activeBucket en cookies cuando cambie
+  useEffect(() => {
+    const expires = new Date()
+    expires.setDate(expires.getDate() + 365)
+    document.cookie = `activeBucket=${activeBucket}; expires=${expires.toUTCString()}; path=/`
+  }, [activeBucket])
+
+  // Fotos seleccionadas del bucket activo (para compatibilidad)
+  const selectedPhotos = buckets[activeBucket]?.selectedPhotos || []
 
   // Cargar configuración (logo, whatsapp, telegram)
   useEffect(() => {
@@ -197,47 +236,82 @@ function App() {
 
   // Manejar selección de fotos para configurador
   const togglePhotoSelection = useCallback((photoId) => {
-    setSelectedPhotos(prev => {
-      let newSelection
-      if (prev.includes(photoId)) {
+    setBuckets(prev => {
+      const newBuckets = [...prev]
+      const currentSelected = newBuckets[activeBucket].selectedPhotos
+
+      if (currentSelected.includes(photoId)) {
         // Deseleccionar
-        newSelection = prev.filter(id => id !== photoId)
+        newBuckets[activeBucket] = {
+          ...newBuckets[activeBucket],
+          selectedPhotos: currentSelected.filter(id => id !== photoId)
+        }
+        // Eliminar también la configuración de esa foto
+        const newConfigs = { ...newBuckets[activeBucket].photoConfigs }
+        delete newConfigs[photoId]
+        newBuckets[activeBucket].photoConfigs = newConfigs
       } else {
         // Verificar límite de 6
-        if (prev.length >= 6) {
+        if (currentSelected.length >= 6) {
           return prev // No agregar más de 6
         }
         // Seleccionar
-        newSelection = [...prev, photoId]
+        newBuckets[activeBucket] = {
+          ...newBuckets[activeBucket],
+          selectedPhotos: [...currentSelected, photoId],
+          photoConfigs: {
+            ...newBuckets[activeBucket].photoConfigs,
+            [photoId]: {
+              forma: false,
+              acero: false,
+              encabado: false,
+              detalle1: false,
+              detalle2: false,
+              detalle3: false,
+              comentarios: ''
+            }
+          }
+        }
       }
 
-      // Guardar en cookies (365 días de expiración)
-      const expires = new Date()
-      expires.setDate(expires.getDate() + 365)
-      document.cookie = `selectedPhotos=${encodeURIComponent(JSON.stringify(newSelection))}; expires=${expires.toUTCString()}; path=/`
-
-      return newSelection
+      return newBuckets
     })
-  }, [])
+  }, [activeBucket])
 
   const isPhotoSelected = useCallback((photoId) => {
     return selectedPhotos.includes(photoId)
   }, [selectedPhotos])
 
-  // Obtener fotos seleccionadas
-  const getSelectedPhotosData = useCallback(() => {
-    return selectedPhotos
-      .map(id => photos.find(p => p.id === id))
-      .filter(Boolean)
-  }, [selectedPhotos, photos])
+  const handleDeleteBucket = useCallback((bucketIndex) => {
+    setBuckets(prev => {
+      const newBuckets = [...prev]
+      newBuckets[bucketIndex] = {
+        selectedPhotos: [],
+        photoConfigs: {}
+      }
+      return newBuckets
+    })
+    setShowBucketDelete(null)
+    // Si estamos en el bucket eliminado, cambiar al 0
+    if (activeBucket === bucketIndex) {
+      setActiveBucket(0)
+    }
+  }, [activeBucket])
 
   // Si estamos en el configurador, mostrar esa vista
   if (showConfigurador) {
     return <Configurador
-      selectedPhotos={getSelectedPhotosData()}
+      buckets={buckets}
+      setBuckets={setBuckets}
+      activeBucket={activeBucket}
+      setActiveBucket={setActiveBucket}
+      allPhotos={photos}
       onClose={() => setShowConfigurador(false)}
       logo={logo}
       tagGroups={tagGroups}
+      showBucketDelete={showBucketDelete}
+      setShowBucketDelete={setShowBucketDelete}
+      handleDeleteBucket={handleDeleteBucket}
     />
   }
 
@@ -453,9 +527,59 @@ function App() {
       {/* Main content */}
       <main className="flex-1 overflow-y-auto p-4 lg:p-6">
         <div className="max-w-7xl mx-auto">
-          {/* Info de resultados */}
-          <div className="mb-4 text-sm text-gray-500 dark:text-gray-400">
-            {filteredPhotos.length} foto{filteredPhotos.length !== 1 ? 's' : ''} encontrada{filteredPhotos.length !== 1 ? 's' : ''}
+          {/* Info de resultados y buckets */}
+          <div className="mb-4 flex items-center justify-between gap-4">
+            <div className="text-sm text-gray-500 dark:text-gray-400">
+              {filteredPhotos.length} foto{filteredPhotos.length !== 1 ? 's' : ''} encontrada{filteredPhotos.length !== 1 ? 's' : ''}
+            </div>
+
+            {/* Buckets */}
+            <div className="flex items-center gap-1">
+              {buckets.map((bucket, index) => (
+                <div key={index} className="relative">
+                  <button
+                    onClick={() => setActiveBucket(index)}
+                    className={`px-2 py-1 text-xs rounded transition-colors ${
+                      activeBucket === index
+                        ? 'bg-blue-600 text-white'
+                        : bucket.selectedPhotos.length > 0
+                        ? 'bg-gray-200 dark:bg-gray-600 text-gray-900 dark:text-white hover:bg-gray-300 dark:hover:bg-gray-500'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600'
+                    }`}
+                  >
+                    Cuchillo {index + 1}
+                  </button>
+                  {bucket.selectedPhotos.length > 0 && (
+                    <button
+                      onClick={() => setShowBucketDelete(index)}
+                      className="absolute -top-1 -right-1 w-4 h-4 bg-red-600 text-white rounded-full flex items-center justify-center hover:bg-red-700 text-xs"
+                    >
+                      ×
+                    </button>
+                  )}
+                  {/* Confirmación de eliminación inline */}
+                  {showBucketDelete === index && (
+                    <div className="absolute top-full mt-1 left-1/2 -translate-x-1/2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-2 z-50 whitespace-nowrap">
+                      <p className="text-xs text-gray-900 dark:text-white mb-2">¿Eliminar?</p>
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => handleDeleteBucket(index)}
+                          className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
+                        >
+                          Sí
+                        </button>
+                        <button
+                          onClick={() => setShowBucketDelete(null)}
+                          className="px-2 py-1 text-xs bg-gray-200 dark:bg-gray-600 text-gray-900 dark:text-white rounded hover:bg-gray-300 dark:hover:bg-gray-500"
+                        >
+                          No
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* Grid de fotos */}
@@ -868,18 +992,21 @@ function PhotoCard({ photo, tagGroups, isSelected, onToggleSelection, selectedCo
 }
 
 // Componente Configurador
-function Configurador({ selectedPhotos, onClose, logo, tagGroups }) {
-  const [activeBucket, setActiveBucket] = useState(0) // 0-4
-  const [buckets, setBuckets] = useState(() => {
-    // Inicializar 5 buckets vacíos
-    return Array(5).fill(null).map(() => ({
-      selectedPhotos: [],
-      photoConfigs: {}
-    }))
-  })
+function Configurador({
+  buckets,
+  setBuckets,
+  activeBucket,
+  setActiveBucket,
+  allPhotos,
+  onClose,
+  logo,
+  tagGroups,
+  showBucketDelete,
+  setShowBucketDelete,
+  handleDeleteBucket
+}) {
   const [savedCode, setSavedCode] = useState(null)
   const [saving, setSaving] = useState(false)
-  const [showBucketDelete, setShowBucketDelete] = useState(null)
   const [whatsappConfig, setWhatsappConfig] = useState(null)
   const [telegramConfig, setTelegramConfig] = useState(null)
   const [configuratorMessage, setConfiguratorMessage] = useState('')
@@ -891,27 +1018,6 @@ function Configurador({ selectedPhotos, onClose, logo, tagGroups }) {
 
     if (code) {
       loadConfiguration(code)
-    } else {
-      // Inicializar bucket 0 con las fotos seleccionadas
-      setBuckets(prev => {
-        const newBuckets = [...prev]
-        newBuckets[0] = {
-          selectedPhotos: selectedPhotos.map(p => p.id),
-          photoConfigs: selectedPhotos.reduce((acc, photo) => {
-            acc[photo.id] = {
-              forma: false,
-              acero: false,
-              encabado: false,
-              detalle1: false,
-              detalle2: false,
-              detalle3: false,
-              comentarios: ''
-            }
-            return acc
-          }, {})
-        }
-        return newBuckets
-      })
     }
 
     loadContactConfig()
@@ -1020,22 +1126,6 @@ function Configurador({ selectedPhotos, onClose, logo, tagGroups }) {
     }
   }
 
-  const handleDeleteBucket = (bucketIndex) => {
-    setBuckets(prev => {
-      const newBuckets = [...prev]
-      newBuckets[bucketIndex] = {
-        selectedPhotos: [],
-        photoConfigs: {}
-      }
-      return newBuckets
-    })
-    setShowBucketDelete(null)
-    // Si estamos en el bucket eliminado, cambiar al 0
-    if (activeBucket === bucketIndex) {
-      setActiveBucket(0)
-    }
-  }
-
   const getShareLink = () => {
     if (!savedCode) return ''
     return `${window.location.origin}${window.location.pathname}?config=${savedCode}`
@@ -1061,7 +1151,7 @@ function Configurador({ selectedPhotos, onClose, logo, tagGroups }) {
 
   // Obtener fotos del bucket activo
   const currentPhotos = currentBucket.selectedPhotos
-    .map(id => selectedPhotos.find(p => p.id === id))
+    .map(id => allPhotos.find(p => p.id === id))
     .filter(Boolean)
 
   return (
