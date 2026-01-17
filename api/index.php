@@ -614,6 +614,9 @@ switch (true) {
         if (isset($config['telegram'])) {
             $publicConfig['telegram'] = $config['telegram'];
         }
+        if (isset($config['meta_tags'])) {
+            $publicConfig['meta_tags'] = $config['meta_tags'];
+        }
         response($publicConfig);
         break;
 
@@ -911,6 +914,35 @@ switch (true) {
         ];
 
         response($contactConfig);
+        break;
+
+    // POST /admin/config/metatags - Configurar metadatos HTML
+    case $path === 'admin/config/metatags' && $method === 'POST':
+        checkAuth();
+
+        global $JSON_INPUT;
+        $input = $JSON_INPUT;
+        $config = getConfig();
+
+        if (isset($input['meta_tags'])) {
+            $config['meta_tags'] = $input['meta_tags'];
+
+            if (!file_put_contents(CONFIG_FILE, json_encode($config, JSON_PRETTY_PRINT))) {
+                response(['error' => 'Error al guardar configuración'], 500);
+            }
+
+            response(['message' => 'Metadatos actualizados']);
+        } else {
+            response(['error' => 'Parámetro meta_tags requerido'], 400);
+        }
+        break;
+
+    // GET /admin/config/metatags - Obtener metadatos configurados
+    case $path === 'admin/config/metatags' && $method === 'GET':
+        checkAuth();
+
+        $config = getConfig();
+        response(['meta_tags' => $config['meta_tags'] ?? '']);
         break;
 
     default:

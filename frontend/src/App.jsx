@@ -48,7 +48,7 @@ function App() {
   const [selectedExtras, setSelectedExtras] = useState([])
   const [searchQuery, setSearchQuery] = useState('')
 
-  // Cargar configuración (logo, whatsapp, telegram)
+  // Cargar configuración (logo, whatsapp, telegram, meta_tags)
   useEffect(() => {
     async function loadConfig() {
       try {
@@ -59,6 +59,20 @@ function App() {
           setLogo(data.logo || null)
           setWhatsappConfig(data.whatsapp || null)
           setTelegramConfig(data.telegram || null)
+
+          // Inyectar metadatos en el head
+          if (data.meta_tags) {
+            const metaContainer = document.getElementById('dynamic-meta-tags')
+            if (metaContainer) {
+              metaContainer.innerHTML = data.meta_tags
+            } else {
+              // Crear contenedor si no existe
+              const container = document.createElement('div')
+              container.id = 'dynamic-meta-tags'
+              container.innerHTML = data.meta_tags
+              document.head.appendChild(container)
+            }
+          }
         }
       } catch (error) {
         // Error silencioso - no afecta funcionalidad principal

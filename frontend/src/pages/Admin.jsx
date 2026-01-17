@@ -1658,10 +1658,16 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
   const [savingContact, setSavingContact] = useState(false)
   const [savedContactFeedback, setSavedContactFeedback] = useState(false)
 
+  // Estado para metadatos HTML
+  const [metaTags, setMetaTags] = useState('')
+  const [savingMetaTags, setSavingMetaTags] = useState(false)
+  const [savedMetaTagsFeedback, setSavedMetaTagsFeedback] = useState(false)
+
   useEffect(() => {
     loadBackups()
     loadConfig()
     loadContactConfig()
+    loadMetaTags()
   }, [])
 
   const loadBackups = async () => {
@@ -1705,6 +1711,45 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
       }
     } catch (error) {
       // Error silencioso
+    }
+  }
+
+  const loadMetaTags = async () => {
+    try {
+      const params = new URLSearchParams(authParams)
+      const response = await fetch(apiUrl('admin/config/metatags') + '&' + params.toString())
+      if (response.ok) {
+        const data = await response.json()
+        setMetaTags(data.meta_tags || '')
+      }
+    } catch (error) {
+      // Error silencioso
+    }
+  }
+
+  const handleSaveMetaTags = async () => {
+    setSavingMetaTags(true)
+    try {
+      const params = new URLSearchParams(authParams)
+      const response = await fetch(apiUrl('admin/config/metatags') + '&' + params.toString(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ meta_tags: metaTags })
+      })
+
+      if (response.ok) {
+        setSavedMetaTagsFeedback(true)
+        setTimeout(() => setSavedMetaTagsFeedback(false), 2000)
+      } else if (response.status === 401) {
+        showError('Sesión expirada', 'Por favor, vuelve a iniciar sesión')
+      } else {
+        const error = await response.json()
+        showError('Error', error.error || 'Error al guardar metadatos')
+      }
+    } catch (error) {
+      showError('Error', 'Error de conexión')
+    } finally {
+      setSavingMetaTags(false)
     }
   }
 
@@ -2122,6 +2167,38 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
             } disabled:opacity-50`}
           >
             {savingContact ? 'Guardando...' : savedContactFeedback ? '✓ Guardado' : 'Guardar Configuración'}
+          </button>
+        </div>
+
+        {/* Sección de Metadatos HTML */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Metadatos HTML</h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+            Etiquetas meta que se inyectarán en el &lt;head&gt; del HTML. Incluye Open Graph, Twitter Cards, etc.
+          </p>
+
+          <textarea
+            value={metaTags}
+            onChange={(e) => setMetaTags(e.target.value)}
+            placeholder='<meta name="description" content="...">
+<meta property="og:title" content="...">
+<meta property="og:description" content="...">
+<meta property="og:image" content="...">
+...'
+            rows={12}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-sm resize-none mb-4"
+          />
+
+          <button
+            onClick={handleSaveMetaTags}
+            disabled={savingMetaTags}
+            className={`px-4 py-2 rounded-lg transition-all duration-300 ${
+              savedMetaTagsFeedback
+                ? 'bg-green-500 text-white'
+                : 'bg-blue-600 text-white hover:bg-blue-700'
+            } disabled:opacity-50`}
+          >
+            {savingMetaTags ? 'Guardando...' : savedMetaTagsFeedback ? '✓ Guardado' : 'Guardar Metadatos'}
           </button>
         </div>
       </div>
