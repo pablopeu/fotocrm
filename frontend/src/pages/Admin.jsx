@@ -1652,9 +1652,15 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
   const [logo, setLogo] = useState(null)
   const [uploadingLogo, setUploadingLogo] = useState(false)
 
+  // Estado para WhatsApp y Telegram
+  const [whatsappConfig, setWhatsappConfig] = useState({ enabled: false, number: '', message: '' })
+  const [telegramConfig, setTelegramConfig] = useState({ enabled: false, username: '', message: '' })
+  const [savingContact, setSavingContact] = useState(false)
+
   useEffect(() => {
     loadBackups()
     loadConfig()
+    loadContactConfig()
   }, [])
 
   const loadBackups = async () => {
@@ -1684,6 +1690,20 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
       }
     } catch (error) {
       console.error('Error al cargar configuración:', error)
+    }
+  }
+
+  const loadContactConfig = async () => {
+    try {
+      const params = new URLSearchParams(authParams)
+      const response = await fetch(apiUrl('admin/config/contact') + '&' + params.toString())
+      if (response.ok) {
+        const data = await response.json()
+        setWhatsappConfig(data.whatsapp || { enabled: false, number: '', message: '' })
+        setTelegramConfig(data.telegram || { enabled: false, username: '', message: '' })
+      }
+    } catch (error) {
+      console.error('Error al cargar configuración de contacto:', error)
     }
   }
 
@@ -1806,6 +1826,34 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
       }
     } catch (error) {
       showError('Error', 'Error de conexión')
+    }
+  }
+
+  const handleSaveContactConfig = async () => {
+    setSavingContact(true)
+    try {
+      const params = new URLSearchParams(authParams)
+      const response = await fetch(apiUrl('admin/config/contact') + '&' + params.toString(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          whatsapp: whatsappConfig,
+          telegram: telegramConfig
+        })
+      })
+
+      if (response.ok) {
+        showSuccess('Guardado', 'Configuración de contacto actualizada')
+      } else if (response.status === 401) {
+        showError('Sesión expirada', 'Por favor, vuelve a iniciar sesión')
+      } else {
+        const error = await response.json()
+        showError('Error', error.error || 'Error al guardar configuración')
+      }
+    } catch (error) {
+      showError('Error', 'Error de conexión')
+    } finally {
+      setSavingContact(false)
     }
   }
 
@@ -1953,6 +2001,112 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
               />
             </label>
           )}
+        </div>
+
+        {/* Sección de Contacto - WhatsApp y Telegram */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Contacto</h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+            Configura botones flotantes de WhatsApp y Telegram en el sitio público.
+          </p>
+
+          {/* WhatsApp */}
+          <div className="mb-6 pb-6 border-b border-gray-200 dark:border-gray-700">
+            <div className="flex items-center gap-3 mb-4">
+              <input
+                type="checkbox"
+                id="whatsapp-enabled"
+                checked={whatsappConfig.enabled}
+                onChange={(e) => setWhatsappConfig({ ...whatsappConfig, enabled: e.target.checked })}
+                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+              />
+              <label htmlFor="whatsapp-enabled" className="text-lg font-medium text-gray-900 dark:text-white">
+                WhatsApp
+              </label>
+            </div>
+
+            {whatsappConfig.enabled && (
+              <div className="space-y-3 ml-7">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Número de WhatsApp (con código de país, sin +)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="5491112345678"
+                    value={whatsappConfig.number}
+                    onChange={(e) => setWhatsappConfig({ ...whatsappConfig, number: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Mensaje predeterminado
+                  </label>
+                  <textarea
+                    placeholder="Hola, me interesan tus productos..."
+                    value={whatsappConfig.message}
+                    onChange={(e) => setWhatsappConfig({ ...whatsappConfig, message: e.target.value })}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Telegram */}
+          <div className="mb-6">
+            <div className="flex items-center gap-3 mb-4">
+              <input
+                type="checkbox"
+                id="telegram-enabled"
+                checked={telegramConfig.enabled}
+                onChange={(e) => setTelegramConfig({ ...telegramConfig, enabled: e.target.checked })}
+                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+              />
+              <label htmlFor="telegram-enabled" className="text-lg font-medium text-gray-900 dark:text-white">
+                Telegram
+              </label>
+            </div>
+
+            {telegramConfig.enabled && (
+              <div className="space-y-3 ml-7">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Usuario de Telegram (sin @)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="miusuario"
+                    value={telegramConfig.username}
+                    onChange={(e) => setTelegramConfig({ ...telegramConfig, username: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Mensaje predeterminado
+                  </label>
+                  <textarea
+                    placeholder="Hola, me interesan tus productos..."
+                    value={telegramConfig.message}
+                    onChange={(e) => setTelegramConfig({ ...telegramConfig, message: e.target.value })}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          <button
+            onClick={handleSaveContactConfig}
+            disabled={savingContact}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+          >
+            {savingContact ? 'Guardando...' : 'Guardar Configuración'}
+          </button>
         </div>
       </div>
     </div>

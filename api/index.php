@@ -605,12 +605,18 @@ switch (true) {
         response(['message' => 'Foto eliminada']);
         break;
 
-    // GET /config - Obtener configuración pública (logo, etc)
+    // GET /config - Obtener configuración pública (logo, whatsapp, telegram, etc)
     case $path === 'config' && $method === 'GET':
         $config = getConfig();
         $publicConfig = [];
         if (isset($config['logo'])) {
             $publicConfig['logo'] = $config['logo'];
+        }
+        if (isset($config['whatsapp'])) {
+            $publicConfig['whatsapp'] = $config['whatsapp'];
+        }
+        if (isset($config['telegram'])) {
+            $publicConfig['telegram'] = $config['telegram'];
         }
         response($publicConfig);
         break;
@@ -837,6 +843,77 @@ switch (true) {
         file_put_contents(CONFIG_FILE, json_encode($config, JSON_PRETTY_PRINT));
 
         response(['message' => 'Logo eliminado']);
+        break;
+
+    // POST /admin/config/contact - Configurar WhatsApp y Telegram
+    case $path === 'admin/config/contact' && $method === 'POST':
+        checkAuth();
+
+        $input = getJSONInput();
+        $config = getConfig();
+
+        // Validar y actualizar WhatsApp
+        if (isset($input['whatsapp'])) {
+            if (isset($input['whatsapp']['enabled'])) {
+                if ($input['whatsapp']['enabled']) {
+                    // Validar que tenga número y mensaje
+                    if (empty($input['whatsapp']['number'])) {
+                        response(['error' => 'Número de WhatsApp requerido'], 400);
+                    }
+                    if (empty($input['whatsapp']['message'])) {
+                        response(['error' => 'Mensaje de WhatsApp requerido'], 400);
+                    }
+                    $config['whatsapp'] = [
+                        'enabled' => true,
+                        'number' => $input['whatsapp']['number'],
+                        'message' => $input['whatsapp']['message']
+                    ];
+                } else {
+                    $config['whatsapp'] = ['enabled' => false];
+                }
+            }
+        }
+
+        // Validar y actualizar Telegram
+        if (isset($input['telegram'])) {
+            if (isset($input['telegram']['enabled'])) {
+                if ($input['telegram']['enabled']) {
+                    // Validar que tenga usuario y mensaje
+                    if (empty($input['telegram']['username'])) {
+                        response(['error' => 'Usuario de Telegram requerido'], 400);
+                    }
+                    if (empty($input['telegram']['message'])) {
+                        response(['error' => 'Mensaje de Telegram requerido'], 400);
+                    }
+                    $config['telegram'] = [
+                        'enabled' => true,
+                        'username' => $input['telegram']['username'],
+                        'message' => $input['telegram']['message']
+                    ];
+                } else {
+                    $config['telegram'] = ['enabled' => false];
+                }
+            }
+        }
+
+        if (!file_put_contents(CONFIG_FILE, json_encode($config, JSON_PRETTY_PRINT))) {
+            response(['error' => 'Error al guardar configuración'], 500);
+        }
+
+        response(['message' => 'Configuración actualizada']);
+        break;
+
+    // GET /admin/config/contact - Obtener configuración de contacto
+    case $path === 'admin/config/contact' && $method === 'GET':
+        checkAuth();
+
+        $config = getConfig();
+        $contactConfig = [
+            'whatsapp' => $config['whatsapp'] ?? ['enabled' => false],
+            'telegram' => $config['telegram'] ?? ['enabled' => false]
+        ];
+
+        response($contactConfig);
         break;
 
     default:
