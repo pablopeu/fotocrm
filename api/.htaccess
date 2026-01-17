@@ -1,7 +1,0 @@
-# Pasar el header Authorization al PHP (necesario en muchos hostings compartidos)
-SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1
-
-# Alternativa para CGI/FastCGI
-RewriteEngine On
-RewriteCond %{HTTP:Authorization} .
-RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]

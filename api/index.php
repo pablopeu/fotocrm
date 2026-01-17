@@ -17,6 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 // Configuración
 define('DATA_DIR', __DIR__ . '/../data');
 define('UPLOADS_DIR', __DIR__ . '/../uploads');
+define('BACKUPS_DIR', __DIR__ . '/../backups');
 define('CONFIG_FILE', DATA_DIR . '/config.json');
 
 // Cargar configuración de usuario/contraseña
@@ -281,6 +282,24 @@ switch (true) {
     // GET /buckets - Obtener buckets de upload
     case $path === 'buckets' && $method === 'GET':
         response(readJSON('buckets.json'));
+        break;
+
+    // DELETE /admin/buckets/{id} - Eliminar un bucket (no las fotos, solo el bucket)
+    case preg_match('/^admin\/buckets\/([a-zA-Z0-9-]+)$/', $path, $matches) && $method === 'DELETE':
+        checkAuth();
+
+        $bucketId = $matches[1];
+        $data = readJSON('buckets.json');
+
+        $originalCount = count($data['buckets']);
+        $data['buckets'] = array_values(array_filter($data['buckets'], fn($b) => $b['id'] !== $bucketId));
+
+        if (count($data['buckets']) === $originalCount) {
+            response(['error' => 'Bucket no encontrado'], 404);
+        }
+
+        writeJSON('buckets.json', $data);
+        response(['message' => 'Bucket eliminado']);
         break;
 
     // GET /photos/{id}
@@ -584,6 +603,240 @@ switch (true) {
         $data['photos'] = array_values($data['photos']);
         writeJSON('photos.json', $data);
         response(['message' => 'Foto eliminada']);
+        break;
+
+    // GET /config - Obtener configuración pública (logo, etc)
+    case $path === 'config' && $method === 'GET':
+        $config = getConfig();
+        $publicConfig = [];
+        if (isset($config['logo'])) {
+            $publicConfig['logo'] = $config['logo'];
+        }
+        response($publicConfig);
+        break;
+
+    // GET /admin/backups - Listar backups disponibles
+    case $path === 'admin/backups' && $method === 'GET':
+        checkAuth();
+
+        if (!is_dir(BACKUPS_DIR)) {
+            mkdir(BACKUPS_DIR, 0755, true);
+        }
+
+        $files = array_diff(scandir(BACKUPS_DIR), ['.', '..']);
+        $backups = [];
+        foreach ($files as $file) {
+            $ext = pathinfo($file, PATHINFO_EXTENSION);
+            if ($ext === 'zip' || $ext === 'gz') { // Soportar ambos formatos
+                $fullPath = BACKUPS_DIR . '/' . $file;
+                $backups[] = [
+                    'filename' => $file,
+                    'size' => filesize($fullPath),
+                    'created_at' => date('Y-m-d H:i:s', filemtime($fullPath))
+                ];
+            }
+        }
+
+        // Ordenar por fecha de creación descendente
+        usort($backups, fn($a, $b) => strtotime($b['created_at']) - strtotime($a['created_at']));
+
+        response(['backups' => $backups]);
+        break;
+
+    // POST /admin/backups - Crear nuevo backup
+    case $path === 'admin/backups' && $method === 'POST':
+        checkAuth();
+
+        if (!is_dir(BACKUPS_DIR)) {
+            mkdir(BACKUPS_DIR, 0755, true);
+        }
+
+        // Verificar límite de 5 backups
+        $files = array_diff(scandir(BACKUPS_DIR), ['.', '..']);
+        $existingBackups = array_filter($files, fn($f) => pathinfo($f, PATHINFO_EXTENSION) === 'zip');
+        if (count($existingBackups) >= 5) {
+            response(['error' => 'Límite de 5 backups alcanzado. Elimina uno antes de crear otro.'], 400);
+        }
+
+        $timestamp = date('Y-m-d_His');
+        $filename = "backup_{$timestamp}.zip";
+        $backupPath = BACKUPS_DIR . '/' . $filename;
+
+        // Verificar que las carpetas existan
+        if (!is_dir(DATA_DIR)) {
+            response(['error' => 'Carpeta /data no existe'], 500);
+        }
+        if (!is_dir(UPLOADS_DIR)) {
+            response(['error' => 'Carpeta /uploads no existe'], 500);
+        }
+
+        // Crear ZIP usando ZipArchive (compatible con hosting compartido)
+        if (!class_exists('ZipArchive')) {
+            response(['error' => 'ZipArchive no está disponible en este servidor'], 500);
+        }
+
+        $zip = new ZipArchive();
+        if ($zip->open($backupPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+            response(['error' => 'No se pudo crear el archivo de backup'], 500);
+        }
+
+        // Función recursiva para agregar carpetas al ZIP
+        $addFolderToZip = function($folder, $zipPath = '') use (&$addFolderToZip, $zip) {
+            $files = scandir($folder);
+            foreach ($files as $file) {
+                if ($file === '.' || $file === '..') continue;
+
+                $fullPath = $folder . '/' . $file;
+                $zipFilePath = $zipPath ? $zipPath . '/' . $file : $file;
+
+                if (is_dir($fullPath)) {
+                    $zip->addEmptyDir($zipFilePath);
+                    $addFolderToZip($fullPath, $zipFilePath);
+                } else {
+                    $zip->addFile($fullPath, $zipFilePath);
+                }
+            }
+        };
+
+        // Agregar carpetas data y uploads al ZIP
+        try {
+            $zip->addEmptyDir('data');
+            $addFolderToZip(DATA_DIR, 'data');
+
+            $zip->addEmptyDir('uploads');
+            $addFolderToZip(UPLOADS_DIR, 'uploads');
+
+            $zip->close();
+        } catch (Exception $e) {
+            $zip->close();
+            if (file_exists($backupPath)) {
+                unlink($backupPath);
+            }
+            response(['error' => 'Error al crear backup: ' . $e->getMessage()], 500);
+        }
+
+        if (!file_exists($backupPath)) {
+            response(['error' => 'Backup no se creó correctamente'], 500);
+        }
+
+        response([
+            'message' => 'Backup creado',
+            'backup' => [
+                'filename' => $filename,
+                'size' => filesize($backupPath),
+                'created_at' => date('Y-m-d H:i:s', filemtime($backupPath))
+            ]
+        ], 201);
+        break;
+
+    // GET /admin/backups/{filename} - Descargar backup
+    case preg_match('/^admin\/backups\/([a-zA-Z0-9_\-\.]+)$/', $path, $matches) && $method === 'GET':
+        checkAuth();
+
+        $filename = $matches[1];
+        // Validar que sea un archivo .zip o .tar.gz
+        if (!preg_match('/^backup_[\d_-]+\.(zip|tar\.gz)$/', $filename)) {
+            response(['error' => 'Nombre de archivo inválido'], 400);
+        }
+
+        $filePath = BACKUPS_DIR . '/' . $filename;
+        if (!file_exists($filePath)) {
+            response(['error' => 'Backup no encontrado'], 404);
+        }
+
+        // Enviar archivo para descarga
+        $contentType = (pathinfo($filename, PATHINFO_EXTENSION) === 'zip') ? 'application/zip' : 'application/gzip';
+        header('Content-Type: ' . $contentType);
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Content-Length: ' . filesize($filePath));
+        readfile($filePath);
+        exit;
+
+    // DELETE /admin/backups/{filename} - Eliminar backup
+    case preg_match('/^admin\/backups\/([a-zA-Z0-9_\-\.]+)$/', $path, $matches) && $method === 'DELETE':
+        checkAuth();
+
+        $filename = $matches[1];
+        // Validar que sea un archivo .zip o .tar.gz
+        if (!preg_match('/^backup_[\d_-]+\.(zip|tar\.gz)$/', $filename)) {
+            response(['error' => 'Nombre de archivo inválido'], 400);
+        }
+
+        $filePath = BACKUPS_DIR . '/' . $filename;
+        if (!file_exists($filePath)) {
+            response(['error' => 'Backup no encontrado'], 404);
+        }
+
+        if (!unlink($filePath)) {
+            response(['error' => 'Error al eliminar backup'], 500);
+        }
+
+        response(['message' => 'Backup eliminado']);
+        break;
+
+    // POST /admin/config/logo - Subir logo del sitio
+    case $path === 'admin/config/logo' && $method === 'POST':
+        checkAuth();
+
+        if (empty($_FILES['logo'])) {
+            response(['error' => 'No se subió archivo'], 400);
+        }
+
+        $file = $_FILES['logo'];
+        $allowedTypes = ['image/jpeg', 'image/png', 'image/svg+xml', 'image/webp'];
+
+        if (!in_array($file['type'], $allowedTypes)) {
+            response(['error' => 'Tipo de archivo no permitido'], 400);
+        }
+
+        if ($file['size'] > 2 * 1024 * 1024) { // 2MB max
+            response(['error' => 'Archivo muy grande (max 2MB)'], 400);
+        }
+
+        $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
+        $filename = 'logo.' . strtolower($ext);
+        $destination = UPLOADS_DIR . '/' . $filename;
+
+        // Eliminar logo anterior si existe
+        $config = getConfig();
+        if (isset($config['logo'])) {
+            $oldLogoPath = UPLOADS_DIR . '/' . basename($config['logo']);
+            if (file_exists($oldLogoPath)) {
+                unlink($oldLogoPath);
+            }
+        }
+
+        if (!move_uploaded_file($file['tmp_name'], $destination)) {
+            response(['error' => 'Error al guardar archivo'], 500);
+        }
+
+        // Actualizar config
+        $config['logo'] = 'uploads/' . $filename;
+        if (!file_put_contents(CONFIG_FILE, json_encode($config, JSON_PRETTY_PRINT))) {
+            response(['error' => 'Error al guardar configuración'], 500);
+        }
+
+        response(['message' => 'Logo actualizado', 'logo' => $config['logo']], 201);
+        break;
+
+    // DELETE /admin/config/logo - Eliminar logo del sitio
+    case $path === 'admin/config/logo' && $method === 'DELETE':
+        checkAuth();
+
+        $config = getConfig();
+        if (!isset($config['logo'])) {
+            response(['error' => 'No hay logo configurado'], 404);
+        }
+
+        $logoPath = UPLOADS_DIR . '/' . basename($config['logo']);
+        if (file_exists($logoPath)) {
+            unlink($logoPath);
+        }
+
+        unset($config['logo']);
+        file_put_contents(CONFIG_FILE, json_encode($config, JSON_PRETTY_PRINT));
+
+        response(['message' => 'Logo eliminado']);
         break;
 
     default:

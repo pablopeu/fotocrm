@@ -37,6 +37,7 @@ function App() {
   const [photos, setPhotos] = useState([])
   const [filteredPhotos, setFilteredPhotos] = useState([])
   const [loading, setLoading] = useState(true)
+  const [logo, setLogo] = useState(null)
 
   // Filtros
   const [activeTab, setActiveTab] = useState(null) // null = todos, o un id de tab
@@ -44,6 +45,23 @@ function App() {
   const [selectedAcero, setSelectedAcero] = useState([])
   const [selectedExtras, setSelectedExtras] = useState([])
   const [searchQuery, setSearchQuery] = useState('')
+
+  // Cargar configuración (logo)
+  useEffect(() => {
+    async function loadConfig() {
+      try {
+        const API_BASE = import.meta.env.VITE_API_URL || './api/index.php'
+        const response = await fetch(`${API_BASE}?route=config`)
+        if (response.ok) {
+          const data = await response.json()
+          setLogo(data.logo || null)
+        }
+      } catch (error) {
+        console.error('Error al cargar configuración:', error)
+      }
+    }
+    loadConfig()
+  }, [])
 
   // Cargar datos iniciales
   useEffect(() => {
@@ -165,13 +183,18 @@ function App() {
           {/* Mobile: Layout vertical */}
           <div className="lg:hidden">
             {/* Título y subtítulo */}
-            <div className="mb-3">
-              <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-                PEU Cuchillos Artesanales
-              </h1>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Buscador interactivo de modelos y materiales
-              </p>
+            <div className="mb-3 flex items-center gap-3">
+              {logo && (
+                <img src={logo} alt="Logo" className="h-10 object-contain" />
+              )}
+              <div>
+                <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+                  PEU Cuchillos Artesanales
+                </h1>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Buscador interactivo de modelos y materiales
+                </p>
+              </div>
             </div>
 
             {/* Tabs de tipo */}
@@ -248,14 +271,19 @@ function App() {
 
           {/* Desktop: Layout horizontal en una línea */}
           <div className="hidden lg:flex items-center gap-4">
-            {/* Título y subtítulo */}
-            <div className="flex-shrink-0">
-              <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-                PEU Cuchillos Artesanales
-              </h1>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Buscador interactivo de modelos y materiales
-              </p>
+            {/* Logo y Título */}
+            <div className="flex items-center gap-3 flex-shrink-0">
+              {logo && (
+                <img src={logo} alt="Logo" className="h-12 object-contain" />
+              )}
+              <div>
+                <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+                  PEU Cuchillos Artesanales
+                </h1>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Buscador interactivo de modelos y materiales
+                </p>
+              </div>
             </div>
 
             {/* Tabs de tipo */}
@@ -462,6 +490,7 @@ function PhotoCard({ photo, tagGroups }) {
   const [position, setPosition] = useState({ x: 0, y: 0 })
   const [isDragging, setIsDragging] = useState(false)
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
+  const [showTooltip, setShowTooltip] = useState(false)
 
   // Resetear zoom cuando cambia la foto
   useEffect(() => {
@@ -470,14 +499,19 @@ function PhotoCard({ photo, tagGroups }) {
   }, [photo.url])
 
   // Event listener para wheel con { passive: false }
+  // Solo hace zoom con Ctrl + Scroll, sino scrollea la página
   useEffect(() => {
     const container = containerRef.current
     if (!container) return
 
     const handleWheel = (e) => {
-      e.preventDefault()
-      const delta = e.deltaY > 0 ? -0.15 : 0.15
-      setScale(prev => Math.min(Math.max(prev + delta, 1), 5))
+      // Solo hacer zoom si se presiona Ctrl o Cmd (Mac)
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault()
+        const delta = e.deltaY > 0 ? -0.15 : 0.15
+        setScale(prev => Math.min(Math.max(prev + delta, 1), 5))
+      }
+      // Sin Ctrl, dejar que el scroll de página funcione normalmente
     }
 
     container.addEventListener('wheel', handleWheel, { passive: false })
@@ -589,9 +623,12 @@ function PhotoCard({ photo, tagGroups }) {
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
+        onMouseEnter={() => setShowTooltip(true)}
+        onMouseLeave={() => {
+          handleMouseUp()
+          setShowTooltip(false)
+        }}
         style={{ cursor: scale > 1 ? (isDragging ? 'grabbing' : 'grab') : 'pointer' }}
-        title={scale === 1 ? "Click para copiar, rueda para zoom" : "Drag para mover, doble click para resetear"}
       >
         {!imageLoaded && !imageError && (
           <div className="absolute inset-0 flex items-center justify-center">
@@ -634,6 +671,12 @@ function PhotoCard({ photo, tagGroups }) {
             {scale > 1 && (
               <div className="absolute bottom-1 right-1 px-1.5 py-0.5 bg-black/60 text-white text-xs rounded">
                 {Math.round(scale * 100)}%
+              </div>
+            )}
+            {/* Tooltip de Ctrl + Scroll */}
+            {scale === 1 && showTooltip && (
+              <div className="absolute bottom-1 right-1 px-1.5 py-0.5 bg-black/60 text-white text-xs rounded transition-opacity pointer-events-none">
+                Ctrl + Scroll para zoom
               </div>
             )}
           </>

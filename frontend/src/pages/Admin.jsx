@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Modal from '../components/Modal'
 import { useModal } from '../hooks/useModal'
+import SearchBar from '../components/SearchBar/SearchBar'
 
 const API_BASE = import.meta.env.VITE_API_URL || './api/index.php'
 
@@ -8,6 +9,15 @@ const API_BASE = import.meta.env.VITE_API_URL || './api/index.php'
 const capitalize = (str) => {
   if (!str) return ''
   return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase()
+}
+
+// Helper para normalizar texto (remover acentos)
+const normalizeText = (str) => {
+  if (!str) return ''
+  return str
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
 }
 
 function apiUrl(route) {
@@ -150,6 +160,7 @@ export default function Admin() {
     { id: 'manage', label: 'Administrar fotos' },
     { id: 'upload', label: 'Subir fotos' },
     { id: 'tags', label: 'Tags' },
+    { id: 'config', label: 'Configuración' },
   ]
 
   return (
@@ -221,6 +232,14 @@ export default function Admin() {
               showConfirm={showConfirm}
             />
           )}
+          {activeTab === 'config' && (
+            <Configuration
+              authParams={getAuthParams()}
+              showSuccess={showSuccess}
+              showError={showError}
+              onLogoChange={loadData}
+            />
+          )}
         </div>
       </main>
 
@@ -269,6 +288,8 @@ function UploadPhotos({ tagGroups, authParams, onRefresh, showSuccess, showError
   const [saving, setSaving] = useState(false)
   const [savedFeedback, setSavedFeedback] = useState(false) // Para feedback visual verde
   const [arrowFeedback, setArrowFeedback] = useState(null) // 'prev' | 'next' | null
+  const [bucketToDelete, setBucketToDelete] = useState(null) // ID del bucket esperando confirmación
+  const [deletedBucketFeedback, setDeletedBucketFeedback] = useState(null) // ID del bucket recién eliminado
 
   const currentPhoto = uploadedPhotos[currentIndex]
 
@@ -503,6 +524,40 @@ function UploadPhotos({ tagGroups, authParams, onRefresh, showSuccess, showError
     }
   }
 
+  const handleDeleteBucket = async (bucketId) => {
+    try {
+      const params = new URLSearchParams(authParams)
+      const response = await fetch(apiUrl(`admin/buckets/${bucketId}`) + '&' + params.toString(), {
+        method: 'DELETE'
+      })
+
+      if (response.ok) {
+        // Feedback visual
+        setDeletedBucketFeedback(bucketId)
+        setTimeout(() => setDeletedBucketFeedback(null), 1000)
+
+        // Si el bucket eliminado es el activo, limpiar la vista
+        if (activeBucketId === bucketId) {
+          setActiveBucketId(null)
+          setUploadedPhotos([])
+          setCurrentIndex(0)
+          setPhotoTags({})
+          setPhotoTexts({})
+        }
+
+        // Recargar buckets
+        await loadBuckets()
+        setBucketToDelete(null)
+      } else if (response.status === 401) {
+        showError('Sesión expirada', 'Por favor, vuelve a iniciar sesión')
+      } else {
+        showError('Error', 'Error al eliminar bucket')
+      }
+    } catch (error) {
+      showError('Error', 'Error de conexión')
+    }
+  }
+
   const currentTags = currentPhoto ? (photoTags[currentPhoto.id] || []) : []
   const currentText = currentPhoto ? (photoTexts[currentPhoto.id] || '') : ''
 
@@ -513,23 +568,60 @@ function UploadPhotos({ tagGroups, authParams, onRefresh, showSuccess, showError
         const bucket = buckets[index]
         const isActive = bucket && bucket.id === activeBucketId
         const isEmpty = !bucket
+        const isAwaitingConfirmation = bucket && bucketToDelete === bucket.id
+        const wasDeleted = bucket && deletedBucketFeedback === bucket.id
 
         return (
-          <button
-            key={index}
-            onClick={() => bucket && handleChangeBucket(bucket.id)}
-            disabled={isEmpty}
-            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-              isActive
-                ? 'bg-blue-600 text-white'
-                : isEmpty
-                ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 cursor-not-allowed'
-                : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-            }`}
-          >
-            Bucket {index + 1}
-            {bucket && ` (${bucket.photos.length})`}
-          </button>
+          <div key={index} className="relative flex items-center gap-1">
+            <button
+              onClick={() => bucket && handleChangeBucket(bucket.id)}
+              disabled={isEmpty}
+              className={`px-4 py-2 text-sm font-medium rounded-lg transition-all duration-300 ${
+                wasDeleted
+                  ? 'bg-red-500 text-white'
+                  : isActive
+                  ? 'bg-blue-600 text-white'
+                  : isEmpty
+                  ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 cursor-not-allowed'
+                  : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+              }`}
+            >
+              Bucket {index + 1}
+              {bucket && ` (${bucket.photos.length})`}
+            </button>
+            {bucket && (
+              isAwaitingConfirmation ? (
+                <div className="flex items-center gap-1 bg-red-100 dark:bg-red-900/50 px-2 py-1 rounded-lg">
+                  <span className="text-xs text-red-600 dark:text-red-400">¿Eliminar?</span>
+                  <button
+                    onClick={() => handleDeleteBucket(bucket.id)}
+                    className="text-xs px-2 py-0.5 bg-red-600 text-white rounded hover:bg-red-700"
+                  >
+                    Sí
+                  </button>
+                  <button
+                    onClick={() => setBucketToDelete(null)}
+                    className="text-xs px-2 py-0.5 bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded hover:bg-gray-400 dark:hover:bg-gray-500"
+                  >
+                    No
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setBucketToDelete(bucket.id)
+                  }}
+                  className="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                  title="Eliminar bucket"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
+              )
+            )}
+          </div>
         )
       })}
     </div>
@@ -842,8 +934,10 @@ function PhotoCarousel({ photos, currentIndex, onSelectPhoto }) {
     return null
   }
 
-  // Triplicar las fotos para efecto continuo
-  const triplePhotos = [...photos, ...photos, ...photos]
+  // Solo triplicar si hay suficientes fotos para scroll continuo
+  const displayPhotos = photos.length >= 5
+    ? [...photos, ...photos, ...photos]
+    : photos
 
   return (
     <div className="relative w-full bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
@@ -866,7 +960,7 @@ function PhotoCarousel({ photos, currentIndex, onSelectPhoto }) {
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseLeave}
       >
-        {triplePhotos.map((photo, idx) => {
+        {displayPhotos.map((photo, idx) => {
           const originalIdx = idx % photos.length
           return (
             <button
@@ -1012,8 +1106,49 @@ function ManagePhotos({ photos, tagGroups, authParams, onRefresh, showSuccess, s
   const [saving, setSaving] = useState(false)
   const [savedFeedback, setSavedFeedback] = useState(false)
   const [arrowFeedback, setArrowFeedback] = useState(null)
+  const [showOnlyUntagged, setShowOnlyUntagged] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
 
-  const currentPhoto = photos[currentIndex]
+  // Filtrar fotos por búsqueda y tags
+  let filteredPhotos = photos
+
+  // Filtrar por búsqueda de texto y tags (ignorando acentos)
+  if (searchQuery) {
+    const normalizedQuery = normalizeText(searchQuery.trim())
+
+    filteredPhotos = filteredPhotos.filter(photo => {
+      // Buscar en el texto de descripción
+      const photoText = photoTexts[photo.id] || photo.text || ''
+      if (normalizeText(photoText).includes(normalizedQuery)) {
+        return true
+      }
+
+      // Buscar en los tags de la foto
+      const tags = photoTags[photo.id] || photo.tags || []
+      for (const group of tagGroups) {
+        for (const tag of group.tags) {
+          if (tags.includes(tag.id)) {
+            // Matchear si el nombre del tag contiene la búsqueda (sin acentos)
+            if (normalizeText(tag.name).includes(normalizedQuery)) {
+              return true
+            }
+          }
+        }
+      }
+
+      return false
+    })
+  }
+
+  // Filtrar fotos sin tags si está activo el filtro
+  if (showOnlyUntagged) {
+    filteredPhotos = filteredPhotos.filter(p => {
+      const tags = photoTags[p.id] || p.tags || []
+      return tags.length === 0
+    })
+  }
+
+  const currentPhoto = filteredPhotos[currentIndex]
 
   // Inicializar datos cuando cambian las fotos (sin sobrescribir los locales)
   useEffect(() => {
@@ -1148,7 +1283,7 @@ function ManagePhotos({ photos, tagGroups, authParams, onRefresh, showSuccess, s
     setArrowFeedback('prev')
     setTimeout(() => setArrowFeedback(null), 500)
     // Continuo: si está en la primera, va a la última
-    setCurrentIndex(currentIndex === 0 ? photos.length - 1 : currentIndex - 1)
+    setCurrentIndex(currentIndex === 0 ? filteredPhotos.length - 1 : currentIndex - 1)
   }
 
   const goToNext = async () => {
@@ -1156,7 +1291,7 @@ function ManagePhotos({ photos, tagGroups, authParams, onRefresh, showSuccess, s
     setArrowFeedback('next')
     setTimeout(() => setArrowFeedback(null), 500)
     // Continuo: si está en la última, va a la primera
-    setCurrentIndex(currentIndex === photos.length - 1 ? 0 : currentIndex + 1)
+    setCurrentIndex(currentIndex === filteredPhotos.length - 1 ? 0 : currentIndex + 1)
   }
 
   const currentTags = currentPhoto ? (photoTags[currentPhoto.id] || []) : []
@@ -1176,11 +1311,30 @@ function ManagePhotos({ photos, tagGroups, authParams, onRefresh, showSuccess, s
     )
   }
 
+  if (filteredPhotos.length === 0) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <div className="text-center text-gray-500">
+          <svg className="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+          <p>No hay fotos sin etiquetar</p>
+          <button
+            onClick={() => setShowOnlyUntagged(false)}
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Mostrar todas las fotos
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="h-full flex flex-col py-2 gap-3">
       {/* Carrusel de fotos */}
       <PhotoCarousel
-        photos={photos}
+        photos={filteredPhotos}
         currentIndex={currentIndex}
         onSelectPhoto={async (newIndex) => {
           await handleSaveCurrentPhoto(false)
@@ -1221,43 +1375,60 @@ function ManagePhotos({ photos, tagGroups, authParams, onRefresh, showSuccess, s
           </svg>
         </button>
 
-        {/* Descripción y controles */}
+        {/* Controles y Tags de Encabado */}
         <div className="flex-1 flex flex-col gap-2">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-500 dark:text-gray-400">
-              Foto {currentIndex + 1} de {photos.length}
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
+              Foto {currentIndex + 1} de {filteredPhotos.length}
             </span>
+            <div className="flex-1">
+              <SearchBar
+                value={searchQuery}
+                onChange={(value) => {
+                  setSearchQuery(value)
+                  setCurrentIndex(0)
+                }}
+                placeholder="Buscar..."
+              />
+            </div>
+            <button
+              onClick={() => {
+                setShowOnlyUntagged(!showOnlyUntagged)
+                setCurrentIndex(0)
+              }}
+              className={`px-3 py-1 text-sm rounded-lg transition-colors whitespace-nowrap ${
+                showOnlyUntagged
+                  ? 'bg-blue-600 text-white hover:bg-blue-700'
+                  : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600'
+              }`}
+            >
+              {showOnlyUntagged ? 'Mostrar todas' : 'Fotos sin tag'}
+            </button>
             <button
               onClick={handleDeletePhoto}
-              className="px-3 py-1 text-sm bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-900"
+              className="px-3 py-1 text-sm bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-900 whitespace-nowrap"
             >
               Eliminar foto
             </button>
           </div>
-          <textarea
-            value={currentText}
-            onChange={(e) => handleTextChange(e.target.value)}
-            placeholder="Descripción de la foto..."
-            rows={3}
-            className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none"
-          />
-          <button
-            onClick={() => handleSaveCurrentPhoto(true)}
-            disabled={saving}
-            className={`w-full px-4 py-2 rounded-lg transition-all duration-300 ${
-              savedFeedback
-                ? 'bg-green-500 text-white'
-                : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600'
-            } disabled:opacity-50`}
-          >
-            {saving ? 'Guardando...' : savedFeedback ? '✓ Guardado' : 'Guardar'}
-          </button>
+          {/* Sección de tags Encabado */}
+          <div className="flex-1 min-h-0">
+            {tagGroups.filter(g => g.id === 'encabado').map((group) => (
+              <TagSection
+                key={group.id}
+                group={group}
+                selectedTags={currentTags}
+                onTagToggle={handleTagToggle}
+                onCreateTag={(name) => handleCreateTag(group.id, name)}
+              />
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Área inferior: 4 secciones de tags - Tipo más pequeño, otros más grandes */}
-      <div className="flex-1 grid gap-3 min-h-0" style={{ gridTemplateColumns: '1fr 2fr 2fr 2fr' }}>
-        {tagGroups.map((group) => (
+      {/* Área inferior: 3 secciones de tags - Tipo pequeño, Extras y Acero más grandes */}
+      <div className="flex-1 grid gap-3 min-h-0" style={{ gridTemplateColumns: '1fr 3fr 3fr' }}>
+        {tagGroups.filter(g => g.id !== 'encabado').map((group) => (
           <TagSection
             key={group.id}
             group={group}
@@ -1324,7 +1495,6 @@ function TagsManager({ tagGroups, authParams, onRefresh, showSuccess, showError,
         method: 'DELETE'
       })
       if (response.ok) {
-        showSuccess('Eliminado', 'Tag eliminado')
         setConfirmingDelete(null)
         onRefresh()
       } else if (response.status === 401) {
@@ -1466,6 +1636,325 @@ function TagsManager({ tagGroups, authParams, onRefresh, showSuccess, showError,
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+// ==================
+// Configuration - Configuración del sistema (backups, logo)
+// ==================
+function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
+  const [backups, setBackups] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [creating, setCreating] = useState(false)
+  const [backupToDelete, setBackupToDelete] = useState(null)
+  const [createdBackupFeedback, setCreatedBackupFeedback] = useState(null) // Filename del backup recién creado
+  const [logo, setLogo] = useState(null)
+  const [uploadingLogo, setUploadingLogo] = useState(false)
+
+  useEffect(() => {
+    loadBackups()
+    loadConfig()
+  }, [])
+
+  const loadBackups = async () => {
+    setLoading(true)
+    try {
+      const params = new URLSearchParams(authParams)
+      const response = await fetch(apiUrl('admin/backups') + '&' + params.toString())
+      if (response.ok) {
+        const data = await response.json()
+        setBackups(data.backups || [])
+      } else if (response.status === 401) {
+        showError('Sesión expirada', 'Por favor, vuelve a iniciar sesión')
+      }
+    } catch (error) {
+      showError('Error', 'Error al cargar backups')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const loadConfig = async () => {
+    try {
+      const response = await fetch(apiUrl('config'))
+      if (response.ok) {
+        const data = await response.json()
+        setLogo(data.logo || null)
+      }
+    } catch (error) {
+      console.error('Error al cargar configuración:', error)
+    }
+  }
+
+  const handleCreateBackup = async () => {
+    if (backups.length >= 5) {
+      showError('Límite alcanzado', 'Debes eliminar un backup antes de crear uno nuevo')
+      return
+    }
+
+    setCreating(true)
+    try {
+      const params = new URLSearchParams(authParams)
+      const response = await fetch(apiUrl('admin/backups') + '&' + params.toString(), {
+        method: 'POST'
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        const newBackupFilename = data.backup?.filename
+
+        // Feedback visual
+        if (newBackupFilename) {
+          setCreatedBackupFeedback(newBackupFilename)
+          setTimeout(() => setCreatedBackupFeedback(null), 2000)
+        }
+
+        await loadBackups()
+      } else if (response.status === 401) {
+        showError('Sesión expirada', 'Por favor, vuelve a iniciar sesión')
+      } else {
+        const error = await response.json()
+        const errorMsg = error.details
+          ? `${error.error}\n\nDetalles: ${error.details}\n\nComando: ${error.command || 'N/A'}`
+          : error.error || 'Error al crear backup'
+        showError('Error al crear backup', errorMsg)
+        console.error('Error completo:', error)
+      }
+    } catch (error) {
+      showError('Error', 'Error de conexión: ' + error.message)
+      console.error('Error de conexión:', error)
+    } finally {
+      setCreating(false)
+    }
+  }
+
+  const handleDownloadBackup = (filename) => {
+    const params = new URLSearchParams(authParams)
+    window.location.href = apiUrl(`admin/backups/${filename}`) + '&' + params.toString()
+  }
+
+  const handleDeleteBackup = async (filename) => {
+    try {
+      const params = new URLSearchParams(authParams)
+      const response = await fetch(apiUrl(`admin/backups/${filename}`) + '&' + params.toString(), {
+        method: 'DELETE'
+      })
+
+      if (response.ok) {
+        showSuccess('Éxito', 'Backup eliminado')
+        setBackupToDelete(null)
+        await loadBackups()
+      } else if (response.status === 401) {
+        showError('Sesión expirada', 'Por favor, vuelve a iniciar sesión')
+      } else {
+        showError('Error', 'Error al eliminar backup')
+      }
+    } catch (error) {
+      showError('Error', 'Error de conexión')
+    }
+  }
+
+  const handleUploadLogo = async (file) => {
+    if (!file) return
+
+    setUploadingLogo(true)
+    try {
+      const formData = new FormData()
+      formData.append('logo', file)
+      formData.append('auth_user', authParams.auth_user)
+      formData.append('auth_pass', authParams.auth_pass)
+
+      const response = await fetch(apiUrl('admin/config/logo'), {
+        method: 'POST',
+        body: formData
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setLogo(data.logo)
+        // Notificar al componente padre para que actualice el logo en el header público
+        if (onLogoChange) onLogoChange()
+      } else if (response.status === 401) {
+        showError('Sesión expirada', 'Por favor, vuelve a iniciar sesión')
+      } else {
+        const error = await response.json()
+        showError('Error', error.error || 'Error al subir logo')
+      }
+    } catch (error) {
+      showError('Error', 'Error de conexión')
+    } finally {
+      setUploadingLogo(false)
+    }
+  }
+
+  const handleDeleteLogo = async () => {
+    try {
+      const params = new URLSearchParams(authParams)
+      const response = await fetch(apiUrl('admin/config/logo') + '&' + params.toString(), {
+        method: 'DELETE'
+      })
+
+      if (response.ok) {
+        setLogo(null)
+        // Notificar al componente padre para que actualice el logo en el header público
+        if (onLogoChange) onLogoChange()
+      } else if (response.status === 401) {
+        showError('Sesión expirada', 'Por favor, vuelve a iniciar sesión')
+      } else {
+        showError('Error', 'Error al eliminar logo')
+      }
+    } catch (error) {
+      showError('Error', 'Error de conexión')
+    }
+  }
+
+  const formatFileSize = (bytes) => {
+    if (bytes < 1024) return bytes + ' B'
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB'
+    return (bytes / (1024 * 1024)).toFixed(2) + ' MB'
+  }
+
+  return (
+    <div className="h-full overflow-y-auto py-6 px-4">
+      <div className="max-w-4xl mx-auto space-y-8">
+        {/* Sección de Backups */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Backups</h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+            Los backups incluyen las carpetas /data y /uploads. Se conservan máximo 5 backups.
+          </p>
+
+          <div className="flex items-center gap-4 mb-6">
+            <button
+              onClick={handleCreateBackup}
+              disabled={creating || backups.length >= 5}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {creating ? 'Creando...' : 'Crear Backup'}
+            </button>
+            {backups.length >= 5 && (
+              <span className="text-sm text-amber-600 dark:text-amber-400">
+                Límite alcanzado. Elimina un backup para crear uno nuevo.
+              </span>
+            )}
+          </div>
+
+          {loading ? (
+            <p className="text-gray-500">Cargando backups...</p>
+          ) : backups.length === 0 ? (
+            <p className="text-gray-500 dark:text-gray-400">No hay backups disponibles</p>
+          ) : (
+            <div className="space-y-2">
+              {backups.map((backup) => {
+                const wasCreated = createdBackupFeedback === backup.filename
+                return (
+                  <div
+                    key={backup.filename}
+                    className={`flex items-center justify-between p-3 rounded-lg transition-all duration-500 ${
+                      wasCreated
+                        ? 'bg-green-100 dark:bg-green-900/30'
+                        : 'bg-gray-50 dark:bg-gray-700'
+                    }`}
+                  >
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">
+                      {backup.filename}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {backup.created_at} • {formatFileSize(backup.size)}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {backupToDelete === backup.filename ? (
+                      <>
+                        <span className="text-xs text-red-600 dark:text-red-400 mr-2">¿Eliminar?</span>
+                        <button
+                          onClick={() => handleDeleteBackup(backup.filename)}
+                          className="px-3 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
+                        >
+                          Sí
+                        </button>
+                        <button
+                          onClick={() => setBackupToDelete(null)}
+                          className="px-3 py-1 text-xs bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded hover:bg-gray-400 dark:hover:bg-gray-500"
+                        >
+                          No
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => handleDownloadBackup(backup.filename)}
+                          className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded"
+                          title="Descargar"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => setBackupToDelete(backup.filename)}
+                          className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+                          title="Eliminar"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Sección de Logo */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Logo del Sitio</h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+            Sube un logo que se mostrará en el header del sitio. Formatos: JPG, PNG, SVG, WEBP (máx 2MB).
+          </p>
+
+          {logo ? (
+            <div className="space-y-4">
+              <div className="flex items-center gap-4">
+                <img src={logo} alt="Logo" className="h-12 object-contain" />
+                <button
+                  onClick={handleDeleteLogo}
+                  className="px-4 py-2 bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-900"
+                >
+                  Eliminar logo
+                </button>
+              </div>
+              <label className="inline-block px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer">
+                Cambiar logo
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => handleUploadLogo(e.target.files[0])}
+                  disabled={uploadingLogo}
+                />
+              </label>
+            </div>
+          ) : (
+            <label className="inline-block px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer">
+              {uploadingLogo ? 'Subiendo...' : 'Subir logo'}
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => handleUploadLogo(e.target.files[0])}
+                disabled={uploadingLogo}
+              />
+            </label>
+          )}
+        </div>
+      </div>
     </div>
   )
 }
