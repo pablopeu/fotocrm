@@ -869,41 +869,181 @@ function PhotoCard({ photo, tagGroups, isSelected, onToggleSelection, selectedCo
 
 // Componente Configurador
 function Configurador({ selectedPhotos, onClose, logo, tagGroups }) {
-  // Estado para guardar la configuración de cada foto
-  const [photoConfigs, setPhotoConfigs] = useState(() => {
-    const initial = {}
-    selectedPhotos.forEach(photo => {
-      initial[photo.id] = {
-        forma: false,
-        acero: false,
-        encabado: false,
-        detalle1: false,
-        detalle2: false,
-        detalle3: false,
-        comentarios: ''
-      }
-    })
-    return initial
+  const [activeBucket, setActiveBucket] = useState(0) // 0-4
+  const [buckets, setBuckets] = useState(() => {
+    // Inicializar 5 buckets vacíos
+    return Array(5).fill(null).map(() => ({
+      selectedPhotos: [],
+      photoConfigs: {}
+    }))
   })
+  const [savedCode, setSavedCode] = useState(null)
+  const [saving, setSaving] = useState(false)
+  const [showBucketDelete, setShowBucketDelete] = useState(null)
+  const [whatsappConfig, setWhatsappConfig] = useState(null)
+  const [telegramConfig, setTelegramConfig] = useState(null)
+  const [configuratorMessage, setConfiguratorMessage] = useState('')
+
+  // Cargar configuración inicial desde URL si existe
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search)
+    const code = urlParams.get('config')
+
+    if (code) {
+      loadConfiguration(code)
+    } else {
+      // Inicializar bucket 0 con las fotos seleccionadas
+      setBuckets(prev => {
+        const newBuckets = [...prev]
+        newBuckets[0] = {
+          selectedPhotos: selectedPhotos.map(p => p.id),
+          photoConfigs: selectedPhotos.reduce((acc, photo) => {
+            acc[photo.id] = {
+              forma: false,
+              acero: false,
+              encabado: false,
+              detalle1: false,
+              detalle2: false,
+              detalle3: false,
+              comentarios: ''
+            }
+            return acc
+          }, {})
+        }
+        return newBuckets
+      })
+    }
+
+    loadContactConfig()
+    loadConfiguratorMessage()
+  }, [])
+
+  const loadConfiguration = async (code) => {
+    try {
+      const API_BASE = import.meta.env.VITE_API_URL || './api/index.php'
+      const response = await fetch(`${API_BASE}?route=configurator/${code}`)
+      if (response.ok) {
+        const data = await response.json()
+        setBuckets(data.buckets || buckets)
+        setSavedCode(code)
+      }
+    } catch (error) {
+      console.error('Error al cargar configuración:', error)
+    }
+  }
+
+  const loadContactConfig = async () => {
+    try {
+      const API_BASE = import.meta.env.VITE_API_URL || './api/index.php'
+      const response = await fetch(`${API_BASE}?route=config`)
+      if (response.ok) {
+        const data = await response.json()
+        setWhatsappConfig(data.whatsapp || null)
+        setTelegramConfig(data.telegram || null)
+      }
+    } catch (error) {
+      console.error('Error al cargar config de contacto:', error)
+    }
+  }
+
+  const loadConfiguratorMessage = async () => {
+    try {
+      const API_BASE = import.meta.env.VITE_API_URL || './api/index.php'
+      const response = await fetch(`${API_BASE}?route=config`)
+      if (response.ok) {
+        const data = await response.json()
+        setConfiguratorMessage(data.configurator_message || 'Hola Pablo, te envío mi página del configurador de cuchillos: {link}')
+      }
+    } catch (error) {
+      console.error('Error al cargar mensaje del configurador:', error)
+    }
+  }
+
+  // Estado para guardar la configuración de cada foto del bucket activo
+  const currentBucket = buckets[activeBucket]
+  const photoConfigs = currentBucket.photoConfigs
 
   const handleCheckboxChange = (photoId, field) => {
-    setPhotoConfigs(prev => ({
-      ...prev,
-      [photoId]: {
-        ...prev[photoId],
-        [field]: !prev[photoId][field]
+    setBuckets(prev => {
+      const newBuckets = [...prev]
+      newBuckets[activeBucket] = {
+        ...newBuckets[activeBucket],
+        photoConfigs: {
+          ...newBuckets[activeBucket].photoConfigs,
+          [photoId]: {
+            ...newBuckets[activeBucket].photoConfigs[photoId],
+            [field]: !newBuckets[activeBucket].photoConfigs[photoId][field]
+          }
+        }
       }
-    }))
+      return newBuckets
+    })
   }
 
   const handleComentarioChange = (photoId, value) => {
-    setPhotoConfigs(prev => ({
-      ...prev,
-      [photoId]: {
-        ...prev[photoId],
-        comentarios: value
+    setBuckets(prev => {
+      const newBuckets = [...prev]
+      newBuckets[activeBucket] = {
+        ...newBuckets[activeBucket],
+        photoConfigs: {
+          ...newBuckets[activeBucket].photoConfigs,
+          [photoId]: {
+            ...newBuckets[activeBucket].photoConfigs[photoId],
+            comentarios: value
+          }
+        }
       }
-    }))
+      return newBuckets
+    })
+  }
+
+  const handleSaveConfiguration = async () => {
+    setSaving(true)
+    try {
+      const API_BASE = import.meta.env.VITE_API_URL || './api/index.php'
+      const response = await fetch(`${API_BASE}?route=configurator/save`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ buckets })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setSavedCode(data.code)
+        // Actualizar URL sin recargar
+        window.history.pushState({}, '', `?config=${data.code}`)
+      }
+    } catch (error) {
+      console.error('Error al guardar configuración:', error)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleDeleteBucket = (bucketIndex) => {
+    setBuckets(prev => {
+      const newBuckets = [...prev]
+      newBuckets[bucketIndex] = {
+        selectedPhotos: [],
+        photoConfigs: {}
+      }
+      return newBuckets
+    })
+    setShowBucketDelete(null)
+    // Si estamos en el bucket eliminado, cambiar al 0
+    if (activeBucket === bucketIndex) {
+      setActiveBucket(0)
+    }
+  }
+
+  const getShareLink = () => {
+    if (!savedCode) return ''
+    return `${window.location.origin}${window.location.pathname}?config=${savedCode}`
+  }
+
+  const getShareMessage = () => {
+    const link = getShareLink()
+    return configuratorMessage.replace('{link}', link)
   }
 
   const getPhotoTags = (photo) => {
@@ -919,6 +1059,11 @@ function Configurador({ selectedPhotos, onClose, logo, tagGroups }) {
     return tagNames
   }
 
+  // Obtener fotos del bucket activo
+  const currentPhotos = currentBucket.selectedPhotos
+    .map(id => selectedPhotos.find(p => p.id === id))
+    .filter(Boolean)
+
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex flex-col">
       {/* Header */}
@@ -927,60 +1072,114 @@ function Configurador({ selectedPhotos, onClose, logo, tagGroups }) {
           <div className="flex items-center gap-4 justify-between">
             {/* Logo y nombre del sitio (clickeable) */}
             <div
-              className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
+              className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity flex-shrink-0"
               onClick={onClose}
             >
               {logo && (
-                <img src={logo} alt="Logo" className="h-10 lg:h-12 object-contain" />
+                <img src={logo} alt="Logo" className="h-8 lg:h-10 object-contain" />
               )}
-              <div>
-                <h1 className="text-lg lg:text-xl font-bold text-gray-900 dark:text-white">
+              <div className="hidden lg:block">
+                <h1 className="text-base font-bold text-gray-900 dark:text-white">
                   PEU Cuchillos Artesanales
                 </h1>
-                <p className="text-xs text-gray-500 dark:text-gray-400 hidden lg:block">
-                  Buscador interactivo de modelos y materiales
-                </p>
               </div>
             </div>
 
-            {/* Título del configurador */}
-            <div className="flex-1 text-center hidden md:block">
-              <h2 className="text-lg font-bold text-gray-900 dark:text-white">
-                Configurador de Cuchillos
+            {/* Título del configurador con buckets */}
+            <div className="flex-1 flex items-center justify-center gap-2">
+              <h2 className="text-base font-bold text-gray-900 dark:text-white hidden sm:block">
+                Configurador
               </h2>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                {selectedPhotos.length} foto{selectedPhotos.length !== 1 ? 's' : ''} seleccionada{selectedPhotos.length !== 1 ? 's' : ''}
-              </p>
+              {/* Buckets */}
+              <div className="flex items-center gap-1">
+                {buckets.map((bucket, index) => (
+                  <div key={index} className="relative">
+                    <button
+                      onClick={() => setActiveBucket(index)}
+                      className={`px-2 py-1 text-xs rounded transition-colors ${
+                        activeBucket === index
+                          ? 'bg-blue-600 text-white'
+                          : bucket.selectedPhotos.length > 0
+                          ? 'bg-gray-200 dark:bg-gray-600 text-gray-900 dark:text-white hover:bg-gray-300 dark:hover:bg-gray-500'
+                          : 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600'
+                      }`}
+                    >
+                      Cuchillo {index + 1}
+                    </button>
+                    {bucket.selectedPhotos.length > 0 && (
+                      <button
+                        onClick={() => setShowBucketDelete(index)}
+                        className="absolute -top-1 -right-1 w-4 h-4 bg-red-600 text-white rounded-full flex items-center justify-center hover:bg-red-700 text-xs"
+                      >
+                        ×
+                      </button>
+                    )}
+                    {/* Confirmación de eliminación inline */}
+                    {showBucketDelete === index && (
+                      <div className="absolute top-full mt-1 left-1/2 -translate-x-1/2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-2 z-50 whitespace-nowrap">
+                        <p className="text-xs text-gray-900 dark:text-white mb-2">¿Eliminar?</p>
+                        <div className="flex gap-1">
+                          <button
+                            onClick={() => handleDeleteBucket(index)}
+                            className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
+                          >
+                            Sí
+                          </button>
+                          <button
+                            onClick={() => setShowBucketDelete(null)}
+                            className="px-2 py-1 text-xs bg-gray-200 dark:bg-gray-600 text-gray-900 dark:text-white rounded hover:bg-gray-300 dark:hover:bg-gray-500"
+                          >
+                            No
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
 
             {/* Botones de acción */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 flex-shrink-0">
               <button
                 onClick={onClose}
-                className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                className="px-2 py-1 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
               >
                 Volver
               </button>
-              <button
-                className="px-4 py-1.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
-                onClick={() => {
-                  // TODO: Implementar envío de configuración
-                  console.log('Configuración:', photoConfigs)
-                }}
-              >
-                Enviar configuración
-              </button>
+              {!savedCode ? (
+                <button
+                  onClick={handleSaveConfiguration}
+                  disabled={saving}
+                  className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors font-medium disabled:opacity-50"
+                >
+                  {saving ? 'Guardando...' : 'Enviar configuración'}
+                </button>
+              ) : (
+                <>
+                  {whatsappConfig?.enabled && whatsappConfig.number && (
+                    <a
+                      href={`https://wa.me/${whatsappConfig.number}?text=${encodeURIComponent(getShareMessage())}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-2 py-1 text-xs bg-[#25D366] text-white rounded hover:bg-[#20BA5A] transition-colors"
+                    >
+                      WhatsApp
+                    </a>
+                  )}
+                  {telegramConfig?.enabled && telegramConfig.username && (
+                    <a
+                      href={`https://t.me/${telegramConfig.username}?text=${encodeURIComponent(getShareMessage())}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-2 py-1 text-xs bg-[#0088cc] text-white rounded hover:bg-[#0077b3] transition-colors"
+                    >
+                      Telegram
+                    </a>
+                  )}
+                </>
+              )}
             </div>
-          </div>
-
-          {/* Título en mobile */}
-          <div className="md:hidden mt-3 text-center">
-            <h2 className="text-base font-bold text-gray-900 dark:text-white">
-              Configurador de Cuchillos
-            </h2>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              {selectedPhotos.length} foto{selectedPhotos.length !== 1 ? 's' : ''} seleccionada{selectedPhotos.length !== 1 ? 's' : ''}
-            </p>
           </div>
         </div>
       </header>
@@ -988,12 +1187,12 @@ function Configurador({ selectedPhotos, onClose, logo, tagGroups }) {
       {/* Contenido */}
       <main className="flex-1 overflow-y-auto p-4 lg:p-6">
         <div className="max-w-7xl mx-auto">
-          {selectedPhotos.length === 0 ? (
+          {currentPhotos.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-64 text-gray-500 dark:text-gray-400">
               <svg className="w-16 h-16 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
-              <p className="text-lg font-medium">No hay fotos seleccionadas</p>
+              <p className="text-lg font-medium">No hay fotos en este bucket</p>
               <p className="text-sm mb-4">Selecciona hasta 6 fotos desde el catálogo</p>
               <button
                 onClick={onClose}
@@ -1004,7 +1203,7 @@ function Configurador({ selectedPhotos, onClose, logo, tagGroups }) {
             </div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-              {selectedPhotos.map(photo => (
+              {currentPhotos.map(photo => (
                 <div
                   key={photo.id}
                   className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden"

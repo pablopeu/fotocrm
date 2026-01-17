@@ -1663,11 +1663,17 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
   const [savingMetaTags, setSavingMetaTags] = useState(false)
   const [savedMetaTagsFeedback, setSavedMetaTagsFeedback] = useState(false)
 
+  // Estado para mensaje del configurador
+  const [configuratorMessage, setConfiguratorMessage] = useState('Hola Pablo, te envío mi página del configurador de cuchillos: {link}')
+  const [savingConfiguratorMessage, setSavingConfiguratorMessage] = useState(false)
+  const [savedConfiguratorMessageFeedback, setSavedConfiguratorMessageFeedback] = useState(false)
+
   useEffect(() => {
     loadBackups()
     loadConfig()
     loadContactConfig()
     loadMetaTags()
+    loadConfiguratorMessage()
   }, [])
 
   const loadBackups = async () => {
@@ -1727,6 +1733,19 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
     }
   }
 
+  const loadConfiguratorMessage = async () => {
+    try {
+      const params = new URLSearchParams(authParams)
+      const response = await fetch(apiUrl('admin/config/configurator') + '&' + params.toString())
+      if (response.ok) {
+        const data = await response.json()
+        setConfiguratorMessage(data.configurator_message || 'Hola Pablo, te envío mi página del configurador de cuchillos: {link}')
+      }
+    } catch (error) {
+      // Error silencioso
+    }
+  }
+
   const handleSaveMetaTags = async () => {
     setSavingMetaTags(true)
     try {
@@ -1750,6 +1769,32 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
       showError('Error', 'Error de conexión')
     } finally {
       setSavingMetaTags(false)
+    }
+  }
+
+  const handleSaveConfiguratorMessage = async () => {
+    setSavingConfiguratorMessage(true)
+    try {
+      const params = new URLSearchParams(authParams)
+      const response = await fetch(apiUrl('admin/config/configurator') + '&' + params.toString(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ configurator_message: configuratorMessage })
+      })
+
+      if (response.ok) {
+        setSavedConfiguratorMessageFeedback(true)
+        setTimeout(() => setSavedConfiguratorMessageFeedback(false), 2000)
+      } else if (response.status === 401) {
+        showError('Sesión expirada', 'Por favor, vuelve a iniciar sesión')
+      } else {
+        const error = await response.json()
+        showError('Error', error.error || 'Error al guardar mensaje')
+      }
+    } catch (error) {
+      showError('Error', 'Error de conexión')
+    } finally {
+      setSavingConfiguratorMessage(false)
     }
   }
 
@@ -2199,6 +2244,34 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
             } disabled:opacity-50`}
           >
             {savingMetaTags ? 'Guardando...' : savedMetaTagsFeedback ? '✓ Guardado' : 'Guardar Metadatos'}
+          </button>
+        </div>
+
+        {/* Sección de Mensaje del Configurador */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Mensaje del Configurador</h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+            Mensaje que se enviará por WhatsApp/Telegram al compartir una configuración. Usa {'{link}'} donde quieras incluir el enlace.
+          </p>
+
+          <textarea
+            value={configuratorMessage}
+            onChange={(e) => setConfiguratorMessage(e.target.value)}
+            placeholder="Hola Pablo, te envío mi página del configurador de cuchillos: {link}"
+            rows={3}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none mb-4"
+          />
+
+          <button
+            onClick={handleSaveConfiguratorMessage}
+            disabled={savingConfiguratorMessage}
+            className={`px-4 py-2 rounded-lg transition-all duration-300 ${
+              savedConfiguratorMessageFeedback
+                ? 'bg-green-500 text-white'
+                : 'bg-blue-600 text-white hover:bg-blue-700'
+            } disabled:opacity-50`}
+          >
+            {savingConfiguratorMessage ? 'Guardando...' : savedConfiguratorMessageFeedback ? '✓ Guardado' : 'Guardar Mensaje'}
           </button>
         </div>
       </div>

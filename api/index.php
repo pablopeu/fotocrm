@@ -18,6 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 define('DATA_DIR', __DIR__ . '/../data');
 define('UPLOADS_DIR', __DIR__ . '/../uploads');
 define('BACKUPS_DIR', __DIR__ . '/../backups');
+define('CONFIGURATOR_DIR', DATA_DIR . '/configurator');
 define('CONFIG_FILE', DATA_DIR . '/config.json');
 
 // Cargar configuración de usuario/contraseña
@@ -43,6 +44,7 @@ $JSON_INPUT = json_decode($RAW_INPUT, true) ?: [];
 
 if (!is_dir(DATA_DIR)) mkdir(DATA_DIR, 0755, true);
 if (!is_dir(UPLOADS_DIR)) mkdir(UPLOADS_DIR, 0755, true);
+if (!is_dir(CONFIGURATOR_DIR)) mkdir(CONFIGURATOR_DIR, 0755, true);
 
 // Inicializar archivos JSON si no existen
 function initializeData() {
@@ -152,6 +154,28 @@ function generateUUID() {
         mt_rand(0, 0x3fff) | 0x8000,
         mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff)
     );
+}
+
+function generateConfigCode() {
+    $characters = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Sin I, O, 0, 1 para evitar confusión
+    $code = '';
+    for ($i = 0; $i < 8; $i++) {
+        $code .= $characters[mt_rand(0, strlen($characters) - 1)];
+    }
+    return $code;
+}
+
+function generateUniqueConfigCode() {
+    $maxAttempts = 100;
+    for ($i = 0; $i < $maxAttempts; $i++) {
+        $code = generateConfigCode();
+        $filepath = CONFIGURATOR_DIR . '/' . $code . '.json';
+        if (!file_exists($filepath)) {
+            return $code;
+        }
+    }
+    // Si después de 100 intentos no se encontró un código único, usar timestamp
+    return generateConfigCode() . substr(time(), -2);
 }
 
 function checkAuth() {
@@ -959,6 +983,81 @@ switch (true) {
 
         $config = getConfig();
         response(['meta_tags' => $config['meta_tags'] ?? '']);
+        break;
+
+    // POST /configurator/save - Guardar configuración del configurador
+    case $path === 'configurator/save' && $method === 'POST':
+        global $JSON_INPUT;
+        $input = $JSON_INPUT;
+
+        if (!isset($input['buckets']) || !is_array($input['buckets'])) {
+            response(['error' => 'Parámetro buckets requerido'], 400);
+        }
+
+        // Generar código único
+        $code = generateUniqueConfigCode();
+        $filepath = CONFIGURATOR_DIR . '/' . $code . '.json';
+
+        // Guardar configuración
+        $configData = [
+            'code' => $code,
+            'created_at' => date('Y-m-d H:i:s'),
+            'buckets' => $input['buckets']
+        ];
+
+        if (!file_put_contents($filepath, json_encode($configData, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE))) {
+            response(['error' => 'Error al guardar configuración'], 500);
+        }
+
+        response(['code' => $code, 'message' => 'Configuración guardada'], 201);
+        break;
+
+    // GET /configurator/:code - Cargar configuración por código
+    case preg_match('/^configurator\/([A-Z0-9]{8,10})$/', $path, $matches) && $method === 'GET':
+        $code = $matches[1];
+        $filepath = CONFIGURATOR_DIR . '/' . $code . '.json';
+
+        if (!file_exists($filepath)) {
+            response(['error' => 'Configuración no encontrada'], 404);
+        }
+
+        $content = file_get_contents($filepath);
+        $data = json_decode($content, true);
+
+        if (!$data) {
+            response(['error' => 'Error al leer configuración'], 500);
+        }
+
+        response($data);
+        break;
+
+    // GET /admin/config/configurator - Obtener configuración de mensaje del configurador
+    case $path === 'admin/config/configurator' && $method === 'GET':
+        checkAuth();
+
+        $config = getConfig();
+        response(['configurator_message' => $config['configurator_message'] ?? 'Hola Pablo, te envío mi página del configurador de cuchillos: {link}']);
+        break;
+
+    // POST /admin/config/configurator - Guardar configuración de mensaje del configurador
+    case $path === 'admin/config/configurator' && $method === 'POST':
+        checkAuth();
+
+        global $JSON_INPUT;
+        $input = $JSON_INPUT;
+        $config = getConfig();
+
+        if (!isset($input['configurator_message'])) {
+            response(['error' => 'Parámetro configurator_message requerido'], 400);
+        }
+
+        $config['configurator_message'] = $input['configurator_message'];
+
+        if (!file_put_contents(CONFIG_FILE, json_encode($config, JSON_PRETTY_PRINT))) {
+            response(['error' => 'Error al guardar configuración'], 500);
+        }
+
+        response(['message' => 'Configuración actualizada']);
         break;
 
     default:
