@@ -147,7 +147,7 @@ export default function Admin() {
               Iniciar sesión
             </button>
           </form>
-          <a href="#/" className="block text-center mt-4 text-sm text-gray-500 dark:text-gray-400 hover:underline">
+          <a href="#/" target="_blank" rel="noopener noreferrer" className="block text-center mt-4 text-sm text-gray-500 dark:text-gray-400 hover:underline">
             Volver al catálogo
           </a>
         </div>
@@ -187,7 +187,7 @@ export default function Admin() {
           </div>
 
           <div className="flex items-center gap-4">
-            <a href="#/" className="text-sm text-gray-600 dark:text-gray-300 hover:underline">Ver catálogo</a>
+            <a href="#/" target="_blank" rel="noopener noreferrer" className="text-sm text-gray-600 dark:text-gray-300 hover:underline">Ver catálogo</a>
             <button onClick={() => setShowPasswordModal(true)} className="text-sm text-gray-600 dark:text-gray-300 hover:underline">
               Cambiar contraseña
             </button>
