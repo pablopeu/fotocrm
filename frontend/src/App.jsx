@@ -924,32 +924,63 @@ function Configurador({ selectedPhotos, onClose, logo, tagGroups }) {
       {/* Header */}
       <header className="bg-white dark:bg-gray-800 shadow-sm sticky top-0 z-40">
         <div className="px-4 py-3">
-          <div className="flex items-center gap-4">
-            {/* Botón volver */}
-            <button
+          <div className="flex items-center gap-4 justify-between">
+            {/* Logo y nombre del sitio (clickeable) */}
+            <div
+              className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
               onClick={onClose}
-              className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-              Volver
-            </button>
-
-            {/* Logo y título */}
-            <div className="flex items-center gap-3">
               {logo && (
-                <img src={logo} alt="Logo" className="h-10 object-contain" />
+                <img src={logo} alt="Logo" className="h-10 lg:h-12 object-contain" />
               )}
               <div>
-                <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-                  Configurador de Cuchillos
+                <h1 className="text-lg lg:text-xl font-bold text-gray-900 dark:text-white">
+                  PEU Cuchillos Artesanales
                 </h1>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {selectedPhotos.length} foto{selectedPhotos.length !== 1 ? 's' : ''} seleccionada{selectedPhotos.length !== 1 ? 's' : ''}
+                <p className="text-xs text-gray-500 dark:text-gray-400 hidden lg:block">
+                  Buscador interactivo de modelos y materiales
                 </p>
               </div>
             </div>
+
+            {/* Título del configurador */}
+            <div className="flex-1 text-center hidden md:block">
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white">
+                Configurador de Cuchillos
+              </h2>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                {selectedPhotos.length} foto{selectedPhotos.length !== 1 ? 's' : ''} seleccionada{selectedPhotos.length !== 1 ? 's' : ''}
+              </p>
+            </div>
+
+            {/* Botones de acción */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={onClose}
+                className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                Volver
+              </button>
+              <button
+                className="px-4 py-1.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+                onClick={() => {
+                  // TODO: Implementar envío de configuración
+                  console.log('Configuración:', photoConfigs)
+                }}
+              >
+                Enviar configuración
+              </button>
+            </div>
+          </div>
+
+          {/* Título en mobile */}
+          <div className="md:hidden mt-3 text-center">
+            <h2 className="text-base font-bold text-gray-900 dark:text-white">
+              Configurador de Cuchillos
+            </h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              {selectedPhotos.length} foto{selectedPhotos.length !== 1 ? 's' : ''} seleccionada{selectedPhotos.length !== 1 ? 's' : ''}
+            </p>
           </div>
         </div>
       </header>
@@ -1088,21 +1119,6 @@ function Configurador({ selectedPhotos, onClose, logo, tagGroups }) {
                   </div>
                 </div>
               ))}
-            </div>
-          )}
-
-          {/* Botón de enviar/procesar (por ahora solo visual) */}
-          {selectedPhotos.length > 0 && (
-            <div className="mt-8 flex justify-center">
-              <button
-                className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
-                onClick={() => {
-                  // TODO: Implementar envío de configuración
-                  console.log('Configuración:', photoConfigs)
-                }}
-              >
-                Enviar configuración
-              </button>
             </div>
           )}
         </div>
