@@ -638,6 +638,9 @@ switch (true) {
         if (isset($config['telegram'])) {
             $publicConfig['telegram'] = $config['telegram'];
         }
+        if (isset($config['footer'])) {
+            $publicConfig['footer'] = $config['footer'];
+        }
         response($publicConfig);
         break;
 
@@ -1073,6 +1076,47 @@ switch (true) {
         }
 
         response(['message' => 'Configuración actualizada']);
+        break;
+
+    // POST /admin/config/footer - Configurar footer
+    case $path === 'admin/config/footer' && $method === 'POST':
+        checkAuth();
+
+        global $JSON_INPUT;
+        $input = $JSON_INPUT;
+        $config = getConfig();
+
+        if (!isset($input['footer'])) {
+            response(['error' => 'Parámetro footer requerido'], 400);
+        }
+
+        $config['footer'] = $input['footer'];
+
+        if (!file_put_contents(CONFIG_FILE, json_encode($config, JSON_PRETTY_PRINT))) {
+            response(['error' => 'Error al guardar configuración'], 500);
+        }
+
+        response(['message' => 'Footer actualizado']);
+        break;
+
+    // GET /admin/config/footer - Obtener configuración del footer
+    case $path === 'admin/config/footer' && $method === 'GET':
+        checkAuth();
+
+        $config = getConfig();
+        $footer = $config['footer'] ?? [
+            'enabled' => false,
+            'website_url' => '',
+            'website_text' => 'Visita mi página web',
+            'social_text' => 'Seguime en mis redes sociales',
+            'instagram' => '',
+            'twitter' => '',
+            'facebook' => '',
+            'whatsapp' => '',
+            'telegram' => ''
+        ];
+
+        response(['footer' => $footer]);
         break;
 
     default:

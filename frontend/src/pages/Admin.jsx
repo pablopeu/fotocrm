@@ -1668,12 +1668,28 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
   const [savingConfiguratorMessage, setSavingConfiguratorMessage] = useState(false)
   const [savedConfiguratorMessageFeedback, setSavedConfiguratorMessageFeedback] = useState(false)
 
+  // Estado para footer
+  const [footerConfig, setFooterConfig] = useState({
+    enabled: false,
+    website_url: '',
+    website_text: 'Visita mi página web',
+    social_text: 'Seguime en mis redes sociales',
+    instagram: '',
+    twitter: '',
+    facebook: '',
+    whatsapp: '',
+    telegram: ''
+  })
+  const [savingFooter, setSavingFooter] = useState(false)
+  const [savedFooterFeedback, setSavedFooterFeedback] = useState(false)
+
   useEffect(() => {
     loadBackups()
     loadConfig()
     loadContactConfig()
     loadMetaTags()
     loadConfiguratorMessage()
+    loadFooterConfig()
   }, [])
 
   const loadBackups = async () => {
@@ -1746,6 +1762,29 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
     }
   }
 
+  const loadFooterConfig = async () => {
+    try {
+      const params = new URLSearchParams(authParams)
+      const response = await fetch(apiUrl('admin/config/footer') + '&' + params.toString())
+      if (response.ok) {
+        const data = await response.json()
+        setFooterConfig(data.footer || {
+          enabled: false,
+          website_url: '',
+          website_text: 'Visita mi página web',
+          social_text: 'Seguime en mis redes sociales',
+          instagram: '',
+          twitter: '',
+          facebook: '',
+          whatsapp: '',
+          telegram: ''
+        })
+      }
+    } catch (error) {
+      // Error silencioso
+    }
+  }
+
   const handleSaveMetaTags = async () => {
     setSavingMetaTags(true)
     try {
@@ -1795,6 +1834,32 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
       showError('Error', 'Error de conexión')
     } finally {
       setSavingConfiguratorMessage(false)
+    }
+  }
+
+  const handleSaveFooter = async () => {
+    setSavingFooter(true)
+    try {
+      const params = new URLSearchParams(authParams)
+      const response = await fetch(apiUrl('admin/config/footer') + '&' + params.toString(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ footer: footerConfig })
+      })
+
+      if (response.ok) {
+        setSavedFooterFeedback(true)
+        setTimeout(() => setSavedFooterFeedback(false), 2000)
+      } else if (response.status === 401) {
+        showError('Sesión expirada', 'Por favor, vuelve a iniciar sesión')
+      } else {
+        const error = await response.json()
+        showError('Error', error.error || 'Error al guardar footer')
+      }
+    } catch (error) {
+      showError('Error', 'Error de conexión')
+    } finally {
+      setSavingFooter(false)
     }
   }
 
@@ -1964,7 +2029,81 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
 
   return (
     <div className="h-full overflow-y-auto py-6 px-4">
-      <div className="max-w-4xl mx-auto space-y-8">
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Grid de 2 columnas para Logo y Mensaje del Configurador */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Sección de Logo */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Logo del Sitio</h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              Sube un logo que se mostrará en el header. Formatos: JPG, PNG, SVG, WEBP (máx 2MB).
+            </p>
+
+            {logo ? (
+              <div className="space-y-4">
+                <div className="flex items-center gap-4">
+                  <img src={logo} alt="Logo" className="h-12 object-contain" />
+                  <button
+                    onClick={handleDeleteLogo}
+                    className="px-4 py-2 bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-900"
+                  >
+                    Eliminar logo
+                  </button>
+                </div>
+                <label className="inline-block px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer">
+                  Cambiar logo
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => handleUploadLogo(e.target.files[0])}
+                    disabled={uploadingLogo}
+                  />
+                </label>
+              </div>
+            ) : (
+              <label className="inline-block px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer">
+                {uploadingLogo ? 'Subiendo...' : 'Subir logo'}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => handleUploadLogo(e.target.files[0])}
+                  disabled={uploadingLogo}
+                />
+              </label>
+            )}
+          </div>
+
+          {/* Sección de Mensaje del Configurador */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Mensaje del Configurador</h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              Mensaje que se enviará por WhatsApp/Telegram al compartir una configuración. Usa {'{link}'} donde quieras incluir el enlace.
+            </p>
+
+            <textarea
+              value={configuratorMessage}
+              onChange={(e) => setConfiguratorMessage(e.target.value)}
+              placeholder="Hola Pablo, te envío mi página del configurador de cuchillos: {link}"
+              rows={3}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none mb-4"
+            />
+
+            <button
+              onClick={handleSaveConfiguratorMessage}
+              disabled={savingConfiguratorMessage}
+              className={`px-4 py-2 rounded-lg transition-all duration-300 ${
+                savedConfiguratorMessageFeedback
+                  ? 'bg-green-500 text-white'
+                  : 'bg-blue-600 text-white hover:bg-blue-700'
+              } disabled:opacity-50`}
+            >
+              {savingConfiguratorMessage ? 'Guardando...' : savedConfiguratorMessageFeedback ? '✓ Guardado' : 'Guardar Mensaje'}
+            </button>
+          </div>
+        </div>
+
         {/* Sección de Backups */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Backups</h2>
@@ -2059,49 +2198,6 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
                 )
               })}
             </div>
-          )}
-        </div>
-
-        {/* Sección de Logo */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Logo del Sitio</h2>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-            Sube un logo que se mostrará en el header del sitio. Formatos: JPG, PNG, SVG, WEBP (máx 2MB).
-          </p>
-
-          {logo ? (
-            <div className="space-y-4">
-              <div className="flex items-center gap-4">
-                <img src={logo} alt="Logo" className="h-12 object-contain" />
-                <button
-                  onClick={handleDeleteLogo}
-                  className="px-4 py-2 bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-900"
-                >
-                  Eliminar logo
-                </button>
-              </div>
-              <label className="inline-block px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer">
-                Cambiar logo
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => handleUploadLogo(e.target.files[0])}
-                  disabled={uploadingLogo}
-                />
-              </label>
-            </div>
-          ) : (
-            <label className="inline-block px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer">
-              {uploadingLogo ? 'Subiendo...' : 'Subir logo'}
-              <input
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => handleUploadLogo(e.target.files[0])}
-                disabled={uploadingLogo}
-              />
-            </label>
           )}
         </div>
 
@@ -2247,31 +2343,154 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
           </button>
         </div>
 
-        {/* Sección de Mensaje del Configurador */}
+        {/* Sección de Footer */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Mensaje del Configurador</h2>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-            Mensaje que se enviará por WhatsApp/Telegram al compartir una configuración. Usa {'{link}'} donde quieras incluir el enlace.
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Footer del Sitio</h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+            Configura el footer que aparecerá en todas las páginas del sitio público.
           </p>
 
-          <textarea
-            value={configuratorMessage}
-            onChange={(e) => setConfiguratorMessage(e.target.value)}
-            placeholder="Hola Pablo, te envío mi página del configurador de cuchillos: {link}"
-            rows={3}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none mb-4"
-          />
+          {/* Checkbox para habilitar */}
+          <div className="flex items-center gap-3 mb-6">
+            <input
+              type="checkbox"
+              id="footer-enabled"
+              checked={footerConfig.enabled}
+              onChange={(e) => setFooterConfig({ ...footerConfig, enabled: e.target.checked })}
+              className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+            />
+            <label htmlFor="footer-enabled" className="text-lg font-medium text-gray-900 dark:text-white">
+              Mostrar footer
+            </label>
+          </div>
+
+          {footerConfig.enabled && (
+            <div className="space-y-6 ml-7">
+              {/* Link a página web */}
+              <div className="pb-6 border-b border-gray-200 dark:border-gray-700">
+                <h3 className="text-base font-medium text-gray-900 dark:text-white mb-3">Enlace a tu sitio web</h3>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Texto del enlace
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Visita mi página web"
+                      value={footerConfig.website_text}
+                      onChange={(e) => setFooterConfig({ ...footerConfig, website_text: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      URL de tu sitio web
+                    </label>
+                    <input
+                      type="url"
+                      placeholder="https://ejemplo.com"
+                      value={footerConfig.website_url}
+                      onChange={(e) => setFooterConfig({ ...footerConfig, website_url: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Redes sociales */}
+              <div>
+                <h3 className="text-base font-medium text-gray-900 dark:text-white mb-3">Redes Sociales</h3>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Texto introductorio
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Seguime en mis redes sociales"
+                      value={footerConfig.social_text}
+                      onChange={(e) => setFooterConfig({ ...footerConfig, social_text: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Instagram (usuario sin @)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="miusuario"
+                        value={footerConfig.instagram}
+                        onChange={(e) => setFooterConfig({ ...footerConfig, instagram: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        X / Twitter (usuario sin @)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="miusuario"
+                        value={footerConfig.twitter}
+                        onChange={(e) => setFooterConfig({ ...footerConfig, twitter: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Facebook (usuario o página)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="mipagina"
+                        value={footerConfig.facebook}
+                        onChange={(e) => setFooterConfig({ ...footerConfig, facebook: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        WhatsApp (número con código país, sin +)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="5491112345678"
+                        value={footerConfig.whatsapp}
+                        onChange={(e) => setFooterConfig({ ...footerConfig, whatsapp: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Telegram (usuario sin @)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="miusuario"
+                        value={footerConfig.telegram}
+                        onChange={(e) => setFooterConfig({ ...footerConfig, telegram: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           <button
-            onClick={handleSaveConfiguratorMessage}
-            disabled={savingConfiguratorMessage}
+            onClick={handleSaveFooter}
+            disabled={savingFooter}
             className={`px-4 py-2 rounded-lg transition-all duration-300 ${
-              savedConfiguratorMessageFeedback
+              savedFooterFeedback
                 ? 'bg-green-500 text-white'
                 : 'bg-blue-600 text-white hover:bg-blue-700'
-            } disabled:opacity-50`}
+            } disabled:opacity-50 ${footerConfig.enabled ? 'ml-7' : ''}`}
           >
-            {savingConfiguratorMessage ? 'Guardando...' : savedConfiguratorMessageFeedback ? '✓ Guardado' : 'Guardar Mensaje'}
+            {savingFooter ? 'Guardando...' : savedFooterFeedback ? '✓ Guardado' : 'Guardar Footer'}
           </button>
         </div>
       </div>
