@@ -1332,18 +1332,6 @@ function ManagePhotos({ photos, tagGroups, authParams, onRefresh, showSuccess, s
 
   return (
     <div className="h-full flex flex-col py-2 gap-3">
-      {/* Buscador */}
-      <div className="flex-shrink-0">
-        <SearchBar
-          value={searchQuery}
-          onChange={(value) => {
-            setSearchQuery(value)
-            setCurrentIndex(0)
-          }}
-          placeholder="Buscar por descripción o tags..."
-        />
-      </div>
-
       {/* Carrusel de fotos */}
       <PhotoCarousel
         photos={filteredPhotos}
@@ -1387,58 +1375,60 @@ function ManagePhotos({ photos, tagGroups, authParams, onRefresh, showSuccess, s
           </svg>
         </button>
 
-        {/* Descripción y controles */}
+        {/* Controles y Tags de Encabado */}
         <div className="flex-1 flex flex-col gap-2">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-500 dark:text-gray-400">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
               Foto {currentIndex + 1} de {filteredPhotos.length}
             </span>
-            <div className="flex gap-2">
-              <button
-                onClick={() => {
-                  setShowOnlyUntagged(!showOnlyUntagged)
+            <div className="flex-1">
+              <SearchBar
+                value={searchQuery}
+                onChange={(value) => {
+                  setSearchQuery(value)
                   setCurrentIndex(0)
                 }}
-                className={`px-3 py-1 text-sm rounded-lg transition-colors ${
-                  showOnlyUntagged
-                    ? 'bg-blue-600 text-white hover:bg-blue-700'
-                    : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600'
-                }`}
-              >
-                {showOnlyUntagged ? 'Mostrar todas' : 'Fotos sin tag'}
-              </button>
-              <button
-                onClick={handleDeletePhoto}
-                className="px-3 py-1 text-sm bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-900"
-              >
-                Eliminar foto
-              </button>
+                placeholder="Buscar..."
+              />
             </div>
+            <button
+              onClick={() => {
+                setShowOnlyUntagged(!showOnlyUntagged)
+                setCurrentIndex(0)
+              }}
+              className={`px-3 py-1 text-sm rounded-lg transition-colors whitespace-nowrap ${
+                showOnlyUntagged
+                  ? 'bg-blue-600 text-white hover:bg-blue-700'
+                  : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600'
+              }`}
+            >
+              {showOnlyUntagged ? 'Mostrar todas' : 'Fotos sin tag'}
+            </button>
+            <button
+              onClick={handleDeletePhoto}
+              className="px-3 py-1 text-sm bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-900 whitespace-nowrap"
+            >
+              Eliminar foto
+            </button>
           </div>
-          <textarea
-            value={currentText}
-            onChange={(e) => handleTextChange(e.target.value)}
-            placeholder="Descripción de la foto..."
-            rows={3}
-            className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none"
-          />
-          <button
-            onClick={() => handleSaveCurrentPhoto(true)}
-            disabled={saving}
-            className={`w-full px-4 py-2 rounded-lg transition-all duration-300 ${
-              savedFeedback
-                ? 'bg-green-500 text-white'
-                : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600'
-            } disabled:opacity-50`}
-          >
-            {saving ? 'Guardando...' : savedFeedback ? '✓ Guardado' : 'Guardar'}
-          </button>
+          {/* Sección de tags Encabado */}
+          <div className="flex-1 min-h-0">
+            {tagGroups.filter(g => g.id === 'encabado').map((group) => (
+              <TagSection
+                key={group.id}
+                group={group}
+                selectedTags={currentTags}
+                onTagToggle={handleTagToggle}
+                onCreateTag={(name) => handleCreateTag(group.id, name)}
+              />
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Área inferior: 4 secciones de tags - Tipo más pequeño, otros más grandes */}
-      <div className="flex-1 grid gap-3 min-h-0" style={{ gridTemplateColumns: '1fr 2fr 2fr 2fr' }}>
-        {tagGroups.map((group) => (
+      {/* Área inferior: 3 secciones de tags - Tipo pequeño, Extras y Acero más grandes */}
+      <div className="flex-1 grid gap-3 min-h-0" style={{ gridTemplateColumns: '1fr 3fr 3fr' }}>
+        {tagGroups.filter(g => g.id !== 'encabado').map((group) => (
           <TagSection
             key={group.id}
             group={group}
