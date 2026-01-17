@@ -1309,7 +1309,7 @@ function Configurador({
         <div className="px-4 py-2">
           {/* Mobile: Layout vertical */}
           <div className="lg:hidden">
-            {/* Header principal: Logo, nombre y botón guardar */}
+            {/* Header principal: Logo, título Configurador y botón guardar */}
             <div className="flex items-center justify-between gap-2 py-1">
               <div
                 className="flex items-center gap-2 flex-1 min-w-0 cursor-pointer hover:opacity-80 transition-opacity"
@@ -1318,14 +1318,9 @@ function Configurador({
                 {logo && (
                   <img src={logo} alt="Logo" className="h-8 object-contain flex-shrink-0" />
                 )}
-                <div className="min-w-0">
-                  <h1 className="text-base font-bold text-gray-900 dark:text-white truncate">
-                    PEU Cuchillos Artesanales
-                  </h1>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                    Configurador
-                  </p>
-                </div>
+                <h1 className="text-base font-bold text-gray-900 dark:text-white truncate">
+                  Configurador
+                </h1>
               </div>
 
               {/* Botón de guardar o botones de compartir */}
