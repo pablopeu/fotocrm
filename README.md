@@ -72,7 +72,7 @@ fotocrm/
 │   ├── categories.json    # Grupos de tags
 │   ├── photos.json        # Metadata de fotos
 │   ├── config.json        # Configuración del sistema
-│   └── configurador/      # Configuraciones guardadas
+│   └── configurator/      # Configuraciones guardadas
 │
 ├── uploads/               # Imágenes (excluido del deploy)
 ├── backups/               # Backups del sistema
@@ -120,7 +120,7 @@ php_value memory_limit 128M
 ### 4. Crear Directorios Necesarios
 
 ```bash
-mkdir -p data/configurador uploads backups
+mkdir -p data/configurator uploads backups
 ```
 
 ### 5. Configuración de Despliegue (Opcional)
@@ -239,7 +239,7 @@ Hola Pablo, te envío mi página del configurador de cuchillos: {link}
 
 ### Para Administradores
 
-Las configuraciones se guardan en `data/configurador/CODIGO.json`:
+Las configuraciones se guardan en `data/configurator/CODIGO.json`:
 
 ```json
 {
@@ -338,7 +338,7 @@ Ver configuración en `.github/workflows/deploy.yml`
 - Verificar límite de 5 backups
 
 ### El configurador no carga
-- Verificar que existe `data/configurador/` (755)
+- Verificar que existe `data/configurator/` (755)
 - Verificar código en URL (8 caracteres alfanuméricos)
 
 ## Contribuir
