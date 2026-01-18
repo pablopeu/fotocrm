@@ -1652,6 +1652,13 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
   const [logo, setLogo] = useState(null)
   const [uploadingLogo, setUploadingLogo] = useState(false)
 
+  // Estado para título y subtítulo del sitio
+  const [siteTitle, setSiteTitle] = useState('PEU Cuchillos Artesanales')
+  const [siteSubtitleMobile, setSiteSubtitleMobile] = useState('Buscador interactivo')
+  const [siteSubtitleDesktop, setSiteSubtitleDesktop] = useState('Buscador interactivo de modelos y materiales')
+  const [savingSiteInfo, setSavingSiteInfo] = useState(false)
+  const [savedSiteInfoFeedback, setSavedSiteInfoFeedback] = useState(false)
+
   // Estado para WhatsApp y Telegram
   const [whatsappConfig, setWhatsappConfig] = useState({ enabled: false, number: '', message: '' })
   const [telegramConfig, setTelegramConfig] = useState({ enabled: false, username: '', message: '' })
@@ -1688,6 +1695,7 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
     loadMetaTags()
     loadConfiguratorMessage()
     loadFooterConfig()
+    loadSiteInfo()
   }, [])
 
   const loadBackups = async () => {
@@ -1783,6 +1791,21 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
     }
   }
 
+  const loadSiteInfo = async () => {
+    try {
+      const params = new URLSearchParams(authParams)
+      const response = await fetch(apiUrl('admin/config/site-info') + '&' + params.toString())
+      if (response.ok) {
+        const data = await response.json()
+        setSiteTitle(data.site_title || 'PEU Cuchillos Artesanales')
+        setSiteSubtitleMobile(data.site_subtitle_mobile || 'Buscador interactivo')
+        setSiteSubtitleDesktop(data.site_subtitle_desktop || 'Buscador interactivo de modelos y materiales')
+      }
+    } catch (error) {
+      // Error silencioso
+    }
+  }
+
   const handleSaveMetaTags = async () => {
     setSavingMetaTags(true)
     try {
@@ -1858,6 +1881,36 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
       showError('Error', 'Error de conexión')
     } finally {
       setSavingFooter(false)
+    }
+  }
+
+  const handleSaveSiteInfo = async () => {
+    setSavingSiteInfo(true)
+    try {
+      const params = new URLSearchParams(authParams)
+      const response = await fetch(apiUrl('admin/config/site-info') + '&' + params.toString(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          site_title: siteTitle,
+          site_subtitle_mobile: siteSubtitleMobile,
+          site_subtitle_desktop: siteSubtitleDesktop
+        })
+      })
+
+      if (response.ok) {
+        setSavedSiteInfoFeedback(true)
+        setTimeout(() => setSavedSiteInfoFeedback(false), 2000)
+      } else if (response.status === 401) {
+        showError('Sesión expirada', 'Por favor, vuelve a iniciar sesión')
+      } else {
+        const error = await response.json()
+        showError('Error', error.error || 'Error al guardar información del sitio')
+      }
+    } catch (error) {
+      showError('Error', 'Error de conexión')
+    } finally {
+      setSavingSiteInfo(false)
     }
   }
 
@@ -2030,26 +2083,41 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Grid de 2 columnas para Logo y Mensaje del Configurador */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Sección de Logo */}
+          {/* Sección de Logo y Títulos */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Logo del Sitio</h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              Sube un logo que se mostrará en el header. Formatos: JPG, PNG, SVG, WEBP (máx 2MB).
-            </p>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Logo y Títulos del Sitio</h2>
 
-            {logo ? (
-              <div className="space-y-4">
-                <div className="flex items-center gap-4">
-                  <img src={logo} alt="Logo" className="h-12 object-contain" />
-                  <button
-                    onClick={handleDeleteLogo}
-                    className="px-4 py-2 bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-900"
-                  >
-                    Eliminar logo
-                  </button>
+            {/* Logo */}
+            <div className="mb-6 pb-6 border-b border-gray-200 dark:border-gray-700">
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                Sube un logo que se mostrará en el header. Formatos: JPG, PNG, SVG, WEBP (máx 2MB).
+              </p>
+
+              {logo ? (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-4">
+                    <img src={logo} alt="Logo" className="h-12 object-contain" />
+                    <button
+                      onClick={handleDeleteLogo}
+                      className="px-4 py-2 bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-900"
+                    >
+                      Eliminar logo
+                    </button>
+                  </div>
+                  <label className="inline-block px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer">
+                    Cambiar logo
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => handleUploadLogo(e.target.files[0])}
+                      disabled={uploadingLogo}
+                    />
+                  </label>
                 </div>
+              ) : (
                 <label className="inline-block px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer">
-                  Cambiar logo
+                  {uploadingLogo ? 'Subiendo...' : 'Subir logo'}
                   <input
                     type="file"
                     accept="image/*"
@@ -2058,19 +2126,62 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
                     disabled={uploadingLogo}
                   />
                 </label>
-              </div>
-            ) : (
-              <label className="inline-block px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer">
-                {uploadingLogo ? 'Subiendo...' : 'Subir logo'}
+              )}
+            </div>
+
+            {/* Títulos */}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Título del sitio
+                </label>
                 <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => handleUploadLogo(e.target.files[0])}
-                  disabled={uploadingLogo}
+                  type="text"
+                  value={siteTitle}
+                  onChange={(e) => setSiteTitle(e.target.value)}
+                  placeholder="PEU Cuchillos Artesanales"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 />
-              </label>
-            )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Subtítulo (móvil)
+                </label>
+                <input
+                  type="text"
+                  value={siteSubtitleMobile}
+                  onChange={(e) => setSiteSubtitleMobile(e.target.value)}
+                  placeholder="Buscador interactivo"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Subtítulo (escritorio)
+                </label>
+                <input
+                  type="text"
+                  value={siteSubtitleDesktop}
+                  onChange={(e) => setSiteSubtitleDesktop(e.target.value)}
+                  placeholder="Buscador interactivo de modelos y materiales"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                />
+              </div>
+
+              <button
+                onClick={handleSaveSiteInfo}
+                disabled={savingSiteInfo}
+                className={`px-4 py-2 rounded-lg transition-all duration-300 ${
+                  savedSiteInfoFeedback
+                    ? 'bg-green-500 text-white'
+                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                } disabled:opacity-50`}
+              >
+                {savingSiteInfo ? 'Guardando...' : savedSiteInfoFeedback ? '✓ Guardado' : 'Guardar Títulos'}
+              </button>
+            </div>
           </div>
 
           {/* Sección de Mensaje del Configurador */}

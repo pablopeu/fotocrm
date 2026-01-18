@@ -641,6 +641,10 @@ switch (true) {
         if (isset($config['footer'])) {
             $publicConfig['footer'] = $config['footer'];
         }
+        // Información del sitio
+        $publicConfig['site_title'] = $config['site_title'] ?? 'PEU Cuchillos Artesanales';
+        $publicConfig['site_subtitle_mobile'] = $config['site_subtitle_mobile'] ?? 'Buscador interactivo';
+        $publicConfig['site_subtitle_desktop'] = $config['site_subtitle_desktop'] ?? 'Buscador interactivo de modelos y materiales';
         response($publicConfig);
         break;
 
@@ -1115,6 +1119,43 @@ switch (true) {
         ];
 
         response(['footer' => $footer]);
+        break;
+
+    // POST /admin/config/site-info - Guardar información del sitio
+    case $path === 'admin/config/site-info' && $method === 'POST':
+        checkAuth();
+
+        global $JSON_INPUT;
+        $input = $JSON_INPUT;
+        $config = getConfig();
+
+        if (!isset($input['site_title']) || !isset($input['site_subtitle_mobile']) || !isset($input['site_subtitle_desktop'])) {
+            response(['error' => 'Faltan parámetros requeridos'], 400);
+        }
+
+        $config['site_title'] = $input['site_title'];
+        $config['site_subtitle_mobile'] = $input['site_subtitle_mobile'];
+        $config['site_subtitle_desktop'] = $input['site_subtitle_desktop'];
+
+        if (!file_put_contents(CONFIG_FILE, json_encode($config, JSON_PRETTY_PRINT))) {
+            response(['error' => 'Error al guardar configuración'], 500);
+        }
+
+        response(['message' => 'Información del sitio actualizada']);
+        break;
+
+    // GET /admin/config/site-info - Obtener información del sitio
+    case $path === 'admin/config/site-info' && $method === 'GET':
+        checkAuth();
+
+        $config = getConfig();
+        $siteInfo = [
+            'site_title' => $config['site_title'] ?? 'PEU Cuchillos Artesanales',
+            'site_subtitle_mobile' => $config['site_subtitle_mobile'] ?? 'Buscador interactivo',
+            'site_subtitle_desktop' => $config['site_subtitle_desktop'] ?? 'Buscador interactivo de modelos y materiales'
+        ];
+
+        response($siteInfo);
         break;
 
     default:

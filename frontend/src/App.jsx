@@ -41,6 +41,9 @@ function App() {
   const [whatsappConfig, setWhatsappConfig] = useState(null)
   const [telegramConfig, setTelegramConfig] = useState(null)
   const [footerConfig, setFooterConfig] = useState(null)
+  const [siteTitle, setSiteTitle] = useState('PEU Cuchillos Artesanales')
+  const [siteSubtitleMobile, setSiteSubtitleMobile] = useState('Buscador interactivo')
+  const [siteSubtitleDesktop, setSiteSubtitleDesktop] = useState('Buscador interactivo de modelos y materiales')
   const [showConfigurador, setShowConfigurador] = useState(false)
 
   // Filtros
@@ -156,6 +159,9 @@ function App() {
           setWhatsappConfig(data.whatsapp || null)
           setTelegramConfig(data.telegram || null)
           setFooterConfig(data.footer || null)
+          setSiteTitle(data.site_title || 'PEU Cuchillos Artesanales')
+          setSiteSubtitleMobile(data.site_subtitle_mobile || 'Buscador interactivo')
+          setSiteSubtitleDesktop(data.site_subtitle_desktop || 'Buscador interactivo de modelos y materiales')
         }
       } catch (error) {
         // Error silencioso - no afecta funcionalidad principal
@@ -400,10 +406,10 @@ function App() {
                 )}
                 <div className="min-w-0">
                   <h1 className="text-base font-bold text-gray-900 dark:text-white truncate">
-                    PEU Cuchillos Artesanales
+                    {siteTitle}
                   </h1>
                   <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                    Buscador interactivo
+                    {siteSubtitleMobile}
                   </p>
                 </div>
               </div>
@@ -576,10 +582,10 @@ function App() {
               )}
               <div>
                 <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-                  PEU Cuchillos Artesanales
+                  {siteTitle}
                 </h1>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Buscador interactivo de modelos y materiales
+                  {siteSubtitleDesktop}
                 </p>
               </div>
             </div>
@@ -1466,7 +1472,7 @@ function Configurador({
               )}
               <div>
                 <h1 className="text-base font-bold text-gray-900 dark:text-white">
-                  PEU Cuchillos Artesanales
+                  {siteTitle}
                 </h1>
               </div>
             </div>
