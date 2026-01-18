@@ -1363,15 +1363,13 @@ function Configurador({
 
               {/* Botón de guardar o botones de compartir */}
               <div className="flex items-center gap-1 flex-shrink-0">
-                {!showShareButtons && (
-                  <button
-                    onClick={handleSaveConfiguration}
-                    disabled={saving}
-                    className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors font-medium disabled:opacity-50"
-                  >
-                    {saving ? 'Guardando...' : savedCode ? 'Guardar configuración' : 'Enviar configuración'}
-                  </button>
-                )}
+                <button
+                  onClick={handleSaveConfiguration}
+                  disabled={saving || showShareButtons}
+                  className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors font-medium disabled:opacity-50"
+                >
+                  {saving ? 'Guardando...' : showShareButtons ? 'Datos guardados' : savedCode ? 'Guardar configuración' : 'Enviar configuración'}
+                </button>
 
                 {/* Botones de compartir (visibles por 5 segundos después de guardar) */}
                 {showShareButtons && savedCode && (
@@ -1545,10 +1543,10 @@ function Configurador({
               {/* Botón de guardar (siempre visible) */}
               <button
                 onClick={handleSaveConfiguration}
-                disabled={saving}
+                disabled={saving || showShareButtons}
                 className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors font-medium disabled:opacity-50"
               >
-                {saving ? 'Guardando...' : savedCode ? 'Guardar configuración' : 'Enviar configuración'}
+                {saving ? 'Guardando...' : showShareButtons ? 'Datos guardados' : savedCode ? 'Guardar configuración' : 'Enviar configuración'}
               </button>
 
               {/* Botones de compartir (visibles por 5 segundos después de guardar) */}
