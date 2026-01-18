@@ -28,7 +28,16 @@
     "share_link": "Share Link",
     "link_copied": "Link Copied",
     "delete_bucket": "Delete Bucket",
-    "bucket_deleted": "Bucket Deleted"
+    "bucket_deleted": "Bucket Deleted",
+    "saving": "Saving...",
+    "saved": "Data saved",
+    "save_config": "Save configuration",
+    "send_config": "Send configuration",
+    "whatsapp": "WhatsApp",
+    "telegram": "Telegram",
+    "contact_whatsapp": "Contact via WhatsApp",
+    "contact_telegram": "Contact via Telegram",
+    "copy_image": "Copy image"
   },
   "aria": {
     "search": "Search",

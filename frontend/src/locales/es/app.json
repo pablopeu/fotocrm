@@ -28,7 +28,16 @@
     "share_link": "Compartir enlace",
     "link_copied": "Enlace copiado",
     "delete_bucket": "Eliminar bucket",
-    "bucket_deleted": "Bucket eliminado"
+    "bucket_deleted": "Bucket eliminado",
+    "saving": "Guardando...",
+    "saved": "Datos guardados",
+    "save_config": "Guardar configuración",
+    "send_config": "Enviar configuración",
+    "whatsapp": "WhatsApp",
+    "telegram": "Telegram",
+    "contact_whatsapp": "Contactar por WhatsApp",
+    "contact_telegram": "Contactar por Telegram",
+    "copy_image": "Copiar imagen"
   },
   "aria": {
     "search": "Buscar",
