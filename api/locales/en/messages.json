@@ -1,0 +1,85 @@
+{
+  "auth": {
+    "required": "Authentication required",
+    "invalid_credentials": "Invalid credentials",
+    "authenticated": "Authenticated",
+    "password_min_length": "Password must be at least 6 characters",
+    "password_updated": "Password updated"
+  },
+  "bucket": {
+    "not_found": "Bucket not found",
+    "deleted": "Bucket deleted"
+  },
+  "photo": {
+    "not_found": "Photo not found",
+    "deleted": "Photo deleted",
+    "no_files_uploaded": "No files uploaded",
+    "file_type_not_allowed": "File type not allowed",
+    "file_too_large": "File too large",
+    "save_error": "Error saving"
+  },
+  "tag": {
+    "already_exists": "Tag already exists",
+    "group_not_found": "Group not found",
+    "not_found": "Tag not found",
+    "deleted": "Tag deleted"
+  },
+  "backup": {
+    "limit_reached": "Limit of 5 backups reached. Delete one before creating another.",
+    "data_folder_missing": "/data folder does not exist",
+    "uploads_folder_missing": "/uploads folder does not exist",
+    "ziparchive_unavailable": "ZipArchive is not available on this server",
+    "create_failed": "Could not create backup file",
+    "create_error": "Error creating backup",
+    "not_created": "Backup was not created correctly",
+    "created": "Backup created",
+    "invalid_filename": "Invalid filename",
+    "not_found": "Backup not found",
+    "delete_error": "Error deleting backup",
+    "deleted": "Backup deleted",
+    "loading": "Loading backups..."
+  },
+  "logo": {
+    "no_file_uploaded": "No file uploaded",
+    "file_type_not_allowed": "File type not allowed",
+    "file_too_large": "File too large (max 2MB)",
+    "save_error": "Error saving file",
+    "config_save_error": "Error saving configuration",
+    "updated": "Logo updated",
+    "not_configured": "No logo configured",
+    "deleted": "Logo deleted"
+  },
+  "contact": {
+    "whatsapp_number_required": "WhatsApp number required",
+    "whatsapp_message_required": "WhatsApp message required",
+    "telegram_username_required": "Telegram username required",
+    "telegram_message_required": "Telegram message required",
+    "config_updated": "Configuration updated",
+    "config_save_error": "Error saving configuration"
+  },
+  "metadata": {
+    "meta_tags_required": "meta_tags parameter required",
+    "save_error": "Error saving configuration",
+    "updated": "Metadata updated"
+  },
+  "configurator": {
+    "buckets_required": "buckets parameter required",
+    "save_error": "Error saving configuration",
+    "saved": "Configuration saved",
+    "not_found": "Configuration not found",
+    "read_error": "Error reading configuration"
+  },
+  "footer": {
+    "footer_required": "footer parameter required",
+    "save_error": "Error saving configuration",
+    "updated": "Footer updated"
+  },
+  "site_info": {
+    "missing_params": "Required parameters missing",
+    "save_error": "Error saving configuration",
+    "updated": "Site information updated"
+  },
+  "general": {
+    "route_not_found": "Route not found"
+  }
+}

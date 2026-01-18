@@ -20,6 +20,52 @@ define('UPLOADS_DIR', __DIR__ . '/../uploads');
 define('BACKUPS_DIR', __DIR__ . '/../backups');
 define('CONFIGURATOR_DIR', DATA_DIR . '/configurator');
 define('CONFIG_FILE', DATA_DIR . '/config.json');
+define('LOCALES_DIR', __DIR__ . '/locales');
+
+// Sistema de traducciones
+$TRANSLATIONS = null;
+$CURRENT_LANG = 'es';
+
+function loadTranslations($lang = 'es') {
+    global $TRANSLATIONS, $CURRENT_LANG;
+
+    // Validar idioma
+    if (!in_array($lang, ['es', 'en'])) {
+        $lang = 'es';
+    }
+
+    $CURRENT_LANG = $lang;
+    $filePath = LOCALES_DIR . '/' . $lang . '/messages.json';
+
+    if (file_exists($filePath)) {
+        $content = file_get_contents($filePath);
+        $TRANSLATIONS = json_decode($content, true);
+    } else {
+        $TRANSLATIONS = [];
+    }
+}
+
+function t($key) {
+    global $TRANSLATIONS;
+
+    // Convertir "auth.required" en ["auth"]["required"]
+    $keys = explode('.', $key);
+    $value = $TRANSLATIONS;
+
+    foreach ($keys as $k) {
+        if (isset($value[$k])) {
+            $value = $value[$k];
+        } else {
+            return $key; // Retornar la key si no existe traducción
+        }
+    }
+
+    return is_string($value) ? $value : $key;
+}
+
+// Detectar idioma del query string
+$requestedLang = isset($_GET['lang']) ? $_GET['lang'] : 'es';
+loadTranslations($requestedLang);
 
 // Cargar configuración de usuario/contraseña
 function getConfig() {
@@ -248,21 +294,21 @@ function checkAuth() {
 
     if (!$user || !$pass) {
         http_response_code(401);
-        echo json_encode(['error' => 'Autenticación requerida']);
+        echo json_encode(['error' => t('auth.required')]);
         exit;
     }
 
     // Verificar usuario
     if ($user !== ADMIN_USER) {
         http_response_code(401);
-        echo json_encode(['error' => 'Credenciales inválidas']);
+        echo json_encode(['error' => t('auth.invalid_credentials')]);
         exit;
     }
 
     // Verificar contraseña (soporta plaintext legacy y hash)
     if (!verifyPassword($pass, ADMIN_PASS)) {
         http_response_code(401);
-        echo json_encode(['error' => 'Credenciales inválidas']);
+        echo json_encode(['error' => t('auth.invalid_credentials')]);
         exit;
     }
 
@@ -333,7 +379,7 @@ switch (true) {
     // Admin verify (verificar credenciales)
     case $path === 'admin/verify' && $method === 'GET':
         checkAuth();
-        response(['status' => 'ok', 'message' => 'Authenticated']);
+        response(['status' => 'ok', 'message' => t('auth.authenticated')]);
         break;
 
     // PUT /admin/password - Cambiar contraseña
@@ -342,12 +388,12 @@ switch (true) {
         $input = getInput();
 
         if (empty($input['new_password'])) {
-            response(['error' => 'new_password es requerido'], 400);
+            response(['error' => 'new_password required'], 400);
         }
 
         $newPass = $input['new_password'];
         if (strlen($newPass) < 6) {
-            response(['error' => 'La contraseña debe tener al menos 6 caracteres'], 400);
+            response(['error' => t('auth.password_min_length')], 400);
         }
 
         $config = getConfig();
@@ -355,7 +401,7 @@ switch (true) {
         $config['pass'] = password_hash($newPass, PASSWORD_DEFAULT);
         saveConfig($config);
 
-        response(['status' => 'ok', 'message' => 'Contraseña actualizada']);
+        response(['status' => 'ok', 'message' => t('auth.password_updated')]);
         break;
 
     // GET /tags - Obtener grupos de tags
@@ -391,11 +437,11 @@ switch (true) {
         $data['buckets'] = array_values(array_filter($data['buckets'], fn($b) => $b['id'] !== $bucketId));
 
         if (count($data['buckets']) === $originalCount) {
-            response(['error' => 'Bucket no encontrado'], 404);
+            response(['error' => t('bucket.not_found')], 404);
         }
 
         writeJSON('buckets.json', $data);
-        response(['message' => 'Bucket eliminado']);
+        response(['message' => t('bucket.deleted')]);
         break;
 
     // GET /photos/{id}
@@ -404,7 +450,7 @@ switch (true) {
         $photo = array_filter($data['photos'], fn($p) => $p['id'] === $matches[1]);
         $photo = array_values($photo);
         if (empty($photo)) {
-            response(['error' => 'Foto no encontrada'], 404);
+            response(['error' => t('photo.not_found')], 404);
         }
         response($photo[0]);
         break;
@@ -477,7 +523,7 @@ switch (true) {
                 // Verificar que no exista
                 foreach ($group['tags'] as $tag) {
                     if ($tag['id'] === $tagId) {
-                        response(['error' => 'El tag ya existe'], 400);
+                        response(['error' => t('tag.already_exists')], 400);
                     }
                 }
                 $group['tags'][] = $newTag;
@@ -487,7 +533,7 @@ switch (true) {
         }
 
         if (!$found) {
-            response(['error' => 'Grupo no encontrado'], 404);
+            response(['error' => t('tag.group_not_found')], 404);
         }
 
         writeJSON('categories.json', $data);
@@ -517,11 +563,11 @@ switch (true) {
         }
 
         if (!$found) {
-            response(['error' => 'Tag no encontrado'], 404);
+            response(['error' => t('tag.not_found')], 404);
         }
 
         writeJSON('categories.json', $data);
-        response(['message' => 'Tag eliminado']);
+        response(['message' => t('tag.deleted')]);
         break;
 
     // PUT /admin/tag-groups/{groupId} - Renombrar grupo
@@ -542,7 +588,7 @@ switch (true) {
         }
 
         if (!$found) {
-            response(['error' => 'Grupo no encontrado'], 404);
+            response(['error' => t('tag.group_not_found')], 404);
         }
 
         writeJSON('categories.json', $data);
@@ -554,7 +600,7 @@ switch (true) {
         checkAuth();
 
         if (empty($_FILES['photos'])) {
-            response(['error' => 'No se subieron archivos'], 400);
+            response(['error' => t('photo.no_files_uploaded')], 400);
         }
 
         $allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
@@ -593,10 +639,10 @@ switch (true) {
             if ($file['error'] !== UPLOAD_ERR_OK) continue;
 
             if (!in_array($file['type'], $allowedTypes)) {
-                response(['error' => 'Tipo no permitido: ' . $file['name']], 400);
+                response(['error' => t('photo.file_type_not_allowed')], 400);
             }
             if ($file['size'] > $maxSize) {
-                response(['error' => 'Archivo muy grande: ' . $file['name']], 400);
+                response(['error' => t('photo.file_too_large')], 400);
             }
 
             $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
@@ -604,7 +650,7 @@ switch (true) {
             $destination = UPLOADS_DIR . '/' . $filename;
 
             if (!move_uploaded_file($file['tmp_name'], $destination)) {
-                response(['error' => 'Error al guardar'], 500);
+                response(['error' => t('photo.save_error')], 500);
             }
 
             $newPhoto = [
@@ -669,7 +715,7 @@ switch (true) {
         }
 
         if (!$found) {
-            response(['error' => 'Foto no encontrada'], 404);
+            response(['error' => t('photo.not_found')], 404);
         }
 
         writeJSON('photos.json', $data);
@@ -693,12 +739,12 @@ switch (true) {
         }
 
         if (!$found) {
-            response(['error' => 'Foto no encontrada'], 404);
+            response(['error' => t('photo.not_found')], 404);
         }
 
         $data['photos'] = array_values($data['photos']);
         writeJSON('photos.json', $data);
-        response(['message' => 'Foto eliminada']);
+        response(['message' => t('photo.deleted')]);
         break;
 
     // GET /config - Obtener configuración pública (logo, whatsapp, telegram, etc)
@@ -764,7 +810,7 @@ switch (true) {
         $files = array_diff(scandir(BACKUPS_DIR), ['.', '..']);
         $existingBackups = array_filter($files, fn($f) => pathinfo($f, PATHINFO_EXTENSION) === 'zip');
         if (count($existingBackups) >= 5) {
-            response(['error' => 'Límite de 5 backups alcanzado. Elimina uno antes de crear otro.'], 400);
+            response(['error' => t('backup.limit_reached')], 400);
         }
 
         $timestamp = date('Y-m-d_His');
@@ -773,20 +819,20 @@ switch (true) {
 
         // Verificar que las carpetas existan
         if (!is_dir(DATA_DIR)) {
-            response(['error' => 'Carpeta /data no existe'], 500);
+            response(['error' => t('backup.data_folder_missing')], 500);
         }
         if (!is_dir(UPLOADS_DIR)) {
-            response(['error' => 'Carpeta /uploads no existe'], 500);
+            response(['error' => t('backup.uploads_folder_missing')], 500);
         }
 
         // Crear ZIP usando ZipArchive (compatible con hosting compartido)
         if (!class_exists('ZipArchive')) {
-            response(['error' => 'ZipArchive no está disponible en este servidor'], 500);
+            response(['error' => t('backup.ziparchive_unavailable')], 500);
         }
 
         $zip = new ZipArchive();
         if ($zip->open($backupPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
-            response(['error' => 'No se pudo crear el archivo de backup'], 500);
+            response(['error' => t('backup.create_failed')], 500);
         }
 
         // Función recursiva para agregar carpetas al ZIP
@@ -821,15 +867,15 @@ switch (true) {
             if (file_exists($backupPath)) {
                 unlink($backupPath);
             }
-            response(['error' => 'Error al crear backup: ' . $e->getMessage()], 500);
+            response(['error' => t('backup.create_error')], 500);
         }
 
         if (!file_exists($backupPath)) {
-            response(['error' => 'Backup no se creó correctamente'], 500);
+            response(['error' => t('backup.not_created')], 500);
         }
 
         response([
-            'message' => 'Backup creado',
+            'message' => t('backup.created'),
             'backup' => [
                 'filename' => $filename,
                 'size' => filesize($backupPath),
@@ -845,12 +891,12 @@ switch (true) {
         $filename = $matches[1];
         // Validar que sea un archivo .zip o .tar.gz
         if (!preg_match('/^backup_[\d_-]+\.(zip|tar\.gz)$/', $filename)) {
-            response(['error' => 'Nombre de archivo inválido'], 400);
+            response(['error' => t('backup.invalid_filename')], 400);
         }
 
         $filePath = BACKUPS_DIR . '/' . $filename;
         if (!file_exists($filePath)) {
-            response(['error' => 'Backup no encontrado'], 404);
+            response(['error' => t('backup.not_found')], 404);
         }
 
         // Enviar archivo para descarga
@@ -868,19 +914,19 @@ switch (true) {
         $filename = $matches[1];
         // Validar que sea un archivo .zip o .tar.gz
         if (!preg_match('/^backup_[\d_-]+\.(zip|tar\.gz)$/', $filename)) {
-            response(['error' => 'Nombre de archivo inválido'], 400);
+            response(['error' => t('backup.invalid_filename')], 400);
         }
 
         $filePath = BACKUPS_DIR . '/' . $filename;
         if (!file_exists($filePath)) {
-            response(['error' => 'Backup no encontrado'], 404);
+            response(['error' => t('backup.not_found')], 404);
         }
 
         if (!unlink($filePath)) {
-            response(['error' => 'Error al eliminar backup'], 500);
+            response(['error' => t('backup.delete_error')], 500);
         }
 
-        response(['message' => 'Backup eliminado']);
+        response(['message' => t('backup.deleted')]);
         break;
 
     // POST /admin/config/logo - Subir logo del sitio
@@ -888,18 +934,18 @@ switch (true) {
         checkAuth();
 
         if (empty($_FILES['logo'])) {
-            response(['error' => 'No se subió archivo'], 400);
+            response(['error' => t('logo.no_file_uploaded')], 400);
         }
 
         $file = $_FILES['logo'];
         $allowedTypes = ['image/jpeg', 'image/png', 'image/svg+xml', 'image/webp'];
 
         if (!in_array($file['type'], $allowedTypes)) {
-            response(['error' => 'Tipo de archivo no permitido'], 400);
+            response(['error' => t('logo.file_type_not_allowed')], 400);
         }
 
         if ($file['size'] > 2 * 1024 * 1024) { // 2MB max
-            response(['error' => 'Archivo muy grande (max 2MB)'], 400);
+            response(['error' => t('logo.file_too_large')], 400);
         }
 
         $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
@@ -916,16 +962,16 @@ switch (true) {
         }
 
         if (!move_uploaded_file($file['tmp_name'], $destination)) {
-            response(['error' => 'Error al guardar archivo'], 500);
+            response(['error' => t('logo.save_error')], 500);
         }
 
         // Actualizar config
         $config['logo'] = 'uploads/' . $filename;
         if (!file_put_contents(CONFIG_FILE, json_encode($config, JSON_PRETTY_PRINT))) {
-            response(['error' => 'Error al guardar configuración'], 500);
+            response(['error' => t('logo.config_save_error')], 500);
         }
 
-        response(['message' => 'Logo actualizado', 'logo' => $config['logo']], 201);
+        response(['message' => t('logo.updated'), 'logo' => $config['logo']], 201);
         break;
 
     // DELETE /admin/config/logo - Eliminar logo del sitio
@@ -934,7 +980,7 @@ switch (true) {
 
         $config = getConfig();
         if (!isset($config['logo'])) {
-            response(['error' => 'No hay logo configurado'], 404);
+            response(['error' => t('logo.not_configured')], 404);
         }
 
         $logoPath = UPLOADS_DIR . '/' . basename($config['logo']);
@@ -945,7 +991,7 @@ switch (true) {
         unset($config['logo']);
         file_put_contents(CONFIG_FILE, json_encode($config, JSON_PRETTY_PRINT));
 
-        response(['message' => 'Logo eliminado']);
+        response(['message' => t('logo.deleted')]);
         break;
 
     // POST /admin/config/contact - Configurar WhatsApp y Telegram
@@ -962,10 +1008,10 @@ switch (true) {
                 if ($input['whatsapp']['enabled']) {
                     // Validar que tenga número y mensaje
                     if (empty($input['whatsapp']['number'])) {
-                        response(['error' => 'Número de WhatsApp requerido'], 400);
+                        response(['error' => t('contact.whatsapp_number_required')], 400);
                     }
                     if (empty($input['whatsapp']['message'])) {
-                        response(['error' => 'Mensaje de WhatsApp requerido'], 400);
+                        response(['error' => t('contact.whatsapp_message_required')], 400);
                     }
                     $config['whatsapp'] = [
                         'enabled' => true,
@@ -984,10 +1030,10 @@ switch (true) {
                 if ($input['telegram']['enabled']) {
                     // Validar que tenga usuario y mensaje
                     if (empty($input['telegram']['username'])) {
-                        response(['error' => 'Usuario de Telegram requerido'], 400);
+                        response(['error' => t('contact.telegram_username_required')], 400);
                     }
                     if (empty($input['telegram']['message'])) {
-                        response(['error' => 'Mensaje de Telegram requerido'], 400);
+                        response(['error' => t('contact.telegram_message_required')], 400);
                     }
                     $config['telegram'] = [
                         'enabled' => true,
@@ -1001,10 +1047,10 @@ switch (true) {
         }
 
         if (!file_put_contents(CONFIG_FILE, json_encode($config, JSON_PRETTY_PRINT))) {
-            response(['error' => 'Error al guardar configuración'], 500);
+            response(['error' => t('contact.config_save_error')], 500);
         }
 
-        response(['message' => 'Configuración actualizada']);
+        response(['message' => t('contact.config_updated')]);
         break;
 
     // GET /admin/config/contact - Obtener configuración de contacto
@@ -1032,7 +1078,7 @@ switch (true) {
             $config['meta_tags'] = $input['meta_tags'];
 
             if (!file_put_contents(CONFIG_FILE, json_encode($config, JSON_PRETTY_PRINT))) {
-                response(['error' => 'Error al guardar configuración'], 500);
+                response(['error' => t('metadata.save_error')], 500);
             }
 
             // Modificar index.html directamente
@@ -1054,9 +1100,9 @@ switch (true) {
                 file_put_contents($indexPath, $html);
             }
 
-            response(['message' => 'Metadatos actualizados']);
+            response(['message' => t('metadata.updated')]);
         } else {
-            response(['error' => 'Parámetro meta_tags requerido'], 400);
+            response(['error' => t('metadata.meta_tags_required')], 400);
         }
         break;
 
@@ -1074,7 +1120,7 @@ switch (true) {
         $input = $JSON_INPUT;
 
         if (!isset($input['buckets']) || !is_array($input['buckets'])) {
-            response(['error' => 'Parámetro buckets requerido'], 400);
+            response(['error' => t('configurator.buckets_required')], 400);
         }
 
         // Si viene un código, usarlo (sobrescribir); si no, generar uno nuevo
@@ -1104,10 +1150,10 @@ switch (true) {
         ];
 
         if (!file_put_contents($filepath, json_encode($configData, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE))) {
-            response(['error' => 'Error al guardar configuración'], 500);
+            response(['error' => t('configurator.save_error')], 500);
         }
 
-        response(['code' => $code, 'message' => 'Configuración guardada'], 201);
+        response(['code' => $code, 'message' => t('configurator.saved')], 201);
         break;
 
     // GET /configurator/:code - Cargar configuración por código
@@ -1116,14 +1162,14 @@ switch (true) {
         $filepath = CONFIGURATOR_DIR . '/' . $code . '.json';
 
         if (!file_exists($filepath)) {
-            response(['error' => 'Configuración no encontrada'], 404);
+            response(['error' => t('configurator.not_found')], 404);
         }
 
         $content = file_get_contents($filepath);
         $data = json_decode($content, true);
 
         if (!$data) {
-            response(['error' => 'Error al leer configuración'], 500);
+            response(['error' => t('configurator.read_error')], 500);
         }
 
         response($data);
@@ -1146,16 +1192,16 @@ switch (true) {
         $config = getConfig();
 
         if (!isset($input['configurator_message'])) {
-            response(['error' => 'Parámetro configurator_message requerido'], 400);
+            response(['error' => 'configurator_message parameter required'], 400);
         }
 
         $config['configurator_message'] = $input['configurator_message'];
 
         if (!file_put_contents(CONFIG_FILE, json_encode($config, JSON_PRETTY_PRINT))) {
-            response(['error' => 'Error al guardar configuración'], 500);
+            response(['error' => t('configurator.save_error')], 500);
         }
 
-        response(['message' => 'Configuración actualizada']);
+        response(['message' => t('configurator.saved')]);
         break;
 
     // POST /admin/config/footer - Configurar footer
@@ -1167,16 +1213,16 @@ switch (true) {
         $config = getConfig();
 
         if (!isset($input['footer'])) {
-            response(['error' => 'Parámetro footer requerido'], 400);
+            response(['error' => t('footer.footer_required')], 400);
         }
 
         $config['footer'] = $input['footer'];
 
         if (!file_put_contents(CONFIG_FILE, json_encode($config, JSON_PRETTY_PRINT))) {
-            response(['error' => 'Error al guardar configuración'], 500);
+            response(['error' => t('footer.save_error')], 500);
         }
 
-        response(['message' => 'Footer actualizado']);
+        response(['message' => t('footer.updated')]);
         break;
 
     // GET /admin/config/footer - Obtener configuración del footer
@@ -1206,7 +1252,7 @@ switch (true) {
         $config = getConfig();
 
         if (!isset($input['site_title']) || !isset($input['site_subtitle_mobile']) || !isset($input['site_subtitle_desktop'])) {
-            response(['error' => 'Faltan parámetros requeridos'], 400);
+            response(['error' => t('site_info.missing_params')], 400);
         }
 
         $config['site_title'] = $input['site_title'];
@@ -1214,10 +1260,10 @@ switch (true) {
         $config['site_subtitle_desktop'] = $input['site_subtitle_desktop'];
 
         if (!file_put_contents(CONFIG_FILE, json_encode($config, JSON_PRETTY_PRINT))) {
-            response(['error' => 'Error al guardar configuración'], 500);
+            response(['error' => t('site_info.save_error')], 500);
         }
 
-        response(['message' => 'Información del sitio actualizada']);
+        response(['message' => t('site_info.updated')]);
         break;
 
     // GET /admin/config/site-info - Obtener información del sitio
@@ -1235,5 +1281,5 @@ switch (true) {
         break;
 
     default:
-        response(['error' => 'Ruta no encontrada', 'path' => $path], 404);
+        response(['error' => t('general.route_not_found'), 'path' => $path], 404);
 }

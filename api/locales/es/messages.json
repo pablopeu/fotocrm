@@ -1,0 +1,85 @@
+{
+  "auth": {
+    "required": "Autenticación requerida",
+    "invalid_credentials": "Credenciales inválidas",
+    "authenticated": "Autenticado",
+    "password_min_length": "La contraseña debe tener al menos 6 caracteres",
+    "password_updated": "Contraseña actualizada"
+  },
+  "bucket": {
+    "not_found": "Bucket no encontrado",
+    "deleted": "Bucket eliminado"
+  },
+  "photo": {
+    "not_found": "Foto no encontrada",
+    "deleted": "Foto eliminada",
+    "no_files_uploaded": "No se subieron archivos",
+    "file_type_not_allowed": "Tipo no permitido",
+    "file_too_large": "Archivo muy grande",
+    "save_error": "Error al guardar"
+  },
+  "tag": {
+    "already_exists": "El tag ya existe",
+    "group_not_found": "Grupo no encontrado",
+    "not_found": "Tag no encontrado",
+    "deleted": "Tag eliminado"
+  },
+  "backup": {
+    "limit_reached": "Límite de 5 backups alcanzado. Elimina uno antes de crear otro.",
+    "data_folder_missing": "Carpeta /data no existe",
+    "uploads_folder_missing": "Carpeta /uploads no existe",
+    "ziparchive_unavailable": "ZipArchive no está disponible en este servidor",
+    "create_failed": "No se pudo crear el archivo de backup",
+    "create_error": "Error al crear backup",
+    "not_created": "Backup no se creó correctamente",
+    "created": "Backup creado",
+    "invalid_filename": "Nombre de archivo inválido",
+    "not_found": "Backup no encontrado",
+    "delete_error": "Error al eliminar backup",
+    "deleted": "Backup eliminado",
+    "loading": "Cargando backups..."
+  },
+  "logo": {
+    "no_file_uploaded": "No se subió archivo",
+    "file_type_not_allowed": "Tipo de archivo no permitido",
+    "file_too_large": "Archivo muy grande (max 2MB)",
+    "save_error": "Error al guardar archivo",
+    "config_save_error": "Error al guardar configuración",
+    "updated": "Logo actualizado",
+    "not_configured": "No hay logo configurado",
+    "deleted": "Logo eliminado"
+  },
+  "contact": {
+    "whatsapp_number_required": "Número de WhatsApp requerido",
+    "whatsapp_message_required": "Mensaje de WhatsApp requerido",
+    "telegram_username_required": "Usuario de Telegram requerido",
+    "telegram_message_required": "Mensaje de Telegram requerido",
+    "config_updated": "Configuración actualizada",
+    "config_save_error": "Error al guardar configuración"
+  },
+  "metadata": {
+    "meta_tags_required": "Parámetro meta_tags requerido",
+    "save_error": "Error al guardar configuración",
+    "updated": "Metadatos actualizados"
+  },
+  "configurator": {
+    "buckets_required": "Parámetro buckets requerido",
+    "save_error": "Error al guardar configuración",
+    "saved": "Configuración guardada",
+    "not_found": "Configuración no encontrada",
+    "read_error": "Error al leer configuración"
+  },
+  "footer": {
+    "footer_required": "Parámetro footer requerido",
+    "save_error": "Error al guardar configuración",
+    "updated": "Footer actualizado"
+  },
+  "site_info": {
+    "missing_params": "Faltan parámetros requeridos",
+    "save_error": "Error al guardar configuración",
+    "updated": "Información del sitio actualizada"
+  },
+  "general": {
+    "route_not_found": "Ruta no encontrada"
+  }
+}
