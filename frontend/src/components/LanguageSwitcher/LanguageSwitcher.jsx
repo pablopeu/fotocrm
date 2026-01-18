@@ -4,12 +4,14 @@ const flags = {
   es: {
     name: 'Español',
     emoji: '🇦🇷',
-    ariaLabel: 'Cambiar a Español'
+    text: 'ES',
+    ariaLabel: 'Cambiar a English'
   },
   en: {
     name: 'English',
     emoji: '🇺🇸',
-    ariaLabel: 'Switch to English'
+    text: 'EN',
+    ariaLabel: 'Cambiar a Español'
   }
 }
 
@@ -19,30 +21,18 @@ export default function LanguageSwitcher() {
   const currentLang = i18n.language || 'es'
   const otherLang = currentLang === 'es' ? 'en' : 'es'
 
-  const changeLanguage = (lng) => {
-    i18n.changeLanguage(lng)
+  const toggleLanguage = () => {
+    i18n.changeLanguage(otherLang)
   }
 
   return (
-    <div className="flex flex-col gap-1">
-      {/* Bandera actual - activa */}
-      <button
-        onClick={() => changeLanguage(currentLang)}
-        className="text-3xl leading-none opacity-100 cursor-default"
-        aria-label={`Idioma actual: ${flags[currentLang].name}`}
-        disabled
-      >
-        {flags[currentLang].emoji}
-      </button>
-
-      {/* Bandera alternativa - clickeable */}
-      <button
-        onClick={() => changeLanguage(otherLang)}
-        className="text-3xl leading-none opacity-40 hover:opacity-100 transition-opacity cursor-pointer"
-        aria-label={flags[otherLang].ariaLabel}
-      >
-        {flags[otherLang].emoji}
-      </button>
-    </div>
+    <button
+      onClick={toggleLanguage}
+      className="flex items-center justify-center min-w-[40px] h-10 px-3 rounded-lg bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 hover:border-blue-500 dark:hover:border-blue-400 transition-colors shadow-sm font-semibold text-gray-700 dark:text-gray-300"
+      aria-label={flags[currentLang].ariaLabel}
+      title={flags[currentLang].ariaLabel}
+    >
+      <span className="text-sm">{flags[currentLang].text}</span>
+    </button>
   )
 }
