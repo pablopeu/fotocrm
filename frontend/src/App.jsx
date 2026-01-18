@@ -384,6 +384,7 @@ function App() {
       allPhotos={photos}
       onClose={() => setShowConfigurador(false)}
       logo={logo}
+      siteTitle={siteTitle}
       tagGroups={tagGroups}
       showBucketDelete={showBucketDelete}
       setShowBucketDelete={setShowBucketDelete}
@@ -1175,6 +1176,7 @@ function Configurador({
   allPhotos,
   onClose,
   logo,
+  siteTitle,
   tagGroups,
   showBucketDelete,
   setShowBucketDelete,
