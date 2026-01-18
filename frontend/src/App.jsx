@@ -1183,6 +1183,7 @@ function Configurador({
   setSavedCode,
   footerConfig
 }) {
+  const { t } = useTranslation('app')
   const [saving, setSaving] = useState(false)
   const [showShareButtons, setShowShareButtons] = useState(false)
   const [whatsappConfig, setWhatsappConfig] = useState(null)
