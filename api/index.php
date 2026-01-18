@@ -1111,9 +1111,7 @@ switch (true) {
             'social_text' => 'Seguime en mis redes sociales',
             'instagram' => '',
             'twitter' => '',
-            'facebook' => '',
-            'whatsapp' => '',
-            'telegram' => ''
+            'facebook' => ''
         ];
 
         response(['footer' => $footer]);
