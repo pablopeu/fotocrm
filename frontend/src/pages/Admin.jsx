@@ -2485,7 +2485,7 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
             <div className="space-y-6 ml-7">
               {/* Link a página web */}
               <div className="pb-6 border-b border-gray-200 dark:border-gray-700">
-                <h3 className="text-base font-medium text-gray-900 dark:text-white mb-3">{ t('config.footer_website_url')}</h3>
+                <h3 className="text-base font-medium text-gray-900 dark:text-white mb-3">{t('config.footer_website_url')}</h3>
                 <div className="space-y-3">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -2516,7 +2516,7 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
 
               {/* Redes sociales */}
               <div>
-                <h3 className="text-base font-medium text-gray-900 dark:text-white mb-3">{ t('config.footer_social_text')}</h3>
+                <h3 className="text-base font-medium text-gray-900 dark:text-white mb-3">{t('config.footer_social_text')}</h3>
                 <div className="space-y-3">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -2586,7 +2586,7 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
                 : 'bg-blue-600 text-white hover:bg-blue-700'
             } disabled:opacity-50 ${footerConfig.enabled ? 'ml-7' : ''}`}
           >
-            {savingFooter ? 'Guardando...' : savedFooterFeedback ? '✓ Guardado' : '{t('config.save_footer')}'}
+            {savingFooter ? t('config.saving') : savedFooterFeedback ? t('config.saved') : t('config.save_footer')}
           </button>
         </div>
       </div>
