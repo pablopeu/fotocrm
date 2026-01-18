@@ -4,7 +4,15 @@ const API_BASE = import.meta.env.VITE_API_URL || './api/index.php?route='
 
 async function fetchJSON(url, options = {}) {
   // Convertir /path a route=path
-  const route = url.startsWith('/') ? url.slice(1) : url
+  let route = url.startsWith('/') ? url.slice(1) : url
+
+  // Si la ruta tiene parámetros de query (?...), separarlos
+  const hasQueryParams = route.includes('?')
+  if (hasQueryParams) {
+    // Reemplazar el primer ? por & para que se concatene correctamente con API_BASE
+    route = route.replace('?', '&')
+  }
+
   const fullUrl = `${API_BASE}${route}`
 
   const response = await fetch(fullUrl, {
