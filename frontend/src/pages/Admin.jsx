@@ -101,7 +101,7 @@ export default function Admin() {
         setNewPassword('')
         showSuccess(t('success.updated'), t('success.password_updated'))
       } else {
-        showError('Error', 'No se pudo cambiar la contraseña')
+        showError(t('messages.error', { ns: 'common' }), t('errors.password_change_error'))
       }
     } catch (error) {
       showError(t('messages.error', { ns: 'common' }), t('errors.generic_error'))
@@ -147,11 +147,11 @@ export default function Admin() {
               />
             </div>
             <button type="submit" className="w-full py-2 px-4 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700">
-              Iniciar sesión
+              {t('buttons.login')}
             </button>
           </form>
           <a href="#/" target="_blank" rel="noopener noreferrer" className="block text-center mt-4 text-sm text-gray-500 dark:text-gray-400 hover:underline">
-            Volver al catálogo
+            {t('links.back_to_catalog')}
           </a>
         </div>
         <Modal isOpen={isOpen} onClose={closeModal} {...modalProps} />
@@ -160,10 +160,10 @@ export default function Admin() {
   }
 
   const tabs = [
-    { id: 'manage', label: 'Administrar fotos' },
-    { id: 'upload', label: 'Subir fotos' },
-    { id: 'tags', label: 'Tags' },
-    { id: 'config', label: 'Configuración' },
+    { id: 'manage', label: t('tabs.manage') },
+    { id: 'upload', label: t('tabs.upload') },
+    { id: 'tags', label: t('tabs.tags') },
+    { id: 'config', label: t('tabs.config') },
   ]
 
   return (
@@ -256,16 +256,16 @@ export default function Admin() {
               type="password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="Nueva contraseña (mín. 6 caracteres)"
+              placeholder={t('password_modal.placeholder')}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white mb-4"
               autoComplete="new-password"
             />
             <div className="flex gap-2">
               <button onClick={() => setShowPasswordModal(false)} className="flex-1 px-4 py-2 border border-gray-300 rounded-lg">
-                Cancelar
+                {t('buttons.cancel')}
               </button>
               <button onClick={handleChangePassword} className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                Guardar
+                {t('buttons.save')}
               </button>
             </div>
           </div>
@@ -606,7 +606,7 @@ function UploadPhotos({ tagGroups, authParams, onRefresh, showSuccess, showError
                     onClick={() => setBucketToDelete(null)}
                     className="text-xs px-2 py-0.5 bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded hover:bg-gray-400 dark:hover:bg-gray-500"
                   >
-                    No
+                    {t('buttons.no')}
                   </button>
                 </div>
               ) : (
@@ -1647,6 +1647,7 @@ function TagsManager({ tagGroups, authParams, onRefresh, showSuccess, showError,
 // Configuration - Configuración del sistema (backups, logo)
 // ==================
 function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
+  const { t } = useTranslation('admin')
   const [backups, setBackups] = useState([])
   const [loading, setLoading] = useState(false)
   const [creating, setCreating] = useState(false)
@@ -1714,7 +1715,7 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
         showError(t('errors.session_expired'), t('errors.session_expired_message'))
       }
     } catch (error) {
-      showError('Error', 'Error al cargar backups')
+      showError(t('messages.error', { ns: 'common' }), t('errors.load_data_error'))
     } finally {
       setLoading(false)
     }
@@ -2089,12 +2090,12 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Sección de Logo y Títulos */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Logo y Títulos del Sitio</h2>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">{t('config.logo_section_title')}</h2>
 
             {/* Logo */}
             <div className="mb-6 pb-6 border-b border-gray-200 dark:border-gray-700">
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                Sube un logo que se mostrará en el header. Formatos: JPG, PNG, SVG, WEBP (máx 2MB).
+                {t('config.logo_description')}
               </p>
 
               {logo ? (
@@ -2105,11 +2106,11 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
                       onClick={handleDeleteLogo}
                       className="px-4 py-2 bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-900"
                     >
-                      Eliminar logo
+                      {t('config.delete_logo')}
                     </button>
                   </div>
                   <label className="inline-block px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer">
-                    Cambiar logo
+                    {t('config.change_logo')}
                     <input
                       type="file"
                       accept="image/*"
@@ -2121,7 +2122,7 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
                 </div>
               ) : (
                 <label className="inline-block px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer">
-                  {uploadingLogo ? 'Subiendo...' : 'Subir logo'}
+                  {uploadingLogo ? t('config.uploading') : t('config.upload_logo')}
                   <input
                     type="file"
                     accept="image/*"
@@ -2137,7 +2138,7 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Título del sitio
+                  {t('config.site_title_label')}
                 </label>
                 <input
                   type="text"
@@ -2150,7 +2151,7 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Subtítulo (móvil)
+                  {t('config.subtitle_mobile_label')}
                 </label>
                 <input
                   type="text"
@@ -2163,7 +2164,7 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Subtítulo (escritorio)
+                  {t('config.subtitle_desktop_label')}
                 </label>
                 <input
                   type="text"
@@ -2183,16 +2184,16 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
                     : 'bg-blue-600 text-white hover:bg-blue-700'
                 } disabled:opacity-50`}
               >
-                {savingSiteInfo ? 'Guardando...' : savedSiteInfoFeedback ? '✓ Guardado' : 'Guardar Títulos'}
+                {savingSiteInfo ? t('config.saving') : savedSiteInfoFeedback ? t('config.saved') : t('config.save_titles')}
               </button>
             </div>
           </div>
 
           {/* Sección de Mensaje del Configurador */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Mensaje del Configurador</h2>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">{t('config.configurator_message_title')}</h2>
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              Mensaje que se enviará por WhatsApp/Telegram al compartir una configuración. Usa {'{link}'} donde quieras incluir el enlace.
+              {t('config.configurator_message_description')}
             </p>
 
             <textarea
@@ -2212,7 +2213,7 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
                   : 'bg-blue-600 text-white hover:bg-blue-700'
               } disabled:opacity-50`}
             >
-              {savingConfiguratorMessage ? 'Guardando...' : savedConfiguratorMessageFeedback ? '✓ Guardado' : 'Guardar Mensaje'}
+              {savingConfiguratorMessage ? t('config.saving') : savedConfiguratorMessageFeedback ? t('config.saved') : t('config.save_message')}
             </button>
           </div>
         </div>
@@ -2221,9 +2222,9 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Sección de Backups */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Backups</h2>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">{t('config.backups_title')}</h2>
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              Los backups incluyen las carpetas /data y /uploads. Se conservan máximo 5 backups.
+              {t('config.backups_description')}
             </p>
 
             <div className="flex items-center gap-4 mb-6">
@@ -2232,19 +2233,19 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
                 disabled={creating || backups.length >= 5}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {creating ? 'Creando...' : 'Crear Backup'}
+                {creating ? t('config.creating_backup') : t('config.create_backup')}
               </button>
               {backups.length >= 5 && (
                 <span className="text-sm text-amber-600 dark:text-amber-400">
-                  Límite alcanzado. Elimina un backup para crear uno nuevo.
+                  {t('config.backup_limit_reached')}
                 </span>
               )}
             </div>
 
             {loading ? (
-              <p className="text-gray-500">Cargando backups...</p>
+              <p className="text-gray-500">{t('settings.loading_backups')}</p>
             ) : backups.length === 0 ? (
-              <p className="text-gray-500 dark:text-gray-400">No hay backups disponibles</p>
+              <p className="text-gray-500 dark:text-gray-400">{t('settings.no_backups')}</p>
             ) : (
               <div className="space-y-2">
                 {backups.map((backup) => {
@@ -2272,18 +2273,18 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
                       <div className="flex items-center gap-2">
                         {backupToDelete === backup.filename ? (
                           <>
-                            <span className="text-xs text-red-600 dark:text-red-400 mr-2">¿Eliminar?</span>
+                            <span className="text-xs text-red-600 dark:text-red-400 mr-2">{t('config.confirm_delete')}</span>
                             <button
                               onClick={() => handleDeleteBackup(backup.filename)}
                               className="px-3 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
                             >
-                              Sí
+                              {t('buttons.yes')}
                             </button>
                             <button
                               onClick={() => setBackupToDelete(null)}
                               className="px-3 py-1 text-xs bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded hover:bg-gray-400 dark:hover:bg-gray-500"
                             >
-                              No
+                              {t('buttons.no')}
                             </button>
                           </>
                         ) : (
@@ -2318,7 +2319,7 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
 
           {/* Sección de Contacto - WhatsApp y Telegram */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Contacto</h2>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">{t('config.contact_title')}</h2>
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
               Configura botones flotantes de WhatsApp y Telegram en el sitio público.
             </p>
@@ -2334,7 +2335,7 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
                   className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
                 />
                 <label htmlFor="whatsapp-enabled" className="text-lg font-medium text-gray-900 dark:text-white">
-                  WhatsApp
+                  {t('config.whatsapp_section')}
                 </label>
               </div>
 
@@ -2342,7 +2343,7 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
                 <div className="space-y-3 ml-7">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Número de WhatsApp (con código de país, sin +)
+                      {t('config.whatsapp_number')}
                     </label>
                     <input
                       type="text"
@@ -2354,7 +2355,7 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Mensaje predeterminado
+                      {t('config.whatsapp_message')}
                     </label>
                     <textarea
                       placeholder="Hola, me interesan tus productos..."
@@ -2379,7 +2380,7 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
                   className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
                 />
                 <label htmlFor="telegram-enabled" className="text-lg font-medium text-gray-900 dark:text-white">
-                  Telegram
+                  {t('config.telegram_section')}
                 </label>
               </div>
 
@@ -2387,7 +2388,7 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
                 <div className="space-y-3 ml-7">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Usuario de Telegram (sin @)
+                      {t('config.telegram_username')}
                     </label>
                     <input
                       type="text"
@@ -2399,7 +2400,7 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Mensaje predeterminado
+                      {t('config.telegram_message')}
                     </label>
                     <textarea
                       placeholder="Hola, me interesan tus productos..."
@@ -2422,16 +2423,16 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
                   : 'bg-blue-600 text-white hover:bg-blue-700'
               } disabled:opacity-50`}
             >
-              {savingContact ? 'Guardando...' : savedContactFeedback ? '✓ Guardado' : 'Guardar Configuración'}
+              {savingContact ? t('config.saving') : savedContactFeedback ? t('config.saved') : t('config.save_contact')}
             </button>
           </div>
         </div>
 
         {/* Sección de Metadatos HTML */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Metadatos HTML</h2>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">{t('config.metadata_title')}</h2>
           <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-            Etiquetas meta que se inyectarán en el &lt;head&gt; del HTML. Incluye Open Graph, Twitter Cards, etc.
+            {t('config.metadata_description')}
           </p>
 
           <textarea
@@ -2452,16 +2453,16 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
             className={`px-4 py-2 rounded-lg transition-all duration-300 ${
               savedMetaTagsFeedback
                 ? 'bg-green-500 text-white'
-                : 'bg-blue-600 text-white hover:bg-blue-700'
+                  : 'bg-blue-600 text-white hover:bg-blue-700'
             } disabled:opacity-50`}
           >
-            {savingMetaTags ? 'Guardando...' : savedMetaTagsFeedback ? '✓ Guardado' : 'Guardar Metadatos'}
+            {savingMetaTags ? t('config.saving') : savedMetaTagsFeedback ? t('config.saved') : t('config.save_metadata')}
           </button>
         </div>
 
         {/* Sección de Footer */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Footer del Sitio</h2>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">{t('config.footer_title')}</h2>
           <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
             Configura el footer que aparecerá en todas las páginas del sitio público.
           </p>
@@ -2476,7 +2477,7 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
               className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
             />
             <label htmlFor="footer-enabled" className="text-lg font-medium text-gray-900 dark:text-white">
-              Mostrar footer
+              {t('config.footer_enable')}
             </label>
           </div>
 
@@ -2484,7 +2485,7 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
             <div className="space-y-6 ml-7">
               {/* Link a página web */}
               <div className="pb-6 border-b border-gray-200 dark:border-gray-700">
-                <h3 className="text-base font-medium text-gray-900 dark:text-white mb-3">Enlace a tu sitio web</h3>
+                <h3 className="text-base font-medium text-gray-900 dark:text-white mb-3">{ t('config.footer_website_url')}</h3>
                 <div className="space-y-3">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -2515,7 +2516,7 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
 
               {/* Redes sociales */}
               <div>
-                <h3 className="text-base font-medium text-gray-900 dark:text-white mb-3">Redes Sociales</h3>
+                <h3 className="text-base font-medium text-gray-900 dark:text-white mb-3">{ t('config.footer_social_text')}</h3>
                 <div className="space-y-3">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -2585,7 +2586,7 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
                 : 'bg-blue-600 text-white hover:bg-blue-700'
             } disabled:opacity-50 ${footerConfig.enabled ? 'ml-7' : ''}`}
           >
-            {savingFooter ? 'Guardando...' : savedFooterFeedback ? '✓ Guardado' : 'Guardar Footer'}
+            {savingFooter ? 'Guardando...' : savedFooterFeedback ? '✓ Guardado' : '{t('config.save_footer')}'}
           </button>
         </div>
       </div>
