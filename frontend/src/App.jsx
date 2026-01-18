@@ -1636,66 +1636,72 @@ function Configurador({
 
                     {/* Formulario */}
                     <div className="p-4 space-y-3">
-                      <div className="space-y-2">
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={photoConfigs[photo.id]?.forma || false}
-                            onChange={() => handleCheckboxChange(photo.id, 'forma')}
-                            className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                          />
-                          <span className="text-sm text-gray-700 dark:text-gray-300">Forma</span>
-                        </label>
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                        {/* Columna izquierda */}
+                        <div className="space-y-2">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={photoConfigs[photo.id]?.forma || false}
+                              onChange={() => handleCheckboxChange(photo.id, 'forma')}
+                              className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <span className="text-sm text-gray-700 dark:text-gray-300">Forma</span>
+                          </label>
 
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={photoConfigs[photo.id]?.acero || false}
-                            onChange={() => handleCheckboxChange(photo.id, 'acero')}
-                            className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                          />
-                          <span className="text-sm text-gray-700 dark:text-gray-300">Acero</span>
-                        </label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={photoConfigs[photo.id]?.acero || false}
+                              onChange={() => handleCheckboxChange(photo.id, 'acero')}
+                              className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <span className="text-sm text-gray-700 dark:text-gray-300">Acero</span>
+                          </label>
 
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={photoConfigs[photo.id]?.encabado || false}
-                            onChange={() => handleCheckboxChange(photo.id, 'encabado')}
-                            className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                          />
-                          <span className="text-sm text-gray-700 dark:text-gray-300">Encabado</span>
-                        </label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={photoConfigs[photo.id]?.encabado || false}
+                              onChange={() => handleCheckboxChange(photo.id, 'encabado')}
+                              className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <span className="text-sm text-gray-700 dark:text-gray-300">Encabado</span>
+                          </label>
+                        </div>
 
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={photoConfigs[photo.id]?.detalle1 || false}
-                            onChange={() => handleCheckboxChange(photo.id, 'detalle1')}
-                            className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                          />
-                          <span className="text-sm text-gray-700 dark:text-gray-300">Detalle 1</span>
-                        </label>
+                        {/* Columna derecha */}
+                        <div className="space-y-2">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={photoConfigs[photo.id]?.detalle1 || false}
+                              onChange={() => handleCheckboxChange(photo.id, 'detalle1')}
+                              className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <span className="text-sm text-gray-700 dark:text-gray-300">Detalle 1</span>
+                          </label>
 
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={photoConfigs[photo.id]?.detalle2 || false}
-                            onChange={() => handleCheckboxChange(photo.id, 'detalle2')}
-                            className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                          />
-                          <span className="text-sm text-gray-700 dark:text-gray-300">Detalle 2</span>
-                        </label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={photoConfigs[photo.id]?.detalle2 || false}
+                              onChange={() => handleCheckboxChange(photo.id, 'detalle2')}
+                              className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <span className="text-sm text-gray-700 dark:text-gray-300">Detalle 2</span>
+                          </label>
 
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={photoConfigs[photo.id]?.detalle3 || false}
-                            onChange={() => handleCheckboxChange(photo.id, 'detalle3')}
-                            className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                          />
-                          <span className="text-sm text-gray-700 dark:text-gray-300">Detalle 3</span>
-                        </label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={photoConfigs[photo.id]?.detalle3 || false}
+                              onChange={() => handleCheckboxChange(photo.id, 'detalle3')}
+                              className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <span className="text-sm text-gray-700 dark:text-gray-300">Detalle 3</span>
+                          </label>
+                        </div>
                       </div>
 
                       {/* Campo de comentarios */}
