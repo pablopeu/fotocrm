@@ -298,14 +298,19 @@ Las configuraciones se guardan en `data/configurator/CODIGO.json`:
 
 ## Seguridad
 
+- ✅ **Contraseñas hasheadas** con bcrypt (PHP `password_hash()`)
+- ✅ **Migración automática** de contraseñas plaintext legacy
+- ✅ **Protección de carpetas sensibles** con .htaccess (`/data/`, `/backups/`)
 - ✅ Autenticación básica para admin
 - ✅ Sanitización de inputs en backend
 - ✅ Validación de tipos de archivo en uploads
 - ✅ Headers CORS configurados
 - ✅ Paths relativos (sin hardcoded)
-- ⚠️ **Importante**: Cambiar credenciales por defecto
+- ⚠️ **Importante**: Cambiar credenciales por defecto inmediatamente
 - ⚠️ **Importante**: Configurar permisos de directorios (755)
 - ⚠️ **Importante**: Excluir `/data` y `/uploads` del control de versiones en producción
+
+📖 Ver [SECURITY.md](SECURITY.md) para detalles completos sobre seguridad
 
 ## Deployment Automático
 

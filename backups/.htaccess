@@ -1,0 +1,3 @@
+# Denegar acceso a todos los backups
+# Previene descarga directa de backups vía web
+Require all denied

@@ -34,6 +34,31 @@ function saveConfig($config) {
     file_put_contents(CONFIG_FILE, json_encode($config, JSON_PRETTY_PRINT));
 }
 
+// Verificar si una string es un hash de contraseña válido
+function isPasswordHash($string) {
+    // Los hashes de password_hash() empiezan con $2y$ (bcrypt)
+    return preg_match('/^\$2[ayb]\$.{56}$/', $string);
+}
+
+// Verificar contraseña (soporta plaintext legacy y hash)
+function verifyPassword($password, $storedPassword) {
+    // Si es un hash, usar password_verify
+    if (isPasswordHash($storedPassword)) {
+        return password_verify($password, $storedPassword);
+    }
+    // Si es plaintext (legacy), comparación directa
+    return $password === $storedPassword;
+}
+
+// Migrar contraseña plaintext a hash si es necesario
+function migratePasswordIfNeeded($config, $password) {
+    if (!isPasswordHash($config['pass'])) {
+        // La contraseña actual es plaintext, migrar a hash
+        $config['pass'] = password_hash($password, PASSWORD_DEFAULT);
+        saveConfig($config);
+    }
+}
+
 $CONFIG = getConfig();
 define('ADMIN_USER', $CONFIG['user']);
 define('ADMIN_PASS', $CONFIG['pass']);
@@ -226,11 +251,24 @@ function checkAuth() {
         echo json_encode(['error' => 'Autenticación requerida']);
         exit;
     }
-    if ($user !== ADMIN_USER || $pass !== ADMIN_PASS) {
+
+    // Verificar usuario
+    if ($user !== ADMIN_USER) {
         http_response_code(401);
         echo json_encode(['error' => 'Credenciales inválidas']);
         exit;
     }
+
+    // Verificar contraseña (soporta plaintext legacy y hash)
+    if (!verifyPassword($pass, ADMIN_PASS)) {
+        http_response_code(401);
+        echo json_encode(['error' => 'Credenciales inválidas']);
+        exit;
+    }
+
+    // Migrar contraseña a hash si aún está en plaintext
+    $config = getConfig();
+    migratePasswordIfNeeded($config, $pass);
 }
 
 function response($data, $code = 200) {
@@ -283,7 +321,8 @@ switch (true) {
         }
 
         $config = getConfig();
-        $config['pass'] = $newPass;
+        // Guardar contraseña hasheada (bcrypt)
+        $config['pass'] = password_hash($newPass, PASSWORD_DEFAULT);
         saveConfig($config);
 
         response(['status' => 'ok', 'message' => 'Contraseña actualizada']);

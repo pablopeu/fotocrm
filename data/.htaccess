@@ -1,0 +1,3 @@
+# Denegar acceso a todos los archivos en esta carpeta
+# Previene acceso directo vía web a config.json, categories.json, etc.
+Require all denied
