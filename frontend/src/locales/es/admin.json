@@ -53,5 +53,33 @@
     "back_to_catalog": "Ver catálogo",
     "change_password": "Cambiar contraseña",
     "logout": "Cerrar sesión"
+  },
+  "login": {
+    "user": "Usuario",
+    "password": "Contraseña",
+    "login_button": "Iniciar sesión"
+  },
+  "settings": {
+    "logo_title": "Logo y Títulos del Sitio",
+    "configurator_message": "Mensaje del Configurador",
+    "backups": "Backups",
+    "loading_backups": "Cargando backups...",
+    "no_backups": "No hay backups disponibles",
+    "contact": "Contacto",
+    "html_metadata": "Metadatos HTML",
+    "site_footer": "Footer del Sitio",
+    "website_link": "Enlace a tu sitio web",
+    "social_networks": "Redes Sociales"
+  },
+  "upload": {
+    "uploading": "Subiendo fotos...",
+    "drag_here": "Arrastra las fotos aquí",
+    "no_tags": "Sin tags",
+    "use_upload": "Usa \"Subir fotos\" para agregar fotos"
+  },
+  "tag_management": {
+    "create_tag": "Crear nuevo tag",
+    "rename_group": "Renombrar grupo",
+    "delete": "Eliminar"
   }
 }

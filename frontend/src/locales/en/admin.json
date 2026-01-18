@@ -53,5 +53,33 @@
     "back_to_catalog": "View catalog",
     "change_password": "Change password",
     "logout": "Log out"
+  },
+  "login": {
+    "user": "Username",
+    "password": "Password",
+    "login_button": "Log in"
+  },
+  "settings": {
+    "logo_title": "Logo and Site Titles",
+    "configurator_message": "Configurator Message",
+    "backups": "Backups",
+    "loading_backups": "Loading backups...",
+    "no_backups": "No backups available",
+    "contact": "Contact",
+    "html_metadata": "HTML Metadata",
+    "site_footer": "Site Footer",
+    "website_link": "Link to your website",
+    "social_networks": "Social Networks"
+  },
+  "upload": {
+    "uploading": "Uploading photos...",
+    "drag_here": "Drag photos here",
+    "no_tags": "No tags",
+    "use_upload": "Use \"Upload photos\" to add photos"
+  },
+  "tag_management": {
+    "create_tag": "Create new tag",
+    "rename_group": "Rename group",
+    "delete": "Delete"
   }
 }
