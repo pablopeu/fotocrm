@@ -1,3 +1,5 @@
+import i18n from '../i18n'
+
 const API_BASE = import.meta.env.VITE_API_URL || './api/index.php?route='
 
 async function fetchJSON(url, options = {}) {
@@ -23,7 +25,8 @@ async function fetchJSON(url, options = {}) {
 
 // Tags (antes llamado Categorías)
 export async function getCategories() {
-  return fetchJSON('/tags')
+  const lang = i18n.language || 'es'
+  return fetchJSON(`/tags?lang=${lang}`)
 }
 
 // Fotos

@@ -1,8 +1,12 @@
 import { useState, useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 
-export default function SearchBar({ value, onChange, placeholder = 'Buscar...', debounceMs = 300 }) {
+export default function SearchBar({ value, onChange, placeholder, debounceMs = 300 }) {
+  const { t } = useTranslation('components')
   const [localValue, setLocalValue] = useState(value)
   const debounceRef = useRef(null)
+
+  const finalPlaceholder = placeholder || t('searchBar.placeholder')
 
   useEffect(() => {
     setLocalValue(value)
@@ -55,7 +59,7 @@ export default function SearchBar({ value, onChange, placeholder = 'Buscar...', 
         value={localValue}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
-        placeholder={placeholder}
+        placeholder={finalPlaceholder}
         className="
           w-full pl-10 pr-10 py-2.5
           bg-white dark:bg-gray-800
@@ -66,7 +70,7 @@ export default function SearchBar({ value, onChange, placeholder = 'Buscar...', 
           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
           transition-colors
         "
-        aria-label={placeholder}
+        aria-label={t('searchBar.aria_label')}
       />
 
       {localValue && (

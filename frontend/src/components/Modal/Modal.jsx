@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 
 const typeStyles = {
   info: {
@@ -42,11 +43,16 @@ export default function Modal({
   title,
   children,
   type = 'info',
-  confirmText = 'Aceptar',
-  cancelText = 'Cancelar',
+  confirmText,
+  cancelText,
 }) {
+  const { t } = useTranslation('components')
   const modalRef = useRef(null)
   const firstFocusableRef = useRef(null)
+
+  // Usar traducciones como valores por defecto
+  const finalConfirmText = confirmText || t('modal.accept')
+  const finalCancelText = cancelText || t('modal.cancel')
 
   useEffect(() => {
     if (!isOpen) return
@@ -111,7 +117,7 @@ export default function Modal({
               onClick={onClose}
               className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             >
-              {cancelText}
+              {finalCancelText}
             </button>
           )}
           <button
@@ -119,7 +125,7 @@ export default function Modal({
             onClick={type === 'confirm' ? onConfirm : onClose}
             className={`px-4 py-2 text-sm font-medium text-white rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${buttonClass}`}
           >
-            {type === 'confirm' ? confirmText : 'Cerrar'}
+            {type === 'confirm' ? finalConfirmText : t('modal.close')}
           </button>
         </div>
       </div>

@@ -1,0 +1,24 @@
+{
+  "buttons": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "accept": "Accept",
+    "close": "Close",
+    "reset": "Reset",
+    "search": "Search"
+  },
+  "labels": {
+    "all": "All",
+    "search_placeholder": "Search...",
+    "loading": "Loading...",
+    "saving": "Saving...",
+    "saved": "✓ Saved"
+  },
+  "messages": {
+    "delete_confirm": "Delete?",
+    "delete_photo_confirm": "Delete this photo permanently?",
+    "no_results": "No results found",
+    "error": "An error occurred"
+  }
+}

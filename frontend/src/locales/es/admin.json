@@ -1,0 +1,36 @@
+{
+  "title": "Administración",
+  "tabs": {
+    "photos": "Fotos",
+    "tags": "Tags"
+  },
+  "photos": {
+    "upload": "Subir Foto",
+    "title": "Título",
+    "description": "Descripción",
+    "select_tags": "Seleccionar tags",
+    "drag_drop": "Arrastra una imagen aquí o haz clic para seleccionar",
+    "uploading": "Subiendo...",
+    "upload_success": "Foto subida exitosamente",
+    "upload_error": "Error al subir la foto",
+    "delete_confirm": "¿Eliminar esta foto permanentemente?",
+    "deleted": "Foto eliminada",
+    "no_photos": "No hay fotos"
+  },
+  "tags": {
+    "add_group": "Agregar Grupo",
+    "add_tag": "Agregar Tag",
+    "group_name": "Nombre del Grupo",
+    "tag_name": "Nombre del Tag",
+    "edit": "Editar",
+    "save": "Guardar",
+    "delete": "Eliminar",
+    "delete_group_confirm": "¿Eliminar este grupo y todos sus tags?",
+    "delete_tag_confirm": "¿Eliminar este tag?",
+    "saved": "Guardado",
+    "error": "Error al guardar"
+  },
+  "navigation": {
+    "back_to_catalog": "Volver al catálogo"
+  }
+}

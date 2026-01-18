@@ -282,6 +282,36 @@ function getInput() {
     return $JSON_INPUT;
 }
 
+// Transformar datos de categorías según idioma
+function transformCategoriesForLanguage($data, $lang = 'es') {
+    if (!isset($data['tag_groups'])) {
+        return $data;
+    }
+
+    $transformed = ['tag_groups' => []];
+
+    foreach ($data['tag_groups'] as $group) {
+        $transformedGroup = [
+            'id' => $group['id'],
+            'name' => is_array($group['name']) ? ($group['name'][$lang] ?? $group['name']['es']) : $group['name'],
+            'tags' => []
+        ];
+
+        if (isset($group['tags']) && is_array($group['tags'])) {
+            foreach ($group['tags'] as $tag) {
+                $transformedGroup['tags'][] = [
+                    'id' => $tag['id'],
+                    'name' => is_array($tag['name']) ? ($tag['name'][$lang] ?? $tag['name']['es']) : $tag['name']
+                ];
+            }
+        }
+
+        $transformed['tag_groups'][] = $transformedGroup;
+    }
+
+    return $transformed;
+}
+
 // Obtener la ruta
 $path = isset($_GET['route']) ? $_GET['route'] : '';
 if (empty($path)) {
@@ -330,7 +360,14 @@ switch (true) {
 
     // GET /tags - Obtener grupos de tags
     case ($path === 'tags' || $path === 'categories') && $method === 'GET':
-        response(readJSON('categories.json'));
+        $lang = isset($_GET['lang']) ? $_GET['lang'] : 'es';
+        // Validar idioma
+        if (!in_array($lang, ['es', 'en'])) {
+            $lang = 'es';
+        }
+        $data = readJSON('categories.json');
+        $transformed = transformCategoriesForLanguage($data, $lang);
+        response($transformed);
         break;
 
     // GET /photos - Listar fotos

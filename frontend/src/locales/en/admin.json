@@ -1,0 +1,36 @@
+{
+  "title": "Administration",
+  "tabs": {
+    "photos": "Photos",
+    "tags": "Tags"
+  },
+  "photos": {
+    "upload": "Upload Photo",
+    "title": "Title",
+    "description": "Description",
+    "select_tags": "Select tags",
+    "drag_drop": "Drag an image here or click to select",
+    "uploading": "Uploading...",
+    "upload_success": "Photo uploaded successfully",
+    "upload_error": "Error uploading photo",
+    "delete_confirm": "Delete this photo permanently?",
+    "deleted": "Photo deleted",
+    "no_photos": "No photos"
+  },
+  "tags": {
+    "add_group": "Add Group",
+    "add_tag": "Add Tag",
+    "group_name": "Group Name",
+    "tag_name": "Tag Name",
+    "edit": "Edit",
+    "save": "Save",
+    "delete": "Delete",
+    "delete_group_confirm": "Delete this group and all its tags?",
+    "delete_tag_confirm": "Delete this tag?",
+    "saved": "Saved",
+    "error": "Error saving"
+  },
+  "navigation": {
+    "back_to_catalog": "Back to catalog"
+  }
+}
