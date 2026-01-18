@@ -1,5 +1,24 @@
 {
   "title": "Administration",
+  "errors": {
+    "invalid_credentials": "Invalid credentials",
+    "connection_error": "Could not connect to server",
+    "load_data_error": "Error loading data",
+    "password_length": "Password must be at least 6 characters",
+    "password_change_error": "Could not change password",
+    "session_expired": "Session expired",
+    "session_expired_message": "Please log in again",
+    "generic_error": "Connection error"
+  },
+  "success": {
+    "password_updated": "Password updated",
+    "photos_uploaded": "photo(s) uploaded",
+    "tag_created": "Tag created successfully",
+    "group_renamed": "Group renamed",
+    "saved": "Saved",
+    "created": "Created",
+    "updated": "Updated"
+  },
   "tabs": {
     "photos": "Photos",
     "tags": "Tags"
@@ -31,6 +50,8 @@
     "error": "Error saving"
   },
   "navigation": {
-    "back_to_catalog": "Back to catalog"
+    "back_to_catalog": "View catalog",
+    "change_password": "Change password",
+    "logout": "Log out"
   }
 }

@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import Modal from '../components/Modal'
 import { useModal } from '../hooks/useModal'
 import SearchBar from '../components/SearchBar/SearchBar'
+import LanguageSwitcher from '../components/LanguageSwitcher'
 
 const API_BASE = import.meta.env.VITE_API_URL || './api/index.php'
 
@@ -25,6 +27,7 @@ function apiUrl(route) {
 }
 
 export default function Admin() {
+  const { t } = useTranslation('admin')
   const [authenticated, setAuthenticated] = useState(false)
   const [credentials, setCredentials] = useState({ user: '', pass: '' })
   const [activeTab, setActiveTab] = useState('manage')
@@ -54,10 +57,10 @@ export default function Admin() {
         setAuthenticated(true)
         loadData()
       } else {
-        showError('Error', 'Credenciales inválidas')
+        showError(t('messages.error', { ns: 'common' }), t('errors.invalid_credentials'))
       }
     } catch (error) {
-      showError('Error', 'No se pudo conectar con el servidor')
+      showError(t('messages.error', { ns: 'common' }), t('errors.connection_error'))
     }
   }
 
@@ -73,7 +76,7 @@ export default function Admin() {
       setTagGroups(catData.tag_groups || [])
       setPhotos(photoData.photos || [])
     } catch (error) {
-      showError('Error', 'Error al cargar datos')
+      showError(t('messages.error', { ns: 'common' }), t('errors.load_data_error'))
     } finally {
       setLoading(false)
     }
@@ -81,7 +84,7 @@ export default function Admin() {
 
   const handleChangePassword = async () => {
     if (newPassword.length < 6) {
-      showError('Error', 'La contraseña debe tener al menos 6 caracteres')
+      showError(t('messages.error', { ns: 'common' }), t('errors.password_length'))
       return
     }
 
@@ -96,12 +99,12 @@ export default function Admin() {
         setCredentials({ ...credentials, pass: newPassword })
         setShowPasswordModal(false)
         setNewPassword('')
-        showSuccess('Éxito', 'Contraseña actualizada')
+        showSuccess(t('success.updated'), t('success.password_updated'))
       } else {
         showError('Error', 'No se pudo cambiar la contraseña')
       }
     } catch (error) {
-      showError('Error', 'Error de conexión')
+      showError(t('messages.error', { ns: 'common' }), t('errors.generic_error'))
     }
   }
 
@@ -187,12 +190,13 @@ export default function Admin() {
           </div>
 
           <div className="flex items-center gap-4">
-            <a href="#/" target="_blank" rel="noopener noreferrer" className="text-sm text-gray-600 dark:text-gray-300 hover:underline">Ver catálogo</a>
+            <LanguageSwitcher />
+            <a href="#/" target="_blank" rel="noopener noreferrer" className="text-sm text-gray-600 dark:text-gray-300 hover:underline">{t('navigation.back_to_catalog')}</a>
             <button onClick={() => setShowPasswordModal(true)} className="text-sm text-gray-600 dark:text-gray-300 hover:underline">
-              Cambiar contraseña
+              {t('navigation.change_password', { defaultValue: 'Cambiar contraseña' })}
             </button>
             <button onClick={() => setAuthenticated(false)} className="text-sm text-red-600 dark:text-red-400 hover:underline">
-              Cerrar sesión
+              {t('navigation.logout', { defaultValue: 'Cerrar sesión' })}
             </button>
           </div>
         </div>
@@ -365,13 +369,13 @@ function UploadPhotos({ tagGroups, authParams, onRefresh, showSuccess, showError
         showSuccess('Éxito', `${newPhotos.length} foto(s) subida(s)`)
         onRefresh()
       } else if (response.status === 401) {
-        showError('Sesión expirada', 'Por favor, vuelve a iniciar sesión')
+        showError(t('errors.session_expired'), t('errors.session_expired_message'))
       } else {
         const error = await response.json()
         showError('Error', error.error || 'Error al subir')
       }
     } catch (error) {
-      showError('Error', 'Error de conexión')
+      showError(t('messages.error', { ns: 'common' }), t('errors.generic_error'))
     } finally {
       setUploading(false)
     }
@@ -420,7 +424,7 @@ function UploadPhotos({ tagGroups, authParams, onRefresh, showSuccess, showError
         onRefresh()
         return newTag
       } else if (response.status === 401) {
-        showError('Sesión expirada', 'Por favor, vuelve a iniciar sesión')
+        showError(t('errors.session_expired'), t('errors.session_expired_message'))
       }
     } catch (error) {
       showError('Error', 'Error al crear tag')
@@ -448,7 +452,7 @@ function UploadPhotos({ tagGroups, authParams, onRefresh, showSuccess, showError
         setSavedFeedback(true)
         setTimeout(() => setSavedFeedback(false), 1000)
       } else if (response.status === 401) {
-        showError('Sesión expirada', 'Por favor, vuelve a iniciar sesión')
+        showError(t('errors.session_expired'), t('errors.session_expired_message'))
       }
     } catch (error) {
       showError('Error', 'Error al guardar')
@@ -548,12 +552,12 @@ function UploadPhotos({ tagGroups, authParams, onRefresh, showSuccess, showError
         await loadBuckets()
         setBucketToDelete(null)
       } else if (response.status === 401) {
-        showError('Sesión expirada', 'Por favor, vuelve a iniciar sesión')
+        showError(t('errors.session_expired'), t('errors.session_expired_message'))
       } else {
         showError('Error', 'Error al eliminar bucket')
       }
     } catch (error) {
-      showError('Error', 'Error de conexión')
+      showError(t('messages.error', { ns: 'common' }), t('errors.generic_error'))
     }
   }
 
@@ -1218,7 +1222,7 @@ function ManagePhotos({ photos, tagGroups, authParams, onRefresh, showSuccess, s
         onRefresh()
         return newTag
       } else if (response.status === 401) {
-        showError('Sesión expirada', 'Por favor, vuelve a iniciar sesión')
+        showError(t('errors.session_expired'), t('errors.session_expired_message'))
       }
     } catch (error) {
       showError('Error', 'Error al crear tag')
@@ -1245,7 +1249,7 @@ function ManagePhotos({ photos, tagGroups, authParams, onRefresh, showSuccess, s
         setSavedFeedback(true)
         setTimeout(() => setSavedFeedback(false), 1000)
       } else if (response.status === 401) {
-        showError('Sesión expirada', 'Por favor, vuelve a iniciar sesión')
+        showError(t('errors.session_expired'), t('errors.session_expired_message'))
       }
     } catch (error) {
       showError('Error', 'Error al guardar')
@@ -1269,10 +1273,10 @@ function ManagePhotos({ photos, tagGroups, authParams, onRefresh, showSuccess, s
           }
           onRefresh()
         } else if (response.status === 401) {
-          showError('Sesión expirada', 'Por favor, vuelve a iniciar sesión')
+          showError(t('errors.session_expired'), t('errors.session_expired_message'))
         }
       } catch (error) {
-        showError('Error', 'Error de conexión')
+        showError(t('messages.error', { ns: 'common' }), t('errors.generic_error'))
       }
     })
   }
@@ -1477,13 +1481,13 @@ function TagsManager({ tagGroups, authParams, onRefresh, showSuccess, showError,
         setNewTagName('')
         onRefresh()
       } else if (response.status === 401) {
-        showError('Sesión expirada', 'Por favor, vuelve a iniciar sesión')
+        showError(t('errors.session_expired'), t('errors.session_expired_message'))
       } else {
         const error = await response.json()
         showError('Error', error.error || 'Error al crear')
       }
     } catch (error) {
-      showError('Error', 'Error de conexión')
+      showError(t('messages.error', { ns: 'common' }), t('errors.generic_error'))
     }
   }
 
@@ -1497,10 +1501,10 @@ function TagsManager({ tagGroups, authParams, onRefresh, showSuccess, showError,
         setConfirmingDelete(null)
         onRefresh()
       } else if (response.status === 401) {
-        showError('Sesión expirada', 'Por favor, vuelve a iniciar sesión')
+        showError(t('errors.session_expired'), t('errors.session_expired_message'))
       }
     } catch (error) {
-      showError('Error', 'Error de conexión')
+      showError(t('messages.error', { ns: 'common' }), t('errors.generic_error'))
     }
   }
 
@@ -1519,10 +1523,10 @@ function TagsManager({ tagGroups, authParams, onRefresh, showSuccess, showError,
         setEditingGroup(null)
         onRefresh()
       } else if (response.status === 401) {
-        showError('Sesión expirada', 'Por favor, vuelve a iniciar sesión')
+        showError(t('errors.session_expired'), t('errors.session_expired_message'))
       }
     } catch (error) {
-      showError('Error', 'Error de conexión')
+      showError(t('messages.error', { ns: 'common' }), t('errors.generic_error'))
     }
   }
 
@@ -1707,7 +1711,7 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
         const data = await response.json()
         setBackups(data.backups || [])
       } else if (response.status === 401) {
-        showError('Sesión expirada', 'Por favor, vuelve a iniciar sesión')
+        showError(t('errors.session_expired'), t('errors.session_expired_message'))
       }
     } catch (error) {
       showError('Error', 'Error al cargar backups')
@@ -1820,13 +1824,13 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
         setSavedMetaTagsFeedback(true)
         setTimeout(() => setSavedMetaTagsFeedback(false), 2000)
       } else if (response.status === 401) {
-        showError('Sesión expirada', 'Por favor, vuelve a iniciar sesión')
+        showError(t('errors.session_expired'), t('errors.session_expired_message'))
       } else {
         const error = await response.json()
         showError('Error', error.error || 'Error al guardar metadatos')
       }
     } catch (error) {
-      showError('Error', 'Error de conexión')
+      showError(t('messages.error', { ns: 'common' }), t('errors.generic_error'))
     } finally {
       setSavingMetaTags(false)
     }
@@ -1846,13 +1850,13 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
         setSavedConfiguratorMessageFeedback(true)
         setTimeout(() => setSavedConfiguratorMessageFeedback(false), 2000)
       } else if (response.status === 401) {
-        showError('Sesión expirada', 'Por favor, vuelve a iniciar sesión')
+        showError(t('errors.session_expired'), t('errors.session_expired_message'))
       } else {
         const error = await response.json()
         showError('Error', error.error || 'Error al guardar mensaje')
       }
     } catch (error) {
-      showError('Error', 'Error de conexión')
+      showError(t('messages.error', { ns: 'common' }), t('errors.generic_error'))
     } finally {
       setSavingConfiguratorMessage(false)
     }
@@ -1872,13 +1876,13 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
         setSavedFooterFeedback(true)
         setTimeout(() => setSavedFooterFeedback(false), 2000)
       } else if (response.status === 401) {
-        showError('Sesión expirada', 'Por favor, vuelve a iniciar sesión')
+        showError(t('errors.session_expired'), t('errors.session_expired_message'))
       } else {
         const error = await response.json()
         showError('Error', error.error || 'Error al guardar footer')
       }
     } catch (error) {
-      showError('Error', 'Error de conexión')
+      showError(t('messages.error', { ns: 'common' }), t('errors.generic_error'))
     } finally {
       setSavingFooter(false)
     }
@@ -1902,13 +1906,13 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
         setSavedSiteInfoFeedback(true)
         setTimeout(() => setSavedSiteInfoFeedback(false), 2000)
       } else if (response.status === 401) {
-        showError('Sesión expirada', 'Por favor, vuelve a iniciar sesión')
+        showError(t('errors.session_expired'), t('errors.session_expired_message'))
       } else {
         const error = await response.json()
         showError('Error', error.error || 'Error al guardar información del sitio')
       }
     } catch (error) {
-      showError('Error', 'Error de conexión')
+      showError(t('messages.error', { ns: 'common' }), t('errors.generic_error'))
     } finally {
       setSavingSiteInfo(false)
     }
@@ -1939,7 +1943,7 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
 
         await loadBackups()
       } else if (response.status === 401) {
-        showError('Sesión expirada', 'Por favor, vuelve a iniciar sesión')
+        showError(t('errors.session_expired'), t('errors.session_expired_message'))
       } else {
         const error = await response.json()
         const errorMsg = error.details
@@ -1976,14 +1980,14 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
           await loadBackups()
           setDeletingBackup(null)
         } else if (response.status === 401) {
-          showError('Sesión expirada', 'Por favor, vuelve a iniciar sesión')
+          showError(t('errors.session_expired'), t('errors.session_expired_message'))
           setDeletingBackup(null)
         } else {
           showError('Error', 'Error al eliminar backup')
           setDeletingBackup(null)
         }
       } catch (error) {
-        showError('Error', 'Error de conexión')
+        showError(t('messages.error', { ns: 'common' }), t('errors.generic_error'))
         setDeletingBackup(null)
       }
     }, 400) // 400ms para la animación
@@ -2010,13 +2014,13 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
         // Notificar al componente padre para que actualice el logo en el header público
         if (onLogoChange) onLogoChange()
       } else if (response.status === 401) {
-        showError('Sesión expirada', 'Por favor, vuelve a iniciar sesión')
+        showError(t('errors.session_expired'), t('errors.session_expired_message'))
       } else {
         const error = await response.json()
         showError('Error', error.error || 'Error al subir logo')
       }
     } catch (error) {
-      showError('Error', 'Error de conexión')
+      showError(t('messages.error', { ns: 'common' }), t('errors.generic_error'))
     } finally {
       setUploadingLogo(false)
     }
@@ -2034,12 +2038,12 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
         // Notificar al componente padre para que actualice el logo en el header público
         if (onLogoChange) onLogoChange()
       } else if (response.status === 401) {
-        showError('Sesión expirada', 'Por favor, vuelve a iniciar sesión')
+        showError(t('errors.session_expired'), t('errors.session_expired_message'))
       } else {
         showError('Error', 'Error al eliminar logo')
       }
     } catch (error) {
-      showError('Error', 'Error de conexión')
+      showError(t('messages.error', { ns: 'common' }), t('errors.generic_error'))
     }
   }
 
@@ -2060,13 +2064,13 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
         setSavedContactFeedback(true)
         setTimeout(() => setSavedContactFeedback(false), 2000)
       } else if (response.status === 401) {
-        showError('Sesión expirada', 'Por favor, vuelve a iniciar sesión')
+        showError(t('errors.session_expired'), t('errors.session_expired_message'))
       } else {
         const error = await response.json()
         showError('Error', error.error || 'Error al guardar configuración')
       }
     } catch (error) {
-      showError('Error', 'Error de conexión')
+      showError(t('messages.error', { ns: 'common' }), t('errors.generic_error'))
     } finally {
       setSavingContact(false)
     }

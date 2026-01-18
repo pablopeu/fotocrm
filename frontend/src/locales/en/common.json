@@ -6,6 +6,7 @@
     "accept": "Accept",
     "close": "Close",
     "reset": "Reset",
+    "reset_filters": "Reset filters",
     "search": "Search"
   },
   "labels": {
