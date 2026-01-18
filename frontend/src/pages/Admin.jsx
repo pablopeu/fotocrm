@@ -125,7 +125,7 @@ export default function Admin() {
           </h1>
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{	('login.user')}</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('login.user')}</label>
               <input
                 type="text"
                 autoComplete="username"
@@ -136,7 +136,7 @@ export default function Admin() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{	('login.password')}</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('login.password')}</label>
               <input
                 type="password"
                 autoComplete="current-password"
@@ -251,7 +251,7 @@ export default function Admin() {
       {showPasswordModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowPasswordModal(false)}>
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-sm mx-4" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4"{t("navigation.change_password")}</h3>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">{t("navigation.change_password")}</h3>
             <input
               type="password"
               value={newPassword}
