@@ -1539,8 +1539,12 @@ function TagsManager({ tagGroups, authParams, onRefresh, showSuccess, showError,
         onRefresh()
       } else if (response.status === 401) {
         showError(t('errors.session_expired'), t('errors.session_expired_message'))
+      } else {
+        const error = await response.json()
+        showError('Error', error.error || 'Error al actualizar grupo')
       }
     } catch (error) {
+      console.error('Error updating group:', error)
       showError(t('messages.error', { ns: 'common' }), t('errors.generic_error'))
     }
   }
@@ -1561,8 +1565,12 @@ function TagsManager({ tagGroups, authParams, onRefresh, showSuccess, showError,
         onRefresh()
       } else if (response.status === 401) {
         showError(t('errors.session_expired'), t('errors.session_expired_message'))
+      } else {
+        const error = await response.json()
+        showError('Error', error.error || 'Error al actualizar tag')
       }
     } catch (error) {
+      console.error('Error updating tag:', error)
       showError(t('messages.error', { ns: 'common' }), t('errors.generic_error'))
     }
   }
