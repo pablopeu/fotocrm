@@ -1526,14 +1526,28 @@ function TagsManager({ tagGroups, authParams, onRefresh, showSuccess, showError,
   const handleRenameGroup = async () => {
     if (!editingGroup) return
 
+    const url = apiUrl(`admin/tag-groups/${editingGroup.id}`)
+    const payload = { name: editingGroup.name, ...authParams }
+
+    console.log('=== UPDATE GROUP DEBUG ===')
+    console.log('URL:', url)
+    console.log('GroupId:', editingGroup.id)
+    console.log('Name:', editingGroup.name)
+    console.log('Payload:', payload)
+
     try {
-      const response = await fetch(apiUrl(`admin/tag-groups/${editingGroup.id}`), {
+      const response = await fetch(url, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: editingGroup.name, ...authParams })
+        body: JSON.stringify(payload)
       })
 
+      console.log('Response status:', response.status)
+      console.log('Response ok:', response.ok)
+
       if (response.ok) {
+        const result = await response.json()
+        console.log('Success result:', result)
         showSuccess(t('success.updated'), t('success.group_renamed'))
         setEditingGroup(null)
         onRefresh()
@@ -1541,6 +1555,7 @@ function TagsManager({ tagGroups, authParams, onRefresh, showSuccess, showError,
         showError(t('errors.session_expired'), t('errors.session_expired_message'))
       } else {
         const error = await response.json()
+        console.error('Error response:', error)
         showError('Error', error.error || 'Error al actualizar grupo')
       }
     } catch (error) {
@@ -1552,14 +1567,29 @@ function TagsManager({ tagGroups, authParams, onRefresh, showSuccess, showError,
   const handleUpdateTag = async () => {
     if (!editingTag) return
 
+    const url = apiUrl(`admin/tags/${editingTag.groupId}/${editingTag.id}`)
+    const payload = { name: editingTag.name, ...authParams }
+
+    console.log('=== UPDATE TAG DEBUG ===')
+    console.log('URL:', url)
+    console.log('GroupId:', editingTag.groupId)
+    console.log('TagId:', editingTag.id)
+    console.log('Name:', editingTag.name)
+    console.log('Payload:', payload)
+
     try {
-      const response = await fetch(apiUrl(`admin/tags/${editingTag.groupId}/${editingTag.id}`), {
+      const response = await fetch(url, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: editingTag.name, ...authParams })
+        body: JSON.stringify(payload)
       })
 
+      console.log('Response status:', response.status)
+      console.log('Response ok:', response.ok)
+
       if (response.ok) {
+        const result = await response.json()
+        console.log('Success result:', result)
         showSuccess(t('success.updated'), t('success.updated'))
         setEditingTag(null)
         onRefresh()
@@ -1567,6 +1597,7 @@ function TagsManager({ tagGroups, authParams, onRefresh, showSuccess, showError,
         showError(t('errors.session_expired'), t('errors.session_expired_message'))
       } else {
         const error = await response.json()
+        console.error('Error response:', error)
         showError('Error', error.error || 'Error al actualizar tag')
       }
     } catch (error) {

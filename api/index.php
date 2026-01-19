@@ -618,10 +618,17 @@ switch (true) {
 
     // PUT /admin/tags/{groupId}/{tagId} - Actualizar tag
     case preg_match('/^admin\/tags\/([a-zA-Z0-9-]+)\/([a-zA-Z0-9-]+)$/', $path, $matches) && $method === 'PUT':
+        // DEBUG: Log para verificar que el endpoint se está alcanzando
+        error_log("PUT /admin/tags - Path: $path - Method: $method");
+        error_log("PUT /admin/tags - Input: " . json_encode($JSON_INPUT));
+
         checkAuth();
         $input = getInput();
         $groupId = $matches[1];
         $tagId = $matches[2];
+
+        error_log("PUT /admin/tags - GroupId: $groupId - TagId: $tagId");
+        error_log("PUT /admin/tags - Name to update: " . json_encode($input['name'] ?? null));
 
         $data = readJSON('categories.json');
         $found = false;
