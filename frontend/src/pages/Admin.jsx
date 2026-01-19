@@ -1030,17 +1030,29 @@ function TagSection({ group, selectedTags, onTagToggle, onCreateTag }) {
   const [search, setSearch] = useState('')
   const [creating, setCreating] = useState(false)
 
+  // Helper para obtener nombre del tag (maneja string y objeto multilingüe)
+  const getTagName = (tag) => {
+    if (typeof tag.name === 'object') {
+      return tag.name.es || tag.name.en || ''
+    }
+    return tag.name || ''
+  }
+
   // Ordenar tags alfabéticamente
-  const sortedTags = [...group.tags].sort((a, b) => a.name.localeCompare(b.name))
+  const sortedTags = [...group.tags].sort((a, b) => {
+    const aName = getTagName(a)
+    const bName = getTagName(b)
+    return aName.localeCompare(bName)
+  })
 
   // Filtrar por búsqueda
   const filteredTags = search
-    ? sortedTags.filter(t => t.name.toLowerCase().includes(search.toLowerCase()))
+    ? sortedTags.filter(t => getTagName(t).toLowerCase().includes(search.toLowerCase()))
     : sortedTags
 
   // Verificar si el search es un tag nuevo
   const searchMatchesExisting = sortedTags.some(
-    t => t.name.toLowerCase() === search.toLowerCase()
+    t => getTagName(t).toLowerCase() === search.toLowerCase()
   )
   const canCreate = search.trim() && !searchMatchesExisting
 
@@ -1063,7 +1075,9 @@ function TagSection({ group, selectedTags, onTagToggle, onCreateTag }) {
     <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 flex flex-col overflow-hidden">
       {/* Header con nombre del grupo */}
       <div className="px-3 py-2 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 flex-shrink-0">
-        <h3 className="font-semibold text-gray-700 dark:text-gray-200 text-sm">{group.name}</h3>
+        <h3 className="font-semibold text-gray-700 dark:text-gray-200 text-sm">
+          {typeof group.name === 'object' ? (group.name.es || group.name.en) : group.name}
+        </h3>
       </div>
 
       {/* Input de búsqueda/creación */}
@@ -1104,7 +1118,7 @@ function TagSection({ group, selectedTags, onTagToggle, onCreateTag }) {
                     : 'bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-500'
                 }`}
               >
-                {capitalize(tag.name)}
+                {capitalize(getTagName(tag))}
               </button>
             )
           })}
