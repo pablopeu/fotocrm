@@ -1847,16 +1847,16 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange, backe
   const [logo, setLogo] = useState(null)
   const [uploadingLogo, setUploadingLogo] = useState(false)
 
-  // Estado para título y subtítulo del sitio
-  const [siteTitle, setSiteTitle] = useState('PEU Cuchillos Artesanales')
-  const [siteSubtitleMobile, setSiteSubtitleMobile] = useState('Buscador interactivo')
-  const [siteSubtitleDesktop, setSiteSubtitleDesktop] = useState('Buscador interactivo de modelos y materiales')
+  // Estado para título y subtítulo del sitio (bilingüe)
+  const [siteTitle, setSiteTitle] = useState({ es: 'PEU Cuchillos Artesanales', en: 'PEU Artisan Knives' })
+  const [siteSubtitleMobile, setSiteSubtitleMobile] = useState({ es: 'Buscador interactivo', en: 'Interactive search' })
+  const [siteSubtitleDesktop, setSiteSubtitleDesktop] = useState({ es: 'Buscador interactivo de modelos y materiales', en: 'Interactive search for models and materials' })
   const [savingSiteInfo, setSavingSiteInfo] = useState(false)
   const [savedSiteInfoFeedback, setSavedSiteInfoFeedback] = useState(false)
 
-  // Estado para WhatsApp y Telegram
-  const [whatsappConfig, setWhatsappConfig] = useState({ enabled: false, number: '', message: '' })
-  const [telegramConfig, setTelegramConfig] = useState({ enabled: false, username: '', message: '' })
+  // Estado para WhatsApp y Telegram (bilingüe)
+  const [whatsappConfig, setWhatsappConfig] = useState({ enabled: false, number: '', message: { es: '', en: '' } })
+  const [telegramConfig, setTelegramConfig] = useState({ enabled: false, username: '', message: { es: '', en: '' } })
   const [savingContact, setSavingContact] = useState(false)
   const [savedContactFeedback, setSavedContactFeedback] = useState(false)
 
@@ -1865,17 +1865,20 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange, backe
   const [savingMetaTags, setSavingMetaTags] = useState(false)
   const [savedMetaTagsFeedback, setSavedMetaTagsFeedback] = useState(false)
 
-  // Estado para mensaje del configurador
-  const [configuratorMessage, setConfiguratorMessage] = useState('Hola Pablo, te envío mi página del configurador de cuchillos: {link}')
+  // Estado para mensaje del configurador (bilingüe)
+  const [configuratorMessage, setConfiguratorMessage] = useState({
+    es: 'Hola Pablo, te envío mi página del configurador de cuchillos: {link}',
+    en: 'Hi Pablo, here is my knife configurator page: {link}'
+  })
   const [savingConfiguratorMessage, setSavingConfiguratorMessage] = useState(false)
   const [savedConfiguratorMessageFeedback, setSavedConfiguratorMessageFeedback] = useState(false)
 
-  // Estado para footer
+  // Estado para footer (bilingüe)
   const [footerConfig, setFooterConfig] = useState({
     enabled: false,
     website_url: '',
-    website_text: 'Visita mi página web',
-    social_text: 'Seguime en mis redes sociales',
+    website_text: { es: 'Visita mi página web', en: 'Visit my website' },
+    social_text: { es: 'Seguime en mis redes sociales', en: 'Follow me on social media' },
     instagram: '',
     twitter: '',
     facebook: ''
@@ -1929,8 +1932,16 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange, backe
       const response = await fetch(apiUrl('admin/config/contact') + '&' + params.toString())
       if (response.ok) {
         const data = await response.json()
-        setWhatsappConfig(data.whatsapp || { enabled: false, number: '', message: '' })
-        setTelegramConfig(data.telegram || { enabled: false, username: '', message: '' })
+        // Normalizar mensaje: si es string, convertir a {es, en}
+        const normalizeMessage = (msg) => {
+          if (!msg) return { es: '', en: '' }
+          if (typeof msg === 'string') return { es: msg, en: msg }
+          return msg
+        }
+        const whatsapp = data.whatsapp || { enabled: false, number: '', message: { es: '', en: '' } }
+        const telegram = data.telegram || { enabled: false, username: '', message: { es: '', en: '' } }
+        setWhatsappConfig({ ...whatsapp, message: normalizeMessage(whatsapp.message) })
+        setTelegramConfig({ ...telegram, message: normalizeMessage(telegram.message) })
       }
     } catch (error) {
       // Error silencioso
@@ -1956,7 +1967,18 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange, backe
       const response = await fetch(apiUrl('admin/config/configurator') + '&' + params.toString())
       if (response.ok) {
         const data = await response.json()
-        setConfiguratorMessage(data.configurator_message || 'Hola Pablo, te envío mi página del configurador de cuchillos: {link}')
+        const msg = data.configurator_message
+        // Normalizar: si es string, convertir a {es, en}
+        if (!msg) {
+          setConfiguratorMessage({
+            es: 'Hola Pablo, te envío mi página del configurador de cuchillos: {link}',
+            en: 'Hi Pablo, here is my knife configurator page: {link}'
+          })
+        } else if (typeof msg === 'string') {
+          setConfiguratorMessage({ es: msg, en: msg })
+        } else {
+          setConfiguratorMessage(msg)
+        }
       }
     } catch (error) {
       // Error silencioso
@@ -1969,16 +1991,25 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange, backe
       const response = await fetch(apiUrl('admin/config/footer') + '&' + params.toString())
       if (response.ok) {
         const data = await response.json()
-        setFooterConfig(data.footer || {
+        const footer = data.footer || {
           enabled: false,
           website_url: '',
-          website_text: 'Visita mi página web',
-          social_text: 'Seguime en mis redes sociales',
+          website_text: { es: 'Visita mi página web', en: 'Visit my website' },
+          social_text: { es: 'Seguime en mis redes sociales', en: 'Follow me on social media' },
           instagram: '',
           twitter: '',
-          facebook: '',
-          whatsapp: '',
-          telegram: ''
+          facebook: ''
+        }
+        // Normalizar textos: si son string, convertir a {es, en}
+        const normalizeText = (text, defaultEs, defaultEn) => {
+          if (!text) return { es: defaultEs, en: defaultEn }
+          if (typeof text === 'string') return { es: text, en: text }
+          return text
+        }
+        setFooterConfig({
+          ...footer,
+          website_text: normalizeText(footer.website_text, 'Visita mi página web', 'Visit my website'),
+          social_text: normalizeText(footer.social_text, 'Seguime en mis redes sociales', 'Follow me on social media')
         })
       }
     } catch (error) {
@@ -1992,11 +2023,19 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange, backe
       const response = await fetch(apiUrl('admin/config/site-info') + '&' + params.toString())
       if (response.ok) {
         const data = await response.json()
-        setSiteTitle(data.site_title || 'PEU Cuchillos Artesanales')
-        setSiteSubtitleMobile(data.site_subtitle_mobile || 'Buscador interactivo')
-        setSiteSubtitleDesktop(data.site_subtitle_desktop || 'Buscador interactivo de modelos y materiales')
+        // Normalizar datos: si vienen como string, convertir a objeto {es, en}
+        const normalizeField = (field, defaultEs, defaultEn) => {
+          if (!field) return { es: defaultEs, en: defaultEn }
+          if (typeof field === 'string') return { es: field, en: field }
+          return field
+        }
+        setSiteTitle(normalizeField(data.site_title, 'PEU Cuchillos Artesanales', 'PEU Artisan Knives'))
+        setSiteSubtitleMobile(normalizeField(data.site_subtitle_mobile, 'Buscador interactivo', 'Interactive search'))
+        setSiteSubtitleDesktop(normalizeField(data.site_subtitle_desktop, 'Buscador interactivo de modelos y materiales', 'Interactive search for models and materials'))
         if (onBackendTitleChange) {
-          onBackendTitleChange(data.backend_title || 'FotoCRM Admin')
+          const backendTitle = data.backend_title
+          const titleValue = typeof backendTitle === 'string' ? backendTitle : (backendTitle?.es || 'FotoCRM Admin')
+          onBackendTitleChange(titleValue)
         }
       }
     } catch (error) {
