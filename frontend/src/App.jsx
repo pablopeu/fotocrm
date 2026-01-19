@@ -188,10 +188,14 @@ function App() {
           getCategories(),
           getPhotos()
         ])
+        console.log('=== FRONTEND LOAD DATA ===')
+        console.log('Tag groups:', catData?.tag_groups)
+        console.log('First group:', catData?.tag_groups?.[0])
         setTagGroups(catData?.tag_groups || [])
         setPhotos(photoData?.photos || [])
         setFilteredPhotos(photoData?.photos || [])
       } catch (error) {
+        console.error('Error loading data:', error)
         // Error silencioso - se muestra UI vacía
       } finally {
         setLoading(false)
@@ -206,18 +210,16 @@ function App() {
     return group?.tags || []
   }
 
-  // Obtener nombre del grupo (maneja tanto string como objeto multilingüe)
+  // Obtener nombre del grupo
+  // El backend ya transforma los nombres según el idioma en GET /tags
   const getGroupName = (groupId) => {
     const group = tagGroups.find(g => g.id === groupId)
-    if (!group) return groupId
-
-    // Si el nombre es un objeto multilingüe, usar el idioma actual
-    if (typeof group.name === 'object') {
-      return group.name[t('locale')] || group.name.es || group.name.en || groupId
+    if (!group) {
+      console.log(`getGroupName(${groupId}): grupo no encontrado`)
+      return groupId
     }
-
-    // Si es un string, devolverlo directamente
-    return group.name
+    console.log(`getGroupName(${groupId}):`, group.name)
+    return group.name || groupId
   }
 
   // Filtrar fotos cuando cambian los filtros

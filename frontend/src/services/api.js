@@ -16,6 +16,7 @@ async function fetchJSON(url, options = {}) {
   const fullUrl = `${API_BASE}${route}`
 
   const response = await fetch(fullUrl, {
+    cache: 'no-store',
     headers: {
       'Content-Type': 'application/json',
       ...options.headers,
@@ -34,7 +35,8 @@ async function fetchJSON(url, options = {}) {
 // Tags (antes llamado Categorías)
 export async function getCategories() {
   const lang = i18n.language || 'es'
-  return fetchJSON(`/tags?lang=${lang}`)
+  const timestamp = Date.now()
+  return fetchJSON(`/tags?lang=${lang}&_t=${timestamp}`)
 }
 
 // Fotos
