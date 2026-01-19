@@ -688,9 +688,22 @@ switch (true) {
             response(['error' => t('tag.not_found')], 404);
         }
 
-        error_log("PUT /admin/tags - About to write JSON with: " . json_encode($updatedTag));
+        error_log("PUT /admin/tags - About to write JSON with updated tag: " . json_encode($updatedTag));
+        error_log("PUT /admin/tags - Full data being written: " . json_encode($data));
+
+        $filepath = DATA_DIR . '/categories.json';
+        error_log("PUT /admin/tags - File path: $filepath");
+        error_log("PUT /admin/tags - File exists: " . (file_exists($filepath) ? 'yes' : 'no'));
+        error_log("PUT /admin/tags - File writable: " . (is_writable($filepath) ? 'yes' : 'no'));
+        error_log("PUT /admin/tags - Dir writable: " . (is_writable(DATA_DIR) ? 'yes' : 'no'));
+
         $writeResult = writeJSON('categories.json', $data);
-        error_log("PUT /admin/tags - JSON written successfully");
+        error_log("PUT /admin/tags - Write result: " . ($writeResult ? 'success' : 'failed'));
+
+        if (!$writeResult) {
+            error_log("PUT /admin/tags - WRITE FAILED!");
+            response(['error' => 'Failed to save changes'], 500);
+        }
 
         response($updatedTag);
         break;
