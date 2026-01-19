@@ -206,6 +206,20 @@ function App() {
     return group?.tags || []
   }
 
+  // Obtener nombre del grupo (maneja tanto string como objeto multilingüe)
+  const getGroupName = (groupId) => {
+    const group = tagGroups.find(g => g.id === groupId)
+    if (!group) return groupId
+
+    // Si el nombre es un objeto multilingüe, usar el idioma actual
+    if (typeof group.name === 'object') {
+      return group.name[t('locale')] || group.name.es || group.name.en || groupId
+    }
+
+    // Si es un string, devolverlo directamente
+    return group.name
+  }
+
   // Filtrar fotos cuando cambian los filtros
   useEffect(() => {
     let result = [...photos]
@@ -478,21 +492,21 @@ function App() {
             {/* Subheader2: Selectores - TODO EN UN RENGLÓN */}
             <div className="flex items-center gap-1 py-1 border-t border-gray-200 dark:border-gray-700">
               <MultiSelect
-                label="Encabado"
+                label={getGroupName('encabado')}
                 options={getTagsByGroup('encabado')}
                 selected={selectedEncabado}
                 onChange={setSelectedEncabado}
                 groupId="encabado"
               />
               <MultiSelect
-                label="Acero"
+                label={getGroupName('acero')}
                 options={getTagsByGroup('acero')}
                 selected={selectedAcero}
                 onChange={setSelectedAcero}
                 groupId="acero"
               />
               <MultiSelect
-                label="Tipo de Cuchillo"
+                label={getGroupName('extras')}
                 options={getTagsByGroup('extras')}
                 selected={selectedExtras}
                 onChange={setSelectedExtras}
@@ -626,21 +640,21 @@ function App() {
             {/* Selectboxes */}
             <div className="flex items-center gap-3 flex-shrink-0">
               <MultiSelect
-                label="Encabado"
+                label={getGroupName('encabado')}
                 options={getTagsByGroup('encabado')}
                 selected={selectedEncabado}
                 onChange={setSelectedEncabado}
                 groupId="encabado"
               />
               <MultiSelect
-                label="Acero"
+                label={getGroupName('acero')}
                 options={getTagsByGroup('acero')}
                 selected={selectedAcero}
                 onChange={setSelectedAcero}
                 groupId="acero"
               />
               <MultiSelect
-                label="Tipo de Cuchillo"
+                label={getGroupName('extras')}
                 options={getTagsByGroup('extras')}
                 selected={selectedExtras}
                 onChange={setSelectedExtras}
@@ -1672,7 +1686,7 @@ function Configurador({
                               onChange={() => handleCheckboxChange(photo.id, 'acero')}
                               className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                             />
-                            <span className="text-sm text-gray-700 dark:text-gray-300">Acero</span>
+                            <span className="text-sm text-gray-700 dark:text-gray-300">{getGroupName('acero')}</span>
                           </label>
 
                           <label className="flex items-center gap-2 cursor-pointer">
@@ -1682,7 +1696,7 @@ function Configurador({
                               onChange={() => handleCheckboxChange(photo.id, 'encabado')}
                               className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                             />
-                            <span className="text-sm text-gray-700 dark:text-gray-300">Encabado</span>
+                            <span className="text-sm text-gray-700 dark:text-gray-300">{getGroupName('encabado')}</span>
                           </label>
                         </div>
 
