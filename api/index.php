@@ -211,19 +211,36 @@ function writeJSON($filename, $data) {
     $filepath = DATA_DIR . '/' . $filename;
     $json = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
 
+    error_log("writeJSON - Filepath: $filepath");
+    error_log("writeJSON - Absolute path: " . realpath(dirname($filepath)) . '/' . basename($filepath));
+
     if ($json === false) {
         error_log("writeJSON - JSON encode error: " . json_last_error_msg());
         return false;
     }
 
+    error_log("writeJSON - JSON length: " . strlen($json) . " bytes");
+
     $result = file_put_contents($filepath, $json);
 
     if ($result === false) {
         error_log("writeJSON - Failed to write file: $filepath");
+        $error = error_get_last();
+        error_log("writeJSON - PHP error: " . json_encode($error));
         return false;
     }
 
     error_log("writeJSON - Successfully wrote $result bytes to $filepath");
+
+    // Verificar leyendo de vuelta
+    $readBack = file_get_contents($filepath);
+    $readLength = strlen($readBack);
+    error_log("writeJSON - Read back $readLength bytes");
+
+    if ($readLength !== $result) {
+        error_log("writeJSON - WARNING: Read length ($readLength) != Write length ($result)");
+    }
+
     return true;
 }
 
@@ -705,7 +722,16 @@ switch (true) {
             response(['error' => 'Failed to save changes'], 500);
         }
 
-        response($updatedTag);
+        // DEBUG: Agregar info de debugging a la respuesta
+        $debugInfo = [
+            'filepath' => $filepath,
+            'file_exists_after_write' => file_exists($filepath),
+            'file_size' => filesize($filepath),
+            'file_mtime' => filemtime($filepath),
+            'file_mtime_readable' => date('Y-m-d H:i:s', filemtime($filepath))
+        ];
+
+        response(array_merge($updatedTag, ['_debug' => $debugInfo]));
         break;
 
     // POST /admin/upload - Subir foto con tags
