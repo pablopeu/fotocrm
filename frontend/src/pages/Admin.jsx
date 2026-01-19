@@ -70,10 +70,12 @@ export default function Admin() {
     try {
       // Agregar timestamp para evitar caché del navegador
       const cacheBuster = `&_t=${Date.now()}`
+      // Agregar auth params para que backend devuelva datos multilingües completos
+      const authParams = new URLSearchParams(getAuthParams()).toString()
       const [catRes, photoRes, configRes] = await Promise.all([
-        fetch(apiUrl('tags') + cacheBuster, { cache: 'no-store' }),
+        fetch(apiUrl('tags') + '&' + authParams + cacheBuster, { cache: 'no-store' }),
         fetch(apiUrl('photos') + cacheBuster, { cache: 'no-store' }),
-        fetch(apiUrl('config') + cacheBuster, { cache: 'no-store' })
+        fetch(apiUrl('config') + '&' + authParams + cacheBuster, { cache: 'no-store' })
       ])
       const catData = await catRes.json()
       const photoData = await photoRes.json()
@@ -82,6 +84,9 @@ export default function Admin() {
       console.log('=== LOAD DATA DEBUG ===')
       console.log('Tag groups loaded:', catData.tag_groups?.length || 0)
       console.log('First tag group:', catData.tag_groups?.[0])
+      if (catData.tag_groups?.[0]?.tags?.[0]) {
+        console.log('First tag:', catData.tag_groups[0].tags[0])
+      }
 
       setTagGroups(catData.tag_groups || [])
       setPhotos(photoData.photos || [])

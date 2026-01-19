@@ -458,8 +458,16 @@ switch (true) {
         $data = readJSON('categories.json');
         error_log("GET /tags - Loaded " . count($data['tag_groups']) . " tag groups");
 
-        $transformed = transformCategoriesForLanguage($data, $lang);
-        response($transformed);
+        // Si viene del admin (con auth params), NO transformar - devolver datos completos multilingües
+        $isAdmin = !empty($_GET['auth_user']) && !empty($_GET['auth_pass']);
+
+        if ($isAdmin) {
+            error_log("GET /tags - Admin request, returning raw multilingual data");
+            response($data);
+        } else {
+            $transformed = transformCategoriesForLanguage($data, $lang);
+            response($transformed);
+        }
         break;
 
     // GET /photos - Listar fotos
