@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import SearchBar from './components/SearchBar'
 import LanguageSwitcher from './components/LanguageSwitcher'
@@ -228,7 +228,7 @@ function App() {
   }
 
   // Construir tabs dinámicamente desde el grupo "tipo"
-  const getTipoTabs = () => {
+  const TIPO_TABS = useMemo(() => {
     const tipoGroup = tagGroups.find(g => g.id === 'tipo')
     if (!tipoGroup || !tipoGroup.tags) return []
 
@@ -251,9 +251,7 @@ function App() {
     }
 
     return tabs
-  }
-
-  const TIPO_TABS = getTipoTabs()
+  }, [tagGroups, t])
 
   // Filtrar fotos cuando cambian los filtros
   useEffect(() => {
