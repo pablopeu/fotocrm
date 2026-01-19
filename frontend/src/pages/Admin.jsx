@@ -81,13 +81,6 @@ export default function Admin() {
       const photoData = await photoRes.json()
       const configData = await configRes.json()
 
-      console.log('=== LOAD DATA DEBUG ===')
-      console.log('Tag groups loaded:', catData.tag_groups?.length || 0)
-      console.log('First tag group:', catData.tag_groups?.[0])
-      if (catData.tag_groups?.[0]?.tags?.[0]) {
-        console.log('First tag:', catData.tag_groups[0].tags[0])
-      }
-
       setTagGroups(catData.tag_groups || [])
       setPhotos(photoData.photos || [])
       setBackendTitle(configData.backend_title || 'FotoCRM Admin')
@@ -1555,12 +1548,6 @@ function TagsManager({ tagGroups, authParams, onRefresh, showSuccess, showError,
     const url = apiUrl(`admin/tag-groups/${editingGroup.id}`)
     const payload = { name: editingGroup.name, ...authParams }
 
-    console.log('=== UPDATE GROUP DEBUG ===')
-    console.log('URL:', url)
-    console.log('GroupId:', editingGroup.id)
-    console.log('Name:', editingGroup.name)
-    console.log('Payload:', payload)
-
     try {
       const response = await fetch(url, {
         method: 'PUT',
@@ -1568,12 +1555,7 @@ function TagsManager({ tagGroups, authParams, onRefresh, showSuccess, showError,
         body: JSON.stringify(payload)
       })
 
-      console.log('Response status:', response.status)
-      console.log('Response ok:', response.ok)
-
       if (response.ok) {
-        const result = await response.json()
-        console.log('Success result:', result)
         showSuccess(t('success.updated'), t('success.group_renamed'))
         setEditingGroup(null)
         onRefresh()
@@ -1581,11 +1563,9 @@ function TagsManager({ tagGroups, authParams, onRefresh, showSuccess, showError,
         showError(t('errors.session_expired'), t('errors.session_expired_message'))
       } else {
         const error = await response.json()
-        console.error('Error response:', error)
         showError('Error', error.error || 'Error al actualizar grupo')
       }
     } catch (error) {
-      console.error('Error updating group:', error)
       showError(t('messages.error', { ns: 'common' }), t('errors.generic_error'))
     }
   }
@@ -1596,13 +1576,6 @@ function TagsManager({ tagGroups, authParams, onRefresh, showSuccess, showError,
     const url = apiUrl(`admin/tags/${editingTag.groupId}/${editingTag.id}`)
     const payload = { name: editingTag.name, ...authParams }
 
-    console.log('=== UPDATE TAG DEBUG ===')
-    console.log('URL:', url)
-    console.log('GroupId:', editingTag.groupId)
-    console.log('TagId:', editingTag.id)
-    console.log('Name:', editingTag.name)
-    console.log('Payload:', payload)
-
     try {
       const response = await fetch(url, {
         method: 'PUT',
@@ -1610,12 +1583,7 @@ function TagsManager({ tagGroups, authParams, onRefresh, showSuccess, showError,
         body: JSON.stringify(payload)
       })
 
-      console.log('Response status:', response.status)
-      console.log('Response ok:', response.ok)
-
       if (response.ok) {
-        const result = await response.json()
-        console.log('Success result:', result)
         showSuccess(t('success.updated'), t('success.updated'))
         setEditingTag(null)
         onRefresh()
@@ -1623,11 +1591,9 @@ function TagsManager({ tagGroups, authParams, onRefresh, showSuccess, showError,
         showError(t('errors.session_expired'), t('errors.session_expired_message'))
       } else {
         const error = await response.json()
-        console.error('Error response:', error)
         showError('Error', error.error || 'Error al actualizar tag')
       }
     } catch (error) {
-      console.error('Error updating tag:', error)
       showError(t('messages.error', { ns: 'common' }), t('errors.generic_error'))
     }
   }

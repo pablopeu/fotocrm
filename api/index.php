@@ -211,34 +211,14 @@ function writeJSON($filename, $data) {
     $filepath = DATA_DIR . '/' . $filename;
     $json = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
 
-    error_log("writeJSON - Filepath: $filepath");
-    error_log("writeJSON - Absolute path: " . realpath(dirname($filepath)) . '/' . basename($filepath));
-
     if ($json === false) {
-        error_log("writeJSON - JSON encode error: " . json_last_error_msg());
         return false;
     }
-
-    error_log("writeJSON - JSON length: " . strlen($json) . " bytes");
 
     $result = file_put_contents($filepath, $json);
 
     if ($result === false) {
-        error_log("writeJSON - Failed to write file: $filepath");
-        $error = error_get_last();
-        error_log("writeJSON - PHP error: " . json_encode($error));
         return false;
-    }
-
-    error_log("writeJSON - Successfully wrote $result bytes to $filepath");
-
-    // Verificar leyendo de vuelta
-    $readBack = file_get_contents($filepath);
-    $readLength = strlen($readBack);
-    error_log("writeJSON - Read back $readLength bytes");
-
-    if ($readLength !== $result) {
-        error_log("writeJSON - WARNING: Read length ($readLength) != Write length ($result)");
     }
 
     return true;
@@ -450,19 +430,12 @@ switch (true) {
             $lang = 'es';
         }
 
-        $filepath = DATA_DIR . '/categories.json';
-        error_log("GET /tags - Reading from: $filepath");
-        error_log("GET /tags - File size: " . filesize($filepath));
-        error_log("GET /tags - File mtime: " . date('Y-m-d H:i:s', filemtime($filepath)));
-
         $data = readJSON('categories.json');
-        error_log("GET /tags - Loaded " . count($data['tag_groups']) . " tag groups");
 
         // Si viene del admin (con auth params), NO transformar - devolver datos completos multilingües
         $isAdmin = !empty($_GET['auth_user']) && !empty($_GET['auth_pass']);
 
         if ($isAdmin) {
-            error_log("GET /tags - Admin request, returning raw multilingual data");
             response($data);
         } else {
             $transformed = transformCategoriesForLanguage($data, $lang);
@@ -639,9 +612,6 @@ switch (true) {
 
     // PUT /admin/tag-groups/{groupId} - Renombrar grupo
     case preg_match('/^admin\/tag-groups\/([a-zA-Z0-9-]+)$/', $path, $matches) && $method === 'PUT':
-        error_log("PUT /admin/tag-groups - GroupId: " . $matches[1]);
-        error_log("PUT /admin/tag-groups - Input: " . json_encode($JSON_INPUT));
-
         checkAuth();
         $input = getInput();
         $data = readJSON('categories.json');
@@ -670,29 +640,19 @@ switch (true) {
         }
 
         if (!$found) {
-            error_log("PUT /admin/tag-groups - Group not found!");
             response(['error' => t('tag.group_not_found')], 404);
         }
 
-        error_log("PUT /admin/tag-groups - About to write JSON");
         writeJSON('categories.json', $data);
-        error_log("PUT /admin/tag-groups - JSON written successfully");
-
         response($updatedGroup);
         break;
 
     // PUT /admin/tags/{groupId}/{tagId} - Actualizar tag
     case preg_match('/^admin\/tags\/([a-zA-Z0-9-]+)\/([a-zA-Z0-9-]+)$/', $path, $matches) && $method === 'PUT':
-        error_log("PUT /admin/tags - Path: $path - Method: $method");
-        error_log("PUT /admin/tags - Input: " . json_encode($JSON_INPUT));
-
         checkAuth();
         $input = getInput();
         $groupId = $matches[1];
         $tagId = $matches[2];
-
-        error_log("PUT /admin/tags - GroupId: $groupId - TagId: $tagId");
-        error_log("PUT /admin/tags - Name to update: " . json_encode($input['name'] ?? null));
 
         $data = readJSON('categories.json');
         $found = false;
@@ -723,37 +683,16 @@ switch (true) {
         }
 
         if (!$found) {
-            error_log("PUT /admin/tags - Tag not found!");
             response(['error' => t('tag.not_found')], 404);
         }
 
-        error_log("PUT /admin/tags - About to write JSON with updated tag: " . json_encode($updatedTag));
-        error_log("PUT /admin/tags - Full data being written: " . json_encode($data));
-
-        $filepath = DATA_DIR . '/categories.json';
-        error_log("PUT /admin/tags - File path: $filepath");
-        error_log("PUT /admin/tags - File exists: " . (file_exists($filepath) ? 'yes' : 'no'));
-        error_log("PUT /admin/tags - File writable: " . (is_writable($filepath) ? 'yes' : 'no'));
-        error_log("PUT /admin/tags - Dir writable: " . (is_writable(DATA_DIR) ? 'yes' : 'no'));
-
         $writeResult = writeJSON('categories.json', $data);
-        error_log("PUT /admin/tags - Write result: " . ($writeResult ? 'success' : 'failed'));
 
         if (!$writeResult) {
-            error_log("PUT /admin/tags - WRITE FAILED!");
             response(['error' => 'Failed to save changes'], 500);
         }
 
-        // DEBUG: Agregar info de debugging a la respuesta
-        $debugInfo = [
-            'filepath' => $filepath,
-            'file_exists_after_write' => file_exists($filepath),
-            'file_size' => filesize($filepath),
-            'file_mtime' => filemtime($filepath),
-            'file_mtime_readable' => date('Y-m-d H:i:s', filemtime($filepath))
-        ];
-
-        response(array_merge($updatedTag, ['_debug' => $debugInfo]));
+        response($updatedTag);
         break;
 
     // POST /admin/upload - Subir foto con tags
