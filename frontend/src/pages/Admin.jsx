@@ -2367,45 +2367,90 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange, backe
               )}
             </div>
 
-            {/* Títulos */}
+            {/* Títulos (bilingüe) */}
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   {t('config.site_title_label')}
                 </label>
-                <input
-                  type="text"
-                  value={siteTitle}
-                  onChange={(e) => setSiteTitle(e.target.value)}
-                  placeholder="PEU Cuchillos Artesanales"
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                />
+                <div className="space-y-2">
+                  <div>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">Español:</span>
+                    <input
+                      type="text"
+                      value={siteTitle.es || ''}
+                      onChange={(e) => setSiteTitle({ ...siteTitle, es: e.target.value })}
+                      placeholder="PEU Cuchillos Artesanales"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white mt-1"
+                    />
+                  </div>
+                  <div>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">English:</span>
+                    <input
+                      type="text"
+                      value={siteTitle.en || ''}
+                      onChange={(e) => setSiteTitle({ ...siteTitle, en: e.target.value })}
+                      placeholder="PEU Artisan Knives"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white mt-1"
+                    />
+                  </div>
+                </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   {t('config.subtitle_mobile_label')}
                 </label>
-                <input
-                  type="text"
-                  value={siteSubtitleMobile}
-                  onChange={(e) => setSiteSubtitleMobile(e.target.value)}
-                  placeholder="Buscador interactivo"
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                />
+                <div className="space-y-2">
+                  <div>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">Español:</span>
+                    <input
+                      type="text"
+                      value={siteSubtitleMobile.es || ''}
+                      onChange={(e) => setSiteSubtitleMobile({ ...siteSubtitleMobile, es: e.target.value })}
+                      placeholder="Buscador interactivo"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white mt-1"
+                    />
+                  </div>
+                  <div>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">English:</span>
+                    <input
+                      type="text"
+                      value={siteSubtitleMobile.en || ''}
+                      onChange={(e) => setSiteSubtitleMobile({ ...siteSubtitleMobile, en: e.target.value })}
+                      placeholder="Interactive search"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white mt-1"
+                    />
+                  </div>
+                </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   {t('config.subtitle_desktop_label')}
                 </label>
-                <input
-                  type="text"
-                  value={siteSubtitleDesktop}
-                  onChange={(e) => setSiteSubtitleDesktop(e.target.value)}
-                  placeholder="Buscador interactivo de modelos y materiales"
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                />
+                <div className="space-y-2">
+                  <div>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">Español:</span>
+                    <input
+                      type="text"
+                      value={siteSubtitleDesktop.es || ''}
+                      onChange={(e) => setSiteSubtitleDesktop({ ...siteSubtitleDesktop, es: e.target.value })}
+                      placeholder="Buscador interactivo de modelos y materiales"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white mt-1"
+                    />
+                  </div>
+                  <div>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">English:</span>
+                    <input
+                      type="text"
+                      value={siteSubtitleDesktop.en || ''}
+                      onChange={(e) => setSiteSubtitleDesktop({ ...siteSubtitleDesktop, en: e.target.value })}
+                      placeholder="Interactive search for models and materials"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white mt-1"
+                    />
+                  </div>
+                </div>
               </div>
 
               <div>
@@ -2442,13 +2487,28 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange, backe
               {t('config.configurator_message_description')}
             </p>
 
-            <textarea
-              value={configuratorMessage}
-              onChange={(e) => setConfiguratorMessage(e.target.value)}
-              placeholder="Hola Pablo, te envío mi página del configurador de cuchillos: {link}"
-              rows={3}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none mb-4"
-            />
+            <div className="space-y-3 mb-4">
+              <div>
+                <span className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Español:</span>
+                <textarea
+                  value={configuratorMessage.es || ''}
+                  onChange={(e) => setConfiguratorMessage({ ...configuratorMessage, es: e.target.value })}
+                  placeholder="Hola Pablo, te envío mi página del configurador de cuchillos: {link}"
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none"
+                />
+              </div>
+              <div>
+                <span className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">English:</span>
+                <textarea
+                  value={configuratorMessage.en || ''}
+                  onChange={(e) => setConfiguratorMessage({ ...configuratorMessage, en: e.target.value })}
+                  placeholder="Hi Pablo, here is my knife configurator page: {link}"
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none"
+                />
+              </div>
+            </div>
 
             <button
               onClick={handleSaveConfiguratorMessage}
@@ -2600,16 +2660,31 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange, backe
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       {t('config.whatsapp_message')}
                     </label>
-                    <textarea
-                      placeholder="Hola, me interesan tus productos..."
-                      value={whatsappConfig.message}
-                      onChange={(e) => setWhatsappConfig({ ...whatsappConfig, message: e.target.value })}
-                      rows={3}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none"
-                    />
+                    <div className="space-y-2">
+                      <div>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">Español:</span>
+                        <textarea
+                          placeholder="Hola, me interesan tus productos..."
+                          value={whatsappConfig.message.es || ''}
+                          onChange={(e) => setWhatsappConfig({ ...whatsappConfig, message: { ...whatsappConfig.message, es: e.target.value } })}
+                          rows={2}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none mt-1"
+                        />
+                      </div>
+                      <div>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">English:</span>
+                        <textarea
+                          placeholder="Hi, I'm interested in your products..."
+                          value={whatsappConfig.message.en || ''}
+                          onChange={(e) => setWhatsappConfig({ ...whatsappConfig, message: { ...whatsappConfig.message, en: e.target.value } })}
+                          rows={2}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none mt-1"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
@@ -2645,16 +2720,31 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange, backe
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       {t('config.telegram_message')}
                     </label>
-                    <textarea
-                      placeholder="Hola, me interesan tus productos..."
-                      value={telegramConfig.message}
-                      onChange={(e) => setTelegramConfig({ ...telegramConfig, message: e.target.value })}
-                      rows={3}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none"
-                    />
+                    <div className="space-y-2">
+                      <div>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">Español:</span>
+                        <textarea
+                          placeholder="Hola, me interesan tus productos..."
+                          value={telegramConfig.message.es || ''}
+                          onChange={(e) => setTelegramConfig({ ...telegramConfig, message: { ...telegramConfig.message, es: e.target.value } })}
+                          rows={2}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none mt-1"
+                        />
+                      </div>
+                      <div>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">English:</span>
+                        <textarea
+                          placeholder="Hi, I'm interested in your products..."
+                          value={telegramConfig.message.en || ''}
+                          onChange={(e) => setTelegramConfig({ ...telegramConfig, message: { ...telegramConfig.message, en: e.target.value } })}
+                          rows={2}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none mt-1"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
@@ -2734,16 +2824,31 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange, backe
                 <h3 className="text-base font-medium text-gray-900 dark:text-white mb-3">{t('config.footer_website_url')}</h3>
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Texto del enlace
                     </label>
-                    <input
-                      type="text"
-                      placeholder="Visita mi página web"
-                      value={footerConfig.website_text}
-                      onChange={(e) => setFooterConfig({ ...footerConfig, website_text: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    />
+                    <div className="space-y-2">
+                      <div>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">Español:</span>
+                        <input
+                          type="text"
+                          placeholder="Visita mi página web"
+                          value={footerConfig.website_text.es || ''}
+                          onChange={(e) => setFooterConfig({ ...footerConfig, website_text: { ...footerConfig.website_text, es: e.target.value } })}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white mt-1"
+                        />
+                      </div>
+                      <div>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">English:</span>
+                        <input
+                          type="text"
+                          placeholder="Visit my website"
+                          value={footerConfig.website_text.en || ''}
+                          onChange={(e) => setFooterConfig({ ...footerConfig, website_text: { ...footerConfig.website_text, en: e.target.value } })}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white mt-1"
+                        />
+                      </div>
+                    </div>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -2765,16 +2870,31 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange, backe
                 <h3 className="text-base font-medium text-gray-900 dark:text-white mb-3">{t('config.footer_social_text')}</h3>
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Texto introductorio
                     </label>
-                    <input
-                      type="text"
-                      placeholder="Seguime en mis redes sociales"
-                      value={footerConfig.social_text}
-                      onChange={(e) => setFooterConfig({ ...footerConfig, social_text: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    />
+                    <div className="space-y-2">
+                      <div>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">Español:</span>
+                        <input
+                          type="text"
+                          placeholder="Seguime en mis redes sociales"
+                          value={footerConfig.social_text.es || ''}
+                          onChange={(e) => setFooterConfig({ ...footerConfig, social_text: { ...footerConfig.social_text, es: e.target.value } })}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white mt-1"
+                        />
+                      </div>
+                      <div>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">English:</span>
+                        <input
+                          type="text"
+                          placeholder="Follow me on social media"
+                          value={footerConfig.social_text.en || ''}
+                          onChange={(e) => setFooterConfig({ ...footerConfig, social_text: { ...footerConfig.social_text, en: e.target.value } })}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white mt-1"
+                        />
+                      </div>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
