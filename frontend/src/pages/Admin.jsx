@@ -37,6 +37,7 @@ export default function Admin() {
   const [showPasswordModal, setShowPasswordModal] = useState(false)
   const [newPassword, setNewPassword] = useState('')
   const [pendingSave, setPendingSave] = useState(null) // Función para guardar antes de cambiar tab
+  const [backendTitle, setBackendTitle] = useState('FotoCRM Admin')
 
   const { isOpen, modalProps, closeModal, showSuccess, showError, showConfirm } = useModal()
 
@@ -67,14 +68,17 @@ export default function Admin() {
   const loadData = async () => {
     setLoading(true)
     try {
-      const [catRes, photoRes] = await Promise.all([
+      const [catRes, photoRes, configRes] = await Promise.all([
         fetch(apiUrl('tags')),
-        fetch(apiUrl('photos'))
+        fetch(apiUrl('photos')),
+        fetch(apiUrl('config'))
       ])
       const catData = await catRes.json()
       const photoData = await photoRes.json()
+      const configData = await configRes.json()
       setTagGroups(catData.tag_groups || [])
       setPhotos(photoData.photos || [])
+      setBackendTitle(configData.backend_title || 'FotoCRM Admin')
     } catch (error) {
       showError(t('messages.error', { ns: 'common' }), t('errors.load_data_error'))
     } finally {
@@ -170,7 +174,7 @@ export default function Admin() {
     <div className="h-screen bg-gray-100 dark:bg-gray-900 flex flex-col overflow-hidden">
       <header className="bg-white dark:bg-gray-800 shadow flex-shrink-0">
         <div className="max-w-7xl mx-auto px-4 py-2 flex justify-between items-center">
-          <h1 className="text-lg font-bold text-gray-900 dark:text-white">FotoCRM Admin</h1>
+          <h1 className="text-lg font-bold text-gray-900 dark:text-white">{backendTitle}</h1>
 
           {/* Tabs en el header */}
           <div className="flex gap-1">
@@ -1449,9 +1453,13 @@ function ManagePhotos({ photos, tagGroups, authParams, onRefresh, showSuccess, s
 // Tags Manager - Gestión de tags
 // ==================
 function TagsManager({ tagGroups, authParams, onRefresh, showSuccess, showError, showConfirm }) {
-  const [newTagName, setNewTagName] = useState('')
+  const { t, i18n } = useTranslation('admin')
+  const currentLang = i18n.language
+  const [newTagNameEs, setNewTagNameEs] = useState('')
+  const [newTagNameEn, setNewTagNameEn] = useState('')
   const [selectedGroup, setSelectedGroup] = useState('')
   const [editingGroup, setEditingGroup] = useState(null)
+  const [editingTag, setEditingTag] = useState(null)
   const [confirmingDelete, setConfirmingDelete] = useState(null) // { groupId, tagId, tagName }
 
   // Manejar tecla Escape para cancelar confirmación
@@ -1467,18 +1475,23 @@ function TagsManager({ tagGroups, authParams, onRefresh, showSuccess, showError,
 
   const handleCreateTag = async (e) => {
     e.preventDefault()
-    if (!newTagName.trim() || !selectedGroup) return
+    if (!newTagNameEs.trim() || !newTagNameEn.trim() || !selectedGroup) return
 
     try {
       const response = await fetch(apiUrl('admin/tags'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ group_id: selectedGroup, name: newTagName, ...authParams })
+        body: JSON.stringify({
+          group_id: selectedGroup,
+          name: { es: newTagNameEs, en: newTagNameEn },
+          ...authParams
+        })
       })
 
       if (response.ok) {
-        showSuccess('Creado', 'Tag creado correctamente')
-        setNewTagName('')
+        showSuccess(t('success.created'), t('success.tag_created'))
+        setNewTagNameEs('')
+        setNewTagNameEn('')
         onRefresh()
       } else if (response.status === 401) {
         showError(t('errors.session_expired'), t('errors.session_expired_message'))
@@ -1519,8 +1532,30 @@ function TagsManager({ tagGroups, authParams, onRefresh, showSuccess, showError,
       })
 
       if (response.ok) {
-        showSuccess('Actualizado', 'Grupo renombrado')
+        showSuccess(t('success.updated'), t('success.group_renamed'))
         setEditingGroup(null)
+        onRefresh()
+      } else if (response.status === 401) {
+        showError(t('errors.session_expired'), t('errors.session_expired_message'))
+      }
+    } catch (error) {
+      showError(t('messages.error', { ns: 'common' }), t('errors.generic_error'))
+    }
+  }
+
+  const handleUpdateTag = async () => {
+    if (!editingTag) return
+
+    try {
+      const response = await fetch(apiUrl(`admin/tags/${editingTag.groupId}/${editingTag.id}`), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: editingTag.name, ...authParams })
+      })
+
+      if (response.ok) {
+        showSuccess(t('success.updated'), t('success.updated'))
+        setEditingTag(null)
         onRefresh()
       } else if (response.status === 401) {
         showError(t('errors.session_expired'), t('errors.session_expired_message'))
@@ -1534,106 +1569,228 @@ function TagsManager({ tagGroups, authParams, onRefresh, showSuccess, showError,
     <div className="h-full overflow-y-auto py-4 space-y-6">
       {/* Create Tag */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Crear nuevo tag</h2>
-        <form onSubmit={handleCreateTag} className="flex gap-4">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">{t('tag_management.create_tag')}</h2>
+        <form onSubmit={handleCreateTag} className="space-y-3">
           <select
             value={selectedGroup}
             onChange={(e) => setSelectedGroup(e.target.value)}
-            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             required
           >
-            <option value="">Seleccionar grupo</option>
+            <option value="">{t('tags.group_name')}</option>
             {tagGroups.map(g => (
-              <option key={g.id} value={g.id}>{g.name}</option>
+              <option key={g.id} value={g.id}>
+                {typeof g.name === 'object' ? g.name[currentLang] || g.name.es : g.name}
+              </option>
             ))}
           </select>
-          <input
-            type="text"
-            placeholder="Nombre del tag"
-            value={newTagName}
-            onChange={(e) => setNewTagName(e.target.value)}
-            className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-            required
-          />
-          <button type="submit" className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-            Crear
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                Español
+              </label>
+              <input
+                type="text"
+                placeholder="Nombre en español"
+                value={newTagNameEs}
+                onChange={(e) => setNewTagNameEs(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                English
+              </label>
+              <input
+                type="text"
+                placeholder="Name in English"
+                value={newTagNameEn}
+                onChange={(e) => setNewTagNameEn(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                required
+              />
+            </div>
+          </div>
+          <button type="submit" className="w-full px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+            {t('buttons.create')}
           </button>
         </form>
       </div>
 
       {/* Tag Groups */}
       <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {tagGroups.map(group => (
-          <div key={group.id} className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-semibold text-gray-900 dark:text-white">{group.name}</h3>
-              <button
-                onClick={() => setEditingGroup({ ...group })}
-                className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
-              >
-                Renombrar
-              </button>
-            </div>
+        {tagGroups.map(group => {
+          const groupName = typeof group.name === 'object' ? group.name[currentLang] || group.name.es : group.name
 
-            {group.tags.length === 0 ? (
-              <p className="text-sm text-gray-500 italic">Sin tags</p>
-            ) : (
-              <div className="space-y-1 max-h-48 overflow-y-auto">
-                {[...group.tags].sort((a, b) => a.name.localeCompare(b.name)).map(tag => {
-                  const isConfirming = confirmingDelete?.tagId === tag.id && confirmingDelete?.groupId === group.id
-
-                  return (
-                    <div key={tag.id} className="flex items-center justify-between py-1 px-2 bg-gray-50 dark:bg-gray-700 rounded">
-                      <span className="text-sm text-gray-700 dark:text-gray-300">{capitalize(tag.name)}</span>
-                      {isConfirming ? (
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => handleDeleteTag(group.id, tag.id)}
-                            className="px-2 py-0.5 text-xs bg-red-600 text-white rounded hover:bg-red-700"
-                          >
-                            Borrar
-                          </button>
-                          <button
-                            onClick={() => setConfirmingDelete(null)}
-                            className="px-2 py-0.5 text-xs bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded hover:bg-gray-400 dark:hover:bg-gray-500"
-                          >
-                            Cancelar
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => setConfirmingDelete({ groupId: group.id, tagId: tag.id, tagName: tag.name })}
-                          className="text-xs text-red-600 hover:underline"
-                        >
-                          Eliminar
-                        </button>
-                      )}
-                    </div>
-                  )
-                })}
+          return (
+            <div key={group.id} className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-semibold text-gray-900 dark:text-white">{groupName}</h3>
+                <button
+                  onClick={() => setEditingGroup({ ...group })}
+                  className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                >
+                  {t('tags.edit')}
+                </button>
               </div>
-            )}
-          </div>
-        ))}
+
+              {group.tags.length === 0 ? (
+                <p className="text-sm text-gray-500 italic">{t('upload.no_tags')}</p>
+              ) : (
+                <div className="space-y-1 max-h-48 overflow-y-auto">
+                  {[...group.tags].sort((a, b) => {
+                    const aName = typeof a.name === 'object' ? a.name[currentLang] || a.name.es : a.name
+                    const bName = typeof b.name === 'object' ? b.name[currentLang] || b.name.es : b.name
+                    return aName.localeCompare(bName)
+                  }).map(tag => {
+                    const isConfirming = confirmingDelete?.tagId === tag.id && confirmingDelete?.groupId === group.id
+                    const tagName = typeof tag.name === 'object' ? tag.name[currentLang] || tag.name.es : tag.name
+
+                    return (
+                      <div key={tag.id} className="flex items-center justify-between py-1 px-2 bg-gray-50 dark:bg-gray-700 rounded">
+                        <span className="text-sm text-gray-700 dark:text-gray-300">{capitalize(tagName)}</span>
+                        {isConfirming ? (
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => handleDeleteTag(group.id, tag.id)}
+                              className="px-2 py-0.5 text-xs bg-red-600 text-white rounded hover:bg-red-700"
+                            >
+                              {t('buttons.delete')}
+                            </button>
+                            <button
+                              onClick={() => setConfirmingDelete(null)}
+                              className="px-2 py-0.5 text-xs bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded hover:bg-gray-400 dark:hover:bg-gray-500"
+                            >
+                              {t('buttons.cancel')}
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => setEditingTag({ ...tag, groupId: group.id })}
+                              className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                            >
+                              {t('tags.edit')}
+                            </button>
+                            <button
+                              onClick={() => setConfirmingDelete({ groupId: group.id, tagId: tag.id, tagName: tagName })}
+                              className="text-xs text-red-600 hover:underline"
+                            >
+                              {t('tag_management.delete')}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )
+        })}
       </div>
 
-      {/* Rename Group Modal */}
+      {/* Edit Group Modal */}
       {editingGroup && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setEditingGroup(null)}>
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-sm mx-4" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Renombrar grupo</h3>
-            <input
-              type="text"
-              value={editingGroup.name}
-              onChange={(e) => setEditingGroup({ ...editingGroup, name: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white mb-4"
-            />
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md mx-4" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">{t('tag_management.rename_group')}</h3>
+            <div className="space-y-3 mb-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Español
+                </label>
+                <input
+                  type="text"
+                  value={typeof editingGroup.name === 'object' ? editingGroup.name.es : editingGroup.name}
+                  onChange={(e) => setEditingGroup({
+                    ...editingGroup,
+                    name: typeof editingGroup.name === 'object'
+                      ? { ...editingGroup.name, es: e.target.value }
+                      : { es: e.target.value, en: editingGroup.name }
+                  })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  English
+                </label>
+                <input
+                  type="text"
+                  value={typeof editingGroup.name === 'object' ? editingGroup.name.en : editingGroup.name}
+                  onChange={(e) => setEditingGroup({
+                    ...editingGroup,
+                    name: typeof editingGroup.name === 'object'
+                      ? { ...editingGroup.name, en: e.target.value }
+                      : { es: editingGroup.name, en: e.target.value }
+                  })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  required
+                />
+              </div>
+            </div>
             <div className="flex gap-2">
               <button onClick={() => setEditingGroup(null)} className="flex-1 px-4 py-2 border border-gray-300 rounded-lg">
-                Cancelar
+                {t('buttons.cancel')}
               </button>
               <button onClick={handleRenameGroup} className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                Guardar
+                {t('buttons.save')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Tag Modal */}
+      {editingTag && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setEditingTag(null)}>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md mx-4" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">{t('tags.edit')} Tag</h3>
+            <div className="space-y-3 mb-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Español
+                </label>
+                <input
+                  type="text"
+                  value={typeof editingTag.name === 'object' ? editingTag.name.es : editingTag.name}
+                  onChange={(e) => setEditingTag({
+                    ...editingTag,
+                    name: typeof editingTag.name === 'object'
+                      ? { ...editingTag.name, es: e.target.value }
+                      : { es: e.target.value, en: editingTag.name }
+                  })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  English
+                </label>
+                <input
+                  type="text"
+                  value={typeof editingTag.name === 'object' ? editingTag.name.en : editingTag.name}
+                  onChange={(e) => setEditingTag({
+                    ...editingTag,
+                    name: typeof editingTag.name === 'object'
+                      ? { ...editingTag.name, en: e.target.value }
+                      : { es: editingTag.name, en: e.target.value }
+                  })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  required
+                />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => setEditingTag(null)} className="flex-1 px-4 py-2 border border-gray-300 rounded-lg">
+                {t('buttons.cancel')}
+              </button>
+              <button onClick={handleUpdateTag} className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                {t('buttons.save')}
               </button>
             </div>
           </div>
@@ -1661,6 +1818,7 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
   const [siteTitle, setSiteTitle] = useState('PEU Cuchillos Artesanales')
   const [siteSubtitleMobile, setSiteSubtitleMobile] = useState('Buscador interactivo')
   const [siteSubtitleDesktop, setSiteSubtitleDesktop] = useState('Buscador interactivo de modelos y materiales')
+  const [backendTitle, setBackendTitle] = useState('FotoCRM Admin')
   const [savingSiteInfo, setSavingSiteInfo] = useState(false)
   const [savedSiteInfoFeedback, setSavedSiteInfoFeedback] = useState(false)
 
@@ -1805,6 +1963,7 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
         setSiteTitle(data.site_title || 'PEU Cuchillos Artesanales')
         setSiteSubtitleMobile(data.site_subtitle_mobile || 'Buscador interactivo')
         setSiteSubtitleDesktop(data.site_subtitle_desktop || 'Buscador interactivo de modelos y materiales')
+        setBackendTitle(data.backend_title || 'FotoCRM Admin')
       }
     } catch (error) {
       // Error silencioso
@@ -1899,7 +2058,8 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
         body: JSON.stringify({
           site_title: siteTitle,
           site_subtitle_mobile: siteSubtitleMobile,
-          site_subtitle_desktop: siteSubtitleDesktop
+          site_subtitle_desktop: siteSubtitleDesktop,
+          backend_title: backendTitle
         })
       })
 
@@ -2171,6 +2331,19 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
                   value={siteSubtitleDesktop}
                   onChange={(e) => setSiteSubtitleDesktop(e.target.value)}
                   placeholder="Buscador interactivo de modelos y materiales"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  {t('config.backend_title_label')}
+                </label>
+                <input
+                  type="text"
+                  value={backendTitle}
+                  onChange={(e) => setBackendTitle(e.target.value)}
+                  placeholder="FotoCRM Admin"
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 />
               </div>

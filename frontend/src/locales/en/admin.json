@@ -104,6 +104,7 @@
     "site_title_label": "Site title",
     "subtitle_mobile_label": "Subtitle (mobile)",
     "subtitle_desktop_label": "Subtitle (desktop)",
+    "backend_title_label": "Admin panel title",
     "saving": "Saving...",
     "saved": "✓ Saved",
     "save_titles": "Save Titles",

@@ -511,11 +511,24 @@ switch (true) {
         }
 
         $data = readJSON('categories.json');
-        $tagId = strtolower(preg_replace('/[^a-zA-Z0-9]+/', '-', $input['name']));
-        $newTag = [
-            'id' => $tagId,
-            'name' => sanitize($input['name'])
-        ];
+
+        // Handle multilingual name
+        if (is_array($input['name'])) {
+            $tagId = strtolower(preg_replace('/[^a-zA-Z0-9]+/', '-', $input['name']['es'] ?? $input['name']['en'] ?? ''));
+            $newTag = [
+                'id' => $tagId,
+                'name' => [
+                    'es' => sanitize($input['name']['es'] ?? ''),
+                    'en' => sanitize($input['name']['en'] ?? '')
+                ]
+            ];
+        } else {
+            $tagId = strtolower(preg_replace('/[^a-zA-Z0-9]+/', '-', $input['name']));
+            $newTag = [
+                'id' => $tagId,
+                'name' => sanitize($input['name'])
+            ];
+        }
 
         $found = false;
         foreach ($data['tag_groups'] as &$group) {
@@ -580,7 +593,15 @@ switch (true) {
         foreach ($data['tag_groups'] as &$group) {
             if ($group['id'] === $matches[1]) {
                 if (!empty($input['name'])) {
-                    $group['name'] = sanitize($input['name']);
+                    // Handle multilingual name
+                    if (is_array($input['name'])) {
+                        $group['name'] = [
+                            'es' => sanitize($input['name']['es'] ?? ''),
+                            'en' => sanitize($input['name']['en'] ?? '')
+                        ];
+                    } else {
+                        $group['name'] = sanitize($input['name']);
+                    }
                 }
                 $found = $group;
                 break;
@@ -589,6 +610,46 @@ switch (true) {
 
         if (!$found) {
             response(['error' => t('tag.group_not_found')], 404);
+        }
+
+        writeJSON('categories.json', $data);
+        response($found);
+        break;
+
+    // PUT /admin/tags/{groupId}/{tagId} - Actualizar tag
+    case preg_match('/^admin\/tags\/([a-zA-Z0-9-]+)\/([a-zA-Z0-9-]+)$/', $path, $matches) && $method === 'PUT':
+        checkAuth();
+        $input = getInput();
+        $groupId = $matches[1];
+        $tagId = $matches[2];
+
+        $data = readJSON('categories.json');
+        $found = false;
+
+        foreach ($data['tag_groups'] as &$group) {
+            if ($group['id'] === $groupId) {
+                foreach ($group['tags'] as &$tag) {
+                    if ($tag['id'] === $tagId) {
+                        if (!empty($input['name'])) {
+                            // Handle multilingual name
+                            if (is_array($input['name'])) {
+                                $tag['name'] = [
+                                    'es' => sanitize($input['name']['es'] ?? ''),
+                                    'en' => sanitize($input['name']['en'] ?? '')
+                                ];
+                            } else {
+                                $tag['name'] = sanitize($input['name']);
+                            }
+                        }
+                        $found = $tag;
+                        break 2;
+                    }
+                }
+            }
+        }
+
+        if (!$found) {
+            response(['error' => t('tag.not_found')], 404);
         }
 
         writeJSON('categories.json', $data);
@@ -1251,13 +1312,14 @@ switch (true) {
         $input = $JSON_INPUT;
         $config = getConfig();
 
-        if (!isset($input['site_title']) || !isset($input['site_subtitle_mobile']) || !isset($input['site_subtitle_desktop'])) {
+        if (!isset($input['site_title']) || !isset($input['site_subtitle_mobile']) || !isset($input['site_subtitle_desktop']) || !isset($input['backend_title'])) {
             response(['error' => t('site_info.missing_params')], 400);
         }
 
         $config['site_title'] = $input['site_title'];
         $config['site_subtitle_mobile'] = $input['site_subtitle_mobile'];
         $config['site_subtitle_desktop'] = $input['site_subtitle_desktop'];
+        $config['backend_title'] = $input['backend_title'];
 
         if (!file_put_contents(CONFIG_FILE, json_encode($config, JSON_PRETTY_PRINT))) {
             response(['error' => t('site_info.save_error')], 500);
@@ -1274,7 +1336,8 @@ switch (true) {
         $siteInfo = [
             'site_title' => $config['site_title'] ?? 'PEU Cuchillos Artesanales',
             'site_subtitle_mobile' => $config['site_subtitle_mobile'] ?? 'Buscador interactivo',
-            'site_subtitle_desktop' => $config['site_subtitle_desktop'] ?? 'Buscador interactivo de modelos y materiales'
+            'site_subtitle_desktop' => $config['site_subtitle_desktop'] ?? 'Buscador interactivo de modelos y materiales',
+            'backend_title' => $config['backend_title'] ?? 'FotoCRM Admin'
         ];
 
         response($siteInfo);

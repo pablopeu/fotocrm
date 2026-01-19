@@ -104,6 +104,7 @@
     "site_title_label": "Título del sitio",
     "subtitle_mobile_label": "Subtítulo (móvil)",
     "subtitle_desktop_label": "Subtítulo (escritorio)",
+    "backend_title_label": "Título del panel de administración",
     "saving": "Guardando...",
     "saved": "✓ Guardado",
     "save_titles": "Guardar Títulos",
