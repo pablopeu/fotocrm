@@ -438,12 +438,26 @@ switch (true) {
 
     // GET /tags - Obtener grupos de tags
     case ($path === 'tags' || $path === 'categories') && $method === 'GET':
+        // Headers anti-caché
+        header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+        header('Cache-Control: post-check=0, pre-check=0', false);
+        header('Pragma: no-cache');
+        header('Expires: 0');
+
         $lang = isset($_GET['lang']) ? $_GET['lang'] : 'es';
         // Validar idioma
         if (!in_array($lang, ['es', 'en'])) {
             $lang = 'es';
         }
+
+        $filepath = DATA_DIR . '/categories.json';
+        error_log("GET /tags - Reading from: $filepath");
+        error_log("GET /tags - File size: " . filesize($filepath));
+        error_log("GET /tags - File mtime: " . date('Y-m-d H:i:s', filemtime($filepath)));
+
         $data = readJSON('categories.json');
+        error_log("GET /tags - Loaded " . count($data['tag_groups']) . " tag groups");
+
         $transformed = transformCategoriesForLanguage($data, $lang);
         response($transformed);
         break;

@@ -68,14 +68,21 @@ export default function Admin() {
   const loadData = async () => {
     setLoading(true)
     try {
+      // Agregar timestamp para evitar caché del navegador
+      const cacheBuster = `&_t=${Date.now()}`
       const [catRes, photoRes, configRes] = await Promise.all([
-        fetch(apiUrl('tags')),
-        fetch(apiUrl('photos')),
-        fetch(apiUrl('config'))
+        fetch(apiUrl('tags') + cacheBuster, { cache: 'no-store' }),
+        fetch(apiUrl('photos') + cacheBuster, { cache: 'no-store' }),
+        fetch(apiUrl('config') + cacheBuster, { cache: 'no-store' })
       ])
       const catData = await catRes.json()
       const photoData = await photoRes.json()
       const configData = await configRes.json()
+
+      console.log('=== LOAD DATA DEBUG ===')
+      console.log('Tag groups loaded:', catData.tag_groups?.length || 0)
+      console.log('First tag group:', catData.tag_groups?.[0])
+
       setTagGroups(catData.tag_groups || [])
       setPhotos(photoData.photos || [])
       setBackendTitle(configData.backend_title || 'FotoCRM Admin')
