@@ -246,6 +246,8 @@ export default function Admin() {
               showSuccess={showSuccess}
               showError={showError}
               onLogoChange={loadData}
+              backendTitle={backendTitle}
+              onBackendTitleChange={setBackendTitle}
             />
           )}
         </div>
@@ -1803,7 +1805,7 @@ function TagsManager({ tagGroups, authParams, onRefresh, showSuccess, showError,
 // ==================
 // Configuration - Configuración del sistema (backups, logo)
 // ==================
-function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
+function Configuration({ authParams, showSuccess, showError, onLogoChange, backendTitle, onBackendTitleChange }) {
   const { t } = useTranslation('admin')
   const [backups, setBackups] = useState([])
   const [loading, setLoading] = useState(false)
@@ -1818,7 +1820,6 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
   const [siteTitle, setSiteTitle] = useState('PEU Cuchillos Artesanales')
   const [siteSubtitleMobile, setSiteSubtitleMobile] = useState('Buscador interactivo')
   const [siteSubtitleDesktop, setSiteSubtitleDesktop] = useState('Buscador interactivo de modelos y materiales')
-  const [backendTitle, setBackendTitle] = useState('FotoCRM Admin')
   const [savingSiteInfo, setSavingSiteInfo] = useState(false)
   const [savedSiteInfoFeedback, setSavedSiteInfoFeedback] = useState(false)
 
@@ -1963,7 +1964,9 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
         setSiteTitle(data.site_title || 'PEU Cuchillos Artesanales')
         setSiteSubtitleMobile(data.site_subtitle_mobile || 'Buscador interactivo')
         setSiteSubtitleDesktop(data.site_subtitle_desktop || 'Buscador interactivo de modelos y materiales')
-        setBackendTitle(data.backend_title || 'FotoCRM Admin')
+        if (onBackendTitleChange) {
+          onBackendTitleChange(data.backend_title || 'FotoCRM Admin')
+        }
       }
     } catch (error) {
       // Error silencioso
@@ -2342,7 +2345,7 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange }) {
                 <input
                   type="text"
                   value={backendTitle}
-                  onChange={(e) => setBackendTitle(e.target.value)}
+                  onChange={(e) => onBackendTitleChange && onBackendTitleChange(e.target.value)}
                   placeholder="FotoCRM Admin"
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 />
