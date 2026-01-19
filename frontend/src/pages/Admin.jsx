@@ -41,6 +41,14 @@ export default function Admin() {
 
   const { isOpen, modalProps, closeModal, showSuccess, showError, showConfirm } = useModal()
 
+  // Tabs - debe estar antes del early return
+  const tabs = useMemo(() => [
+    { id: 'manage', label: t('tabs.manage') },
+    { id: 'upload', label: t('tabs.upload') },
+    { id: 'tags', label: t('tabs.tags') },
+    { id: 'config', label: t('tabs.config') },
+  ], [t])
+
   const getAuthParams = () => ({
     auth_user: credentials.user,
     auth_pass: credentials.pass
@@ -167,13 +175,6 @@ export default function Admin() {
       </div>
     )
   }
-
-  const tabs = useMemo(() => [
-    { id: 'manage', label: t('tabs.manage') },
-    { id: 'upload', label: t('tabs.upload') },
-    { id: 'tags', label: t('tabs.tags') },
-    { id: 'config', label: t('tabs.config') },
-  ], [t])
 
   return (
     <div className="h-screen bg-gray-100 dark:bg-gray-900 flex flex-col overflow-hidden">
