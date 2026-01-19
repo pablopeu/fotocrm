@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Modal from '../components/Modal'
 import { useModal } from '../hooks/useModal'
@@ -168,12 +168,12 @@ export default function Admin() {
     )
   }
 
-  const tabs = [
+  const tabs = useMemo(() => [
     { id: 'manage', label: t('tabs.manage') },
     { id: 'upload', label: t('tabs.upload') },
     { id: 'tags', label: t('tabs.tags') },
     { id: 'config', label: t('tabs.config') },
-  ]
+  ], [t])
 
   return (
     <div className="h-screen bg-gray-100 dark:bg-gray-900 flex flex-col overflow-hidden">
