@@ -143,12 +143,21 @@ function App() {
   // Fotos seleccionadas del bucket activo (para compatibilidad)
   const selectedPhotos = buckets[activeBucket]?.selectedPhotos || []
 
-  // Cargar configuración (logo, whatsapp, telegram) y detectar ?config= en URL
+  // Detectar ?config= en URL al inicio
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search)
+    if (urlParams.has('config')) {
+      setShowConfigurador(true)
+    }
+  }, [])
+
+  // Cargar configuración (logo, whatsapp, telegram) según idioma
   useEffect(() => {
     async function loadConfig() {
       try {
         const API_BASE = import.meta.env.VITE_API_URL || './api/index.php'
-        const response = await fetch(`${API_BASE}?route=config`)
+        const lang = i18n.language || 'es'
+        const response = await fetch(`${API_BASE}?route=config&lang=${lang}`)
         if (response.ok) {
           const data = await response.json()
           setLogo(data.logo || null)
@@ -164,13 +173,7 @@ function App() {
       }
     }
     loadConfig()
-
-    // Si la URL tiene ?config=, abrir el configurador automáticamente
-    const urlParams = new URLSearchParams(window.location.search)
-    if (urlParams.has('config')) {
-      setShowConfigurador(true)
-    }
-  }, [])
+  }, [i18n.language])
 
   // Cargar datos iniciales
   useEffect(() => {

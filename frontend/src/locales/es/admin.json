@@ -74,8 +74,16 @@
   "upload": {
     "uploading": "Subiendo fotos...",
     "drag_here": "Arrastra las fotos aquí",
+    "or": "o",
+    "select_files": "Seleccionar archivos",
     "no_tags": "Sin tags",
     "use_upload": "Usa \"Subir fotos\" para agregar fotos"
+  },
+  "buckets": {
+    "bucket": "Bucket",
+    "delete_confirm": "¿Eliminar?",
+    "yes": "Sí",
+    "no": "No"
   },
   "tag_management": {
     "create_tag": "Crear nuevo tag",

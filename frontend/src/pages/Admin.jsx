@@ -600,24 +600,24 @@ function UploadPhotos({ tagGroups, authParams, onRefresh, showSuccess, showError
                   : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
               }`}
             >
-              Bucket {index + 1}
+              {t('buckets.bucket')} {index + 1}
               {bucket && ` (${bucket.photos.length})`}
             </button>
             {bucket && (
               isAwaitingConfirmation ? (
                 <div className="flex items-center gap-1 bg-red-100 dark:bg-red-900/50 px-2 py-1 rounded-lg">
-                  <span className="text-xs text-red-600 dark:text-red-400">¿Eliminar?</span>
+                  <span className="text-xs text-red-600 dark:text-red-400">{t('buckets.delete_confirm')}</span>
                   <button
                     onClick={() => handleDeleteBucket(bucket.id)}
                     className="text-xs px-2 py-0.5 bg-red-600 text-white rounded hover:bg-red-700"
                   >
-                    Sí
+                    {t('buckets.yes')}
                   </button>
                   <button
                     onClick={() => setBucketToDelete(null)}
                     className="text-xs px-2 py-0.5 bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded hover:bg-gray-400 dark:hover:bg-gray-500"
                   >
-                    {t('buttons.no')}
+                    {t('buckets.no')}
                   </button>
                 </div>
               ) : (
@@ -661,17 +661,17 @@ function UploadPhotos({ tagGroups, authParams, onRefresh, showSuccess, showError
             {uploading ? (
               <div className="flex flex-col items-center gap-3">
                 <div className="w-10 h-10 border-3 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                <span className="text-gray-600 dark:text-gray-300">Subiendo fotos...</span>
+                <span className="text-gray-600 dark:text-gray-300">{t('upload.uploading')}</span>
               </div>
             ) : (
               <>
                 <svg className="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
-                <p className="text-lg text-gray-600 dark:text-gray-300 mb-3">Arrastra las fotos aquí</p>
-                <p className="text-sm text-gray-400 mb-4">o</p>
+                <p className="text-lg text-gray-600 dark:text-gray-300 mb-3">{t('upload.drag_here')}</p>
+                <p className="text-sm text-gray-400 mb-4">{t('upload.or')}</p>
                 <label className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg cursor-pointer hover:bg-blue-700 transition-colors">
-                  Seleccionar archivos
+                  {t('upload.select_files')}
                   <input
                     type="file"
                     multiple

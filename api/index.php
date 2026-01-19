@@ -370,6 +370,16 @@ function transformCategoriesForLanguage($data, $lang = 'es') {
     return $transformed;
 }
 
+// Transformar un campo de configuración según idioma
+// Si es string, lo devuelve tal cual
+// Si es {es: "", en: ""}, devuelve el valor del idioma solicitado
+function transformConfigField($value, $lang = 'es') {
+    if (is_array($value) && isset($value['es'])) {
+        return $value[$lang] ?? $value['es'];
+    }
+    return $value;
+}
+
 // Obtener la ruta
 $path = isset($_GET['route']) ? $_GET['route'] : '';
 if (empty($path)) {
@@ -849,24 +859,41 @@ switch (true) {
 
     // GET /config - Obtener configuración pública (logo, whatsapp, telegram, etc)
     case $path === 'config' && $method === 'GET':
+        $lang = isset($_GET['lang']) ? $_GET['lang'] : 'es';
+        if (!in_array($lang, ['es', 'en'])) {
+            $lang = 'es';
+        }
+
         $config = getConfig();
         $publicConfig = [];
         if (isset($config['logo'])) {
             $publicConfig['logo'] = $config['logo'];
         }
         if (isset($config['whatsapp'])) {
-            $publicConfig['whatsapp'] = $config['whatsapp'];
+            $whatsapp = $config['whatsapp'];
+            if (isset($whatsapp['message'])) {
+                $whatsapp['message'] = transformConfigField($whatsapp['message'], $lang);
+            }
+            $publicConfig['whatsapp'] = $whatsapp;
         }
         if (isset($config['telegram'])) {
             $publicConfig['telegram'] = $config['telegram'];
         }
         if (isset($config['footer'])) {
-            $publicConfig['footer'] = $config['footer'];
+            $footer = $config['footer'];
+            if (isset($footer['website_text'])) {
+                $footer['website_text'] = transformConfigField($footer['website_text'], $lang);
+            }
+            if (isset($footer['social_text'])) {
+                $footer['social_text'] = transformConfigField($footer['social_text'], $lang);
+            }
+            $publicConfig['footer'] = $footer;
         }
-        // Información del sitio
-        $publicConfig['site_title'] = $config['site_title'] ?? 'PEU Cuchillos Artesanales';
-        $publicConfig['site_subtitle_mobile'] = $config['site_subtitle_mobile'] ?? 'Buscador interactivo';
-        $publicConfig['site_subtitle_desktop'] = $config['site_subtitle_desktop'] ?? 'Buscador interactivo de modelos y materiales';
+        // Información del sitio (transformar según idioma)
+        $publicConfig['site_title'] = transformConfigField($config['site_title'] ?? 'PEU Cuchillos Artesanales', $lang);
+        $publicConfig['site_subtitle_mobile'] = transformConfigField($config['site_subtitle_mobile'] ?? 'Buscador interactivo', $lang);
+        $publicConfig['site_subtitle_desktop'] = transformConfigField($config['site_subtitle_desktop'] ?? 'Buscador interactivo de modelos y materiales', $lang);
+        $publicConfig['configurator_message'] = transformConfigField($config['configurator_message'] ?? 'Hola Pablo, te envío mi página del configurador de cuchillos: {link}', $lang);
         response($publicConfig);
         break;
 
@@ -1280,7 +1307,11 @@ switch (true) {
         checkAuth();
 
         $config = getConfig();
-        response(['configurator_message' => $config['configurator_message'] ?? 'Hola Pablo, te envío mi página del configurador de cuchillos: {link}']);
+        $defaultMessage = [
+            'es' => 'Hola Pablo, te envío mi página del configurador de cuchillos: {link}',
+            'en' => 'Hi Pablo, here is my knife configurator page: {link}'
+        ];
+        response(['configurator_message' => $config['configurator_message'] ?? $defaultMessage]);
         break;
 
     // POST /admin/config/configurator - Guardar configuración de mensaje del configurador
@@ -1333,8 +1364,8 @@ switch (true) {
         $footer = $config['footer'] ?? [
             'enabled' => false,
             'website_url' => '',
-            'website_text' => 'Visita mi página web',
-            'social_text' => 'Seguime en mis redes sociales',
+            'website_text' => ['es' => 'Visita mi página web', 'en' => 'Visit my website'],
+            'social_text' => ['es' => 'Seguime en mis redes sociales', 'en' => 'Follow me on social media'],
             'instagram' => '',
             'twitter' => '',
             'facebook' => ''
@@ -1372,11 +1403,12 @@ switch (true) {
         checkAuth();
 
         $config = getConfig();
+        // Devolver los valores tal cual están (pueden ser strings o {es, en})
         $siteInfo = [
-            'site_title' => $config['site_title'] ?? 'PEU Cuchillos Artesanales',
-            'site_subtitle_mobile' => $config['site_subtitle_mobile'] ?? 'Buscador interactivo',
-            'site_subtitle_desktop' => $config['site_subtitle_desktop'] ?? 'Buscador interactivo de modelos y materiales',
-            'backend_title' => $config['backend_title'] ?? 'FotoCRM Admin'
+            'site_title' => $config['site_title'] ?? ['es' => 'PEU Cuchillos Artesanales', 'en' => 'PEU Artisan Knives'],
+            'site_subtitle_mobile' => $config['site_subtitle_mobile'] ?? ['es' => 'Buscador interactivo', 'en' => 'Interactive search'],
+            'site_subtitle_desktop' => $config['site_subtitle_desktop'] ?? ['es' => 'Buscador interactivo de modelos y materiales', 'en' => 'Interactive search for models and materials'],
+            'backend_title' => $config['backend_title'] ?? ['es' => 'FotoCRM Admin', 'en' => 'FotoCRM Admin']
         ];
 
         response($siteInfo);
