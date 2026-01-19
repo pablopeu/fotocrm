@@ -188,9 +188,6 @@ function App() {
           getCategories(),
           getPhotos()
         ])
-        console.log('=== FRONTEND LOAD DATA ===')
-        console.log('Tag groups:', catData?.tag_groups)
-        console.log('First group:', catData?.tag_groups?.[0])
         setTagGroups(catData?.tag_groups || [])
         setPhotos(photoData?.photos || [])
         setFilteredPhotos(photoData?.photos || [])
@@ -214,11 +211,7 @@ function App() {
   // El backend ya transforma los nombres según el idioma en GET /tags
   const getGroupName = (groupId) => {
     const group = tagGroups.find(g => g.id === groupId)
-    if (!group) {
-      console.log(`getGroupName(${groupId}): grupo no encontrado`)
-      return groupId
-    }
-    console.log(`getGroupName(${groupId}):`, group.name)
+    if (!group) return groupId
     return group.name || groupId
   }
 
