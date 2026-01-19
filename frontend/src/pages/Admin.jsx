@@ -293,6 +293,7 @@ export default function Admin() {
 // Upload Photos - Nueva sección de subida
 // ==================
 function UploadPhotos({ tagGroups, authParams, onRefresh, showSuccess, showError, setPendingSave }) {
+  const { t } = useTranslation('admin')
   const [buckets, setBuckets] = useState([])
   const [activeBucketId, setActiveBucketId] = useState(null)
   const [uploadedPhotos, setUploadedPhotos] = useState([])
