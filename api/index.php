@@ -209,7 +209,22 @@ function readJSON($filename) {
 
 function writeJSON($filename, $data) {
     $filepath = DATA_DIR . '/' . $filename;
-    file_put_contents($filepath, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+    $json = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+
+    if ($json === false) {
+        error_log("writeJSON - JSON encode error: " . json_last_error_msg());
+        return false;
+    }
+
+    $result = file_put_contents($filepath, $json);
+
+    if ($result === false) {
+        error_log("writeJSON - Failed to write file: $filepath");
+        return false;
+    }
+
+    error_log("writeJSON - Successfully wrote $result bytes to $filepath");
+    return true;
 }
 
 function sanitize($str) {
@@ -585,40 +600,50 @@ switch (true) {
 
     // PUT /admin/tag-groups/{groupId} - Renombrar grupo
     case preg_match('/^admin\/tag-groups\/([a-zA-Z0-9-]+)$/', $path, $matches) && $method === 'PUT':
+        error_log("PUT /admin/tag-groups - GroupId: " . $matches[1]);
+        error_log("PUT /admin/tag-groups - Input: " . json_encode($JSON_INPUT));
+
         checkAuth();
         $input = getInput();
         $data = readJSON('categories.json');
 
         $found = false;
-        foreach ($data['tag_groups'] as &$group) {
-            if ($group['id'] === $matches[1]) {
+        $updatedGroup = null;
+
+        // Buscar y actualizar sin referencias
+        for ($i = 0; $i < count($data['tag_groups']); $i++) {
+            if ($data['tag_groups'][$i]['id'] === $matches[1]) {
                 if (!empty($input['name'])) {
                     // Handle multilingual name
                     if (is_array($input['name'])) {
-                        $group['name'] = [
+                        $data['tag_groups'][$i]['name'] = [
                             'es' => sanitize($input['name']['es'] ?? ''),
                             'en' => sanitize($input['name']['en'] ?? '')
                         ];
                     } else {
-                        $group['name'] = sanitize($input['name']);
+                        $data['tag_groups'][$i]['name'] = sanitize($input['name']);
                     }
                 }
-                $found = $group;
+                $updatedGroup = $data['tag_groups'][$i];
+                $found = true;
                 break;
             }
         }
 
         if (!$found) {
+            error_log("PUT /admin/tag-groups - Group not found!");
             response(['error' => t('tag.group_not_found')], 404);
         }
 
+        error_log("PUT /admin/tag-groups - About to write JSON");
         writeJSON('categories.json', $data);
-        response($found);
+        error_log("PUT /admin/tag-groups - JSON written successfully");
+
+        response($updatedGroup);
         break;
 
     // PUT /admin/tags/{groupId}/{tagId} - Actualizar tag
     case preg_match('/^admin\/tags\/([a-zA-Z0-9-]+)\/([a-zA-Z0-9-]+)$/', $path, $matches) && $method === 'PUT':
-        // DEBUG: Log para verificar que el endpoint se está alcanzando
         error_log("PUT /admin/tags - Path: $path - Method: $method");
         error_log("PUT /admin/tags - Input: " . json_encode($JSON_INPUT));
 
@@ -632,23 +657,26 @@ switch (true) {
 
         $data = readJSON('categories.json');
         $found = false;
+        $updatedTag = null;
 
-        foreach ($data['tag_groups'] as &$group) {
-            if ($group['id'] === $groupId) {
-                foreach ($group['tags'] as &$tag) {
-                    if ($tag['id'] === $tagId) {
+        // Buscar y actualizar sin referencias
+        for ($i = 0; $i < count($data['tag_groups']); $i++) {
+            if ($data['tag_groups'][$i]['id'] === $groupId) {
+                for ($j = 0; $j < count($data['tag_groups'][$i]['tags']); $j++) {
+                    if ($data['tag_groups'][$i]['tags'][$j]['id'] === $tagId) {
                         if (!empty($input['name'])) {
                             // Handle multilingual name
                             if (is_array($input['name'])) {
-                                $tag['name'] = [
+                                $data['tag_groups'][$i]['tags'][$j]['name'] = [
                                     'es' => sanitize($input['name']['es'] ?? ''),
                                     'en' => sanitize($input['name']['en'] ?? '')
                                 ];
                             } else {
-                                $tag['name'] = sanitize($input['name']);
+                                $data['tag_groups'][$i]['tags'][$j]['name'] = sanitize($input['name']);
                             }
                         }
-                        $found = $tag;
+                        $updatedTag = $data['tag_groups'][$i]['tags'][$j];
+                        $found = true;
                         break 2;
                     }
                 }
@@ -656,11 +684,15 @@ switch (true) {
         }
 
         if (!$found) {
+            error_log("PUT /admin/tags - Tag not found!");
             response(['error' => t('tag.not_found')], 404);
         }
 
-        writeJSON('categories.json', $data);
-        response($found);
+        error_log("PUT /admin/tags - About to write JSON with: " . json_encode($updatedTag));
+        $writeResult = writeJSON('categories.json', $data);
+        error_log("PUT /admin/tags - JSON written successfully");
+
+        response($updatedTag);
         break;
 
     // POST /admin/upload - Subir foto con tags
