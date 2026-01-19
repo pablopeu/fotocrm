@@ -27,15 +27,8 @@ const normalizeText = (str) => {
 const OTROS_TIPOS = ['outdoor', 'camping', 'caza']
 
 function App() {
-  const { t } = useTranslation('app')
+  const { t, i18n } = useTranslation('app')
 
-  // Tabs de tipos principales (usa traducciones)
-  const TIPO_TABS = [
-    { id: 'cocina', label: t('tags.cocina') },
-    { id: 'asado', label: t('tags.asado') },
-    { id: 'japones', label: t('tags.japones') },
-    { id: 'otros', label: t('tags.otros') }
-  ]
   const [tagGroups, setTagGroups] = useState([])
   const [photos, setPhotos] = useState([])
   const [filteredPhotos, setFilteredPhotos] = useState([])
@@ -201,6 +194,22 @@ function App() {
     loadData()
   }, [])
 
+  // Recargar categorías cuando cambia el idioma
+  useEffect(() => {
+    async function reloadCategories() {
+      try {
+        const catData = await getCategories()
+        setTagGroups(catData?.tag_groups || [])
+      } catch (error) {
+        console.error('Error reloading categories:', error)
+      }
+    }
+    // Solo recargar si ya hay datos cargados (evitar doble carga inicial)
+    if (tagGroups.length > 0) {
+      reloadCategories()
+    }
+  }, [i18n.language])
+
   // Obtener tags por grupo
   const getTagsByGroup = (groupId) => {
     const group = tagGroups.find(g => g.id === groupId)
@@ -214,6 +223,34 @@ function App() {
     if (!group) return groupId
     return group.name || groupId
   }
+
+  // Construir tabs dinámicamente desde el grupo "tipo"
+  const getTipoTabs = () => {
+    const tipoGroup = tagGroups.find(g => g.id === 'tipo')
+    if (!tipoGroup || !tipoGroup.tags) return []
+
+    // Separar los tags principales de los "otros"
+    const mainTags = tipoGroup.tags.filter(tag => !OTROS_TIPOS.includes(tag.id))
+    const otrosTags = tipoGroup.tags.filter(tag => OTROS_TIPOS.includes(tag.id))
+
+    // Crear tabs para los principales
+    const tabs = mainTags.map(tag => ({
+      id: tag.id,
+      label: tag.name
+    }))
+
+    // Si hay tags "otros", agregar un tab agrupado
+    if (otrosTags.length > 0) {
+      tabs.push({
+        id: 'otros',
+        label: t('tags.otros', { defaultValue: 'Otros' })
+      })
+    }
+
+    return tabs
+  }
+
+  const TIPO_TABS = getTipoTabs()
 
   // Filtrar fotos cuando cambian los filtros
   useEffect(() => {
