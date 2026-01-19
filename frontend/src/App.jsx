@@ -722,11 +722,12 @@ function App() {
               <LanguageSwitcher />
             </div>
 
-            {/* Buscador */}
-            <div className="w-48">
+            {/* Buscador colapsable */}
+            <div className="w-auto">
               <SearchBar
                 value={searchQuery}
                 onChange={setSearchQuery}
+                collapsible={true}
               />
             </div>
           </div>
