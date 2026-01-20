@@ -165,6 +165,7 @@ function App() {
           setSiteTitle(data.site_title || 'PEU Cuchillos Artesanales')
           setSiteSubtitleMobile(data.site_subtitle_mobile || 'Buscador interactivo')
           setSiteSubtitleDesktop(data.site_subtitle_desktop || 'Buscador interactivo de modelos y materiales')
+          console.log('[App] Received enabled_languages from backend:', data.enabled_languages)
           setEnabledLanguages(data.enabled_languages || { es: true, en: true })
         }
       } catch (error) {

@@ -21,8 +21,13 @@ export default function LanguageSwitcher({ enabledLanguages = { es: true, en: tr
   const currentLang = i18n.language || 'es'
   const otherLang = currentLang === 'es' ? 'en' : 'es'
 
+  // Debug: ver qué está recibiendo
+  console.log('[LanguageSwitcher] enabledLanguages:', enabledLanguages)
+  console.log('[LanguageSwitcher] currentLang:', currentLang)
+
   // Contar idiomas habilitados
   const enabledCount = (enabledLanguages.es ? 1 : 0) + (enabledLanguages.en ? 1 : 0)
+  console.log('[LanguageSwitcher] enabledCount:', enabledCount)
 
   // Si solo hay un idioma habilitado, no mostrar el switcher
   if (enabledCount <= 1) {

@@ -93,6 +93,7 @@ export default function Admin() {
       setTagGroups(catData.tag_groups || [])
       setPhotos(photoData.photos || [])
       setBackendTitle(configData.backend_title || 'FotoCRM Admin')
+      console.log('[Admin] Received enabled_languages from backend:', configData.enabled_languages)
       setEnabledLanguages(configData.enabled_languages || { es: true, en: true })
     } catch (error) {
       showError(t('messages.error', { ns: 'common' }), t('errors.load_data_error'))
@@ -2478,8 +2479,6 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange, backe
   return (
     <div className="h-full overflow-y-auto py-6 px-4">
       <div className="max-w-7xl mx-auto space-y-6">
-        {/* Grid de 2 columnas para Logo y Mensaje del Configurador */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Sección de Logo y Títulos */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">{t('config.logo_section_title')}</h2>
@@ -2729,7 +2728,6 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange, backe
               {savingConfiguratorMessage ? t('config.saving') : savedConfiguratorMessageFeedback ? t('config.saved') : t('config.save_message')}
             </button>
           </div>
-        </div>
 
         {/* Grid de Backups y Contacto */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
