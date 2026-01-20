@@ -200,7 +200,7 @@ export default function Admin() {
           </div>
 
           <div className="flex items-center gap-4">
-            <LanguageSwitcher />
+            <LanguageSwitcher enabledLanguages={enabledLanguages} />
             <a href="#/" target="_blank" rel="noopener noreferrer" className="text-sm text-gray-600 dark:text-gray-300 hover:underline">{t('navigation.back_to_catalog')}</a>
             <button onClick={() => setShowPasswordModal(true)} className="text-sm text-gray-600 dark:text-gray-300 hover:underline">
               {t('navigation.change_password', { defaultValue: 'Cambiar contraseña' })}
@@ -2173,7 +2173,11 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange, backe
 
       if (response.ok) {
         setSavedLanguagesFeedback(true)
-        setTimeout(() => setSavedLanguagesFeedback(false), 2000)
+        setTimeout(() => {
+          setSavedLanguagesFeedback(false)
+          // Recargar la página para que el frontend público actualice la configuración
+          window.location.reload()
+        }, 1500)
       } else if (response.status === 401) {
         showError(t('errors.session_expired'), t('errors.session_expired_message'))
       } else {
@@ -2189,9 +2193,8 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange, backe
 
   const handleToggleLanguage = (lang) => {
     const newState = { ...enabledLanguages, [lang]: !enabledLanguages[lang] }
-    // Validar que no se desactiven ambos
+    // Validar que no se desactiven ambos (el mensaje inline se muestra automáticamente)
     if (!newState.es && !newState.en) {
-      showError('Error', 'Debe mantener al menos un idioma habilitado')
       return
     }
     setEnabledLanguages(newState)
@@ -2635,39 +2638,39 @@ function Configuration({ authParams, showSuccess, showError, onLogoChange, backe
           </div>
 
           {/* Sección de Idiomas */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Idiomas</h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              Habilita o deshabilita idiomas del sitio. Al menos un idioma debe estar habilitado.
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">Idiomas</h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+              Habilita o deshabilita idiomas del sitio.
             </p>
 
-            <div className="space-y-3 mb-4">
-              <label className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
+            <div className="space-y-2 mb-3">
+              <label className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-700 rounded cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
                 <input
                   type="checkbox"
                   checked={enabledLanguages.es}
                   onChange={() => handleToggleLanguage('es')}
-                  className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                  className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
                 />
-                <div className="flex-1">
-                  <span className="font-medium text-gray-900 dark:text-white">Español</span>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Mostrar el sitio en español</p>
-                </div>
+                <span className="text-sm font-medium text-gray-900 dark:text-white">Español</span>
               </label>
 
-              <label className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
+              <label className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-700 rounded cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
                 <input
                   type="checkbox"
                   checked={enabledLanguages.en}
                   onChange={() => handleToggleLanguage('en')}
-                  className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                  className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
                 />
-                <div className="flex-1">
-                  <span className="font-medium text-gray-900 dark:text-white">English</span>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Show site in English</p>
-                </div>
+                <span className="text-sm font-medium text-gray-900 dark:text-white">English</span>
               </label>
             </div>
+
+            {!enabledLanguages.es && !enabledLanguages.en && (
+              <p className="text-sm text-amber-600 dark:text-amber-400 mb-3">
+                ⚠️ Debe mantener al menos un idioma habilitado
+              </p>
+            )}
 
             <button
               onClick={handleSaveLanguages}

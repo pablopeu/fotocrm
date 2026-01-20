@@ -38,7 +38,10 @@ export default function LanguageSwitcher({ enabledLanguages = { es: true, en: tr
   }
 
   const toggleLanguage = () => {
-    i18n.changeLanguage(otherLang)
+    // Solo cambiar si el otro idioma está habilitado
+    if (enabledLanguages[otherLang]) {
+      i18n.changeLanguage(otherLang)
+    }
   }
 
   return (
