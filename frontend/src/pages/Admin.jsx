@@ -739,7 +739,7 @@ function UploadPhotos({ tagGroups, authParams, onRefresh, showSuccess, showError
           </svg>
         </button>
 
-        {/* Descripción y controles - ocupa el resto del espacio */}
+        {/* Controles y Tags de Encabado */}
         <div className="flex-1 flex flex-col gap-2">
           <div className="flex items-center justify-between">
             <span className="text-sm text-gray-500 dark:text-gray-400">
@@ -756,13 +756,18 @@ function UploadPhotos({ tagGroups, authParams, onRefresh, showSuccess, showError
               />
             </label>
           </div>
-          <textarea
-            value={currentText}
-            onChange={(e) => handleTextChange(e.target.value)}
-            placeholder="Descripción de la foto..."
-            rows={3}
-            className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none"
-          />
+          {/* Sección de tags Encabado */}
+          <div className="flex-1 min-h-0">
+            {tagGroups.filter(g => g.id === 'encabado').map((group) => (
+              <TagSection
+                key={group.id}
+                group={group}
+                selectedTags={currentTags}
+                onTagToggle={handleTagToggle}
+                onCreateTag={(name) => handleCreateTag(group.id, name)}
+              />
+            ))}
+          </div>
           <button
             onClick={() => handleSaveCurrentPhoto(true)}
             disabled={saving}
@@ -777,9 +782,9 @@ function UploadPhotos({ tagGroups, authParams, onRefresh, showSuccess, showError
         </div>
       </div>
 
-      {/* Área inferior: 4 secciones de tags - Tipo más pequeño, otros más grandes */}
-      <div className="flex-1 grid gap-3 min-h-0" style={{ gridTemplateColumns: '1fr 2fr 2fr 2fr' }}>
-        {tagGroups.map((group) => (
+      {/* Área inferior: 3 secciones de tags - Tipo (más pequeño), Extras y Acero */}
+      <div className="flex-1 grid gap-3 min-h-0" style={{ gridTemplateColumns: 'minmax(150px, 1fr) 3fr 3fr' }}>
+        {tagGroups.filter(g => g.id !== 'encabado').map((group) => (
           <TagSection
             key={group.id}
             group={group}
@@ -1456,8 +1461,8 @@ function ManagePhotos({ photos, tagGroups, authParams, onRefresh, showSuccess, s
         </div>
       </div>
 
-      {/* Área inferior: 3 secciones de tags - Tipo, Extras y Acero */}
-      <div className="flex-1 grid gap-3 min-h-0" style={{ gridTemplateColumns: 'minmax(200px, 2fr) 3fr 3fr' }}>
+      {/* Área inferior: 3 secciones de tags - Tipo (más pequeño), Extras y Acero */}
+      <div className="flex-1 grid gap-3 min-h-0" style={{ gridTemplateColumns: 'minmax(150px, 1fr) 3fr 3fr' }}>
         {tagGroups.filter(g => g.id !== 'encabado').map((group) => (
           <TagSection
             key={group.id}
