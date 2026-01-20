@@ -1456,8 +1456,8 @@ function ManagePhotos({ photos, tagGroups, authParams, onRefresh, showSuccess, s
         </div>
       </div>
 
-      {/* Área inferior: 3 secciones de tags - Tipo pequeño, Extras y Acero más grandes */}
-      <div className="flex-1 grid gap-3 min-h-0" style={{ gridTemplateColumns: '1fr 3fr 3fr' }}>
+      {/* Área inferior: 3 secciones de tags - Tipo, Extras y Acero */}
+      <div className="flex-1 grid gap-3 min-h-0" style={{ gridTemplateColumns: 'minmax(200px, 2fr) 3fr 3fr' }}>
         {tagGroups.filter(g => g.id !== 'encabado').map((group) => (
           <TagSection
             key={group.id}
@@ -1484,6 +1484,8 @@ function TagsManager({ tagGroups, authParams, onRefresh, showSuccess, showError,
   const [editingGroup, setEditingGroup] = useState(null)
   const [editingTag, setEditingTag] = useState(null)
   const [confirmingDelete, setConfirmingDelete] = useState(null) // { groupId, tagId, tagName }
+  const [draggedTag, setDraggedTag] = useState(null) // { groupId, tagId, index }
+  const [dragOverIndex, setDragOverIndex] = useState(null)
 
   // Manejar tecla Escape para cancelar confirmación
   useEffect(() => {
@@ -1600,6 +1602,71 @@ function TagsManager({ tagGroups, authParams, onRefresh, showSuccess, showError,
     }
   }
 
+  const handleReorderTags = async (groupId, newOrder) => {
+    try {
+      const response = await fetch(apiUrl(`admin/tag-groups/${groupId}/reorder`), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tag_order: newOrder,
+          ...authParams
+        })
+      })
+
+      if (response.ok) {
+        onRefresh()
+      } else if (response.status === 401) {
+        showError(t('errors.session_expired'), t('errors.session_expired_message'))
+      } else {
+        const error = await response.json()
+        showError('Error', error.error || 'Error al reordenar tags')
+      }
+    } catch (error) {
+      showError(t('messages.error', { ns: 'common' }), t('errors.generic_error'))
+    }
+  }
+
+  const handleDragStart = (e, groupId, tagId, index) => {
+    setDraggedTag({ groupId, tagId, index })
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  const handleDragOver = (e, index) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    setDragOverIndex(index)
+  }
+
+  const handleDragEnd = () => {
+    setDraggedTag(null)
+    setDragOverIndex(null)
+  }
+
+  const handleDrop = (e, groupId, targetIndex) => {
+    e.preventDefault()
+
+    if (!draggedTag || draggedTag.groupId !== groupId) {
+      setDraggedTag(null)
+      setDragOverIndex(null)
+      return
+    }
+
+    const group = tagGroups.find(g => g.id === groupId)
+    if (!group) return
+
+    // Crear nuevo array de tags reordenado
+    const newTags = [...group.tags]
+    const [movedTag] = newTags.splice(draggedTag.index, 1)
+    newTags.splice(targetIndex, 0, movedTag)
+
+    // Enviar nuevo orden al backend
+    const newOrder = newTags.map(tag => tag.id)
+    handleReorderTags(groupId, newOrder)
+
+    setDraggedTag(null)
+    setDragOverIndex(null)
+  }
+
   return (
     <div className="h-full overflow-y-auto py-4 space-y-6">
       {/* Create Tag */}
@@ -1674,17 +1741,36 @@ function TagsManager({ tagGroups, authParams, onRefresh, showSuccess, showError,
                 <p className="text-sm text-gray-500 italic">{t('upload.no_tags')}</p>
               ) : (
                 <div className="space-y-1 max-h-48 overflow-y-auto">
-                  {[...group.tags].sort((a, b) => {
+                  {/* Para el grupo "tipo", mantener orden original (drag and drop). Para otros, ordenar alfabéticamente */}
+                  {(group.id === 'tipo' ? group.tags : [...group.tags].sort((a, b) => {
                     const aName = typeof a.name === 'object' ? a.name[currentLang] || a.name.es : a.name
                     const bName = typeof b.name === 'object' ? b.name[currentLang] || b.name.es : b.name
                     return aName.localeCompare(bName)
-                  }).map(tag => {
+                  })).map((tag, index) => {
                     const isConfirming = confirmingDelete?.tagId === tag.id && confirmingDelete?.groupId === group.id
                     const tagName = typeof tag.name === 'object' ? tag.name[currentLang] || tag.name.es : tag.name
+                    const isDragging = draggedTag?.tagId === tag.id && draggedTag?.groupId === group.id
+                    const isDragOver = dragOverIndex === index && draggedTag?.groupId === group.id
+                    const isDraggable = group.id === 'tipo'
 
                     return (
-                      <div key={tag.id} className="flex items-center justify-between py-1 px-2 bg-gray-50 dark:bg-gray-700 rounded">
-                        <span className="text-sm text-gray-700 dark:text-gray-300">{capitalize(tagName)}</span>
+                      <div
+                        key={tag.id}
+                        draggable={isDraggable}
+                        onDragStart={(e) => isDraggable && handleDragStart(e, group.id, tag.id, index)}
+                        onDragOver={(e) => isDraggable && handleDragOver(e, index)}
+                        onDragEnd={handleDragEnd}
+                        onDrop={(e) => isDraggable && handleDrop(e, group.id, index)}
+                        className={`flex items-center justify-between py-1 px-2 bg-gray-50 dark:bg-gray-700 rounded transition-all ${
+                          isDragging ? 'opacity-50' : ''
+                        } ${isDragOver ? 'border-2 border-blue-500' : ''} ${isDraggable ? 'cursor-move' : ''}`}
+                      >
+                        {isDraggable && (
+                          <svg className="w-4 h-4 text-gray-400 mr-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
+                          </svg>
+                        )}
+                        <span className="text-sm text-gray-700 dark:text-gray-300 flex-1">{capitalize(tagName)}</span>
                         {isConfirming ? (
                           <div className="flex items-center gap-1">
                             <button

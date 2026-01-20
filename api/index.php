@@ -620,6 +620,56 @@ switch (true) {
         response(['message' => t('tag.deleted')]);
         break;
 
+    // PUT /admin/tag-groups/{groupId}/reorder - Reordenar tags de un grupo
+    case preg_match('/^admin\/tag-groups\/([a-zA-Z0-9-]+)\/reorder$/', $path, $matches) && $method === 'PUT':
+        checkAuth();
+        $input = getInput();
+        $groupId = $matches[1];
+
+        if (empty($input['tag_order']) || !is_array($input['tag_order'])) {
+            response(['error' => 'tag_order array is required'], 400);
+        }
+
+        $data = readJSON('categories.json');
+        $found = false;
+
+        // Buscar el grupo
+        for ($i = 0; $i < count($data['tag_groups']); $i++) {
+            if ($data['tag_groups'][$i]['id'] === $groupId) {
+                $group = &$data['tag_groups'][$i];
+                $oldTags = $group['tags'];
+                $newOrder = $input['tag_order'];
+
+                // Crear nuevo array de tags en el orden especificado
+                $reorderedTags = [];
+                foreach ($newOrder as $tagId) {
+                    foreach ($oldTags as $tag) {
+                        if ($tag['id'] === $tagId) {
+                            $reorderedTags[] = $tag;
+                            break;
+                        }
+                    }
+                }
+
+                // Verificar que todos los tags estén presentes
+                if (count($reorderedTags) === count($oldTags)) {
+                    $group['tags'] = $reorderedTags;
+                    $found = true;
+                } else {
+                    response(['error' => 'Invalid tag_order: missing or extra tags'], 400);
+                }
+                break;
+            }
+        }
+
+        if (!$found) {
+            response(['error' => t('tag.group_not_found')], 404);
+        }
+
+        writeJSON('categories.json', $data);
+        response(['success' => true, 'message' => 'Tags reordered successfully']);
+        break;
+
     // PUT /admin/tag-groups/{groupId} - Renombrar grupo
     case preg_match('/^admin\/tag-groups\/([a-zA-Z0-9-]+)$/', $path, $matches) && $method === 'PUT':
         checkAuth();
