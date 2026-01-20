@@ -23,9 +23,6 @@ const normalizeText = (str) => {
     .replace(/[\u0300-\u036f]/g, '')
 }
 
-// IDs que se consideran "Otros"
-const OTROS_TIPOS = ['outdoor', 'camping', 'caza']
-
 function App() {
   const { t, i18n } = useTranslation('app')
 
@@ -228,21 +225,22 @@ function App() {
   }
 
   // Construir tabs dinámicamente desde el grupo "tipo"
+  // Los primeros 3 tags son tabs principales, el resto va a "Otros"
   const TIPO_TABS = useMemo(() => {
     const tipoGroup = tagGroups.find(g => g.id === 'tipo')
     if (!tipoGroup || !tipoGroup.tags) return []
 
-    // Separar los tags principales de los "otros"
-    const mainTags = tipoGroup.tags.filter(tag => !OTROS_TIPOS.includes(tag.id))
-    const otrosTags = tipoGroup.tags.filter(tag => OTROS_TIPOS.includes(tag.id))
+    // Los primeros 3 tags del grupo "tipo" son los tabs principales
+    const mainTags = tipoGroup.tags.slice(0, 3)
+    const otrosTags = tipoGroup.tags.slice(3) // Todos los demás van a "Otros"
 
-    // Crear tabs para los principales
+    // Crear tabs para los primeros 3
     const tabs = mainTags.map(tag => ({
       id: tag.id,
       label: tag.name
     }))
 
-    // Si hay tags "otros", agregar un tab agrupado
+    // Siempre agregar el tab "Otros" si hay tags adicionales
     if (otrosTags.length > 0) {
       tabs.push({
         id: 'otros',
@@ -253,6 +251,13 @@ function App() {
     return tabs
   }, [tagGroups, t])
 
+  // Obtener IDs de tags que van en "Otros" (a partir del índice 3)
+  const getOtrosTiposIds = useMemo(() => {
+    const tipoGroup = tagGroups.find(g => g.id === 'tipo')
+    if (!tipoGroup || !tipoGroup.tags) return []
+    return tipoGroup.tags.slice(3).map(tag => tag.id)
+  }, [tagGroups])
+
   // Filtrar fotos cuando cambian los filtros
   useEffect(() => {
     let result = [...photos]
@@ -260,10 +265,10 @@ function App() {
     // Filtrar por tab de tipo
     if (activeTab) {
       if (activeTab === 'otros') {
-        // Filtrar fotos que tengan algún tag de "otros" tipos
+        // Filtrar fotos que tengan algún tag de "otros" tipos (tags del índice 3+)
         result = result.filter(photo => {
           const photoTags = photo.tags || []
-          return OTROS_TIPOS.some(tipo => photoTags.includes(tipo))
+          return getOtrosTiposIds.some(tipo => photoTags.includes(tipo))
         })
       } else {
         result = result.filter(photo => {
@@ -325,7 +330,7 @@ function App() {
     }
 
     setFilteredPhotos(result)
-  }, [photos, activeTab, selectedEncabado, selectedAcero, selectedExtras, searchQuery, tagGroups])
+  }, [photos, activeTab, selectedEncabado, selectedAcero, selectedExtras, searchQuery, tagGroups, getOtrosTiposIds])
 
   // Handlers
   const handleResetFilters = useCallback(() => {
