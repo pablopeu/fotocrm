@@ -1,5 +1,45 @@
 # Changelog
 
+## [2.0.1] - 2026-01-19
+
+### 🎯 Cambios Principales
+
+#### Sistema de Tabs Dinámico Mejorado
+- **Límite de 3 tabs principales**: Solo los primeros 3 tags del grupo "tipo" aparecen como tabs en el header
+- **Tab "Otros" automático**: Todos los tags adicionales (posición 4+) se agrupan automáticamente en "Otros"
+- **Orden configurable**: El orden de los tabs se define por el orden de los tags en el backend
+- **Sin hardcodeo**: Eliminada la constante `OTROS_TIPOS` - ahora es completamente dinámico
+
+#### Frontend (App.jsx)
+- `TIPO_TABS` usa `.slice(0, 3)` para tomar los primeros 3 tags
+- Nueva función `getOtrosTiposIds` con useMemo para calcular dinámicamente los tags de "Otros"
+- Filtrado de fotos actualizado para usar `getOtrosTiposIds` en lugar de constante
+- Dependencias de useEffect actualizadas para incluir `getOtrosTiposIds`
+
+#### Backend
+- categories.json actualizado con 5 tags de ejemplo:
+  - Tabs principales (1-3): Cocina, Asado, Japonés
+  - Otros (4-5): Outdoor, Camping
+
+### 📝 Ejemplo de Uso
+
+**Para cambiar qué tags son tabs principales:**
+1. Ir a Admin > Tags > Tipo
+2. Reordenar los tags (los primeros 3 serán tabs principales)
+3. Los demás irán automáticamente a "Otros"
+
+**Ejemplo:**
+- Orden actual: Cocina, Asado, Japonés, Outdoor, Camping
+- Tabs mostrados: Cocina | Asado | Japonés | Otros
+- "Otros" contiene: Outdoor, Camping
+
+### 🔄 Mejoras Técnicas
+- Código más mantenible (sin listas hardcodeadas)
+- Mayor flexibilidad para el usuario final
+- Lógica completamente dinámica basada en orden del backend
+
+---
+
 ## [2.0.0] - 2026-01-19
 
 ### ✨ Características Principales
