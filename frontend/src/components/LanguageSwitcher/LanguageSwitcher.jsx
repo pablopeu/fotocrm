@@ -15,11 +15,27 @@ const flags = {
   }
 }
 
-export default function LanguageSwitcher() {
+export default function LanguageSwitcher({ enabledLanguages = { es: true, en: true } }) {
   const { i18n } = useTranslation()
 
   const currentLang = i18n.language || 'es'
   const otherLang = currentLang === 'es' ? 'en' : 'es'
+
+  // Contar idiomas habilitados
+  const enabledCount = (enabledLanguages.es ? 1 : 0) + (enabledLanguages.en ? 1 : 0)
+
+  // Si solo hay un idioma habilitado, no mostrar el switcher
+  if (enabledCount <= 1) {
+    return null
+  }
+
+  // Si el idioma actual no está habilitado, cambiar al que esté habilitado
+  if (!enabledLanguages[currentLang]) {
+    const availableLang = enabledLanguages.es ? 'es' : 'en'
+    if (currentLang !== availableLang) {
+      i18n.changeLanguage(availableLang)
+    }
+  }
 
   const toggleLanguage = () => {
     i18n.changeLanguage(otherLang)

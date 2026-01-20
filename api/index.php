@@ -944,6 +944,8 @@ switch (true) {
         $publicConfig['site_subtitle_mobile'] = transformConfigField($config['site_subtitle_mobile'] ?? 'Buscador interactivo', $lang);
         $publicConfig['site_subtitle_desktop'] = transformConfigField($config['site_subtitle_desktop'] ?? 'Buscador interactivo de modelos y materiales', $lang);
         $publicConfig['configurator_message'] = transformConfigField($config['configurator_message'] ?? 'Hola Pablo, te envío mi página del configurador de cuchillos: {link}', $lang);
+        // Idiomas habilitados
+        $publicConfig['enabled_languages'] = $config['enabled_languages'] ?? ['es' => true, 'en' => true];
         response($publicConfig);
         break;
 
@@ -1462,6 +1464,47 @@ switch (true) {
         ];
 
         response($siteInfo);
+        break;
+
+    // POST /admin/config/languages - Guardar idiomas habilitados
+    case $path === 'admin/config/languages' && $method === 'POST':
+        checkAuth();
+
+        global $JSON_INPUT;
+        $input = $JSON_INPUT;
+        $config = getConfig();
+
+        if (!isset($input['enabled_languages']) || !is_array($input['enabled_languages'])) {
+            response(['error' => 'enabled_languages is required and must be an object'], 400);
+        }
+
+        $enabledLangs = $input['enabled_languages'];
+
+        // Validar que al menos un idioma esté habilitado
+        if (empty($enabledLangs['es']) && empty($enabledLangs['en'])) {
+            response(['error' => 'At least one language must be enabled'], 400);
+        }
+
+        $config['enabled_languages'] = [
+            'es' => !empty($enabledLangs['es']),
+            'en' => !empty($enabledLangs['en'])
+        ];
+
+        if (!file_put_contents(CONFIG_FILE, json_encode($config, JSON_PRETTY_PRINT))) {
+            response(['error' => 'Failed to save language configuration'], 500);
+        }
+
+        response(['message' => 'Languages configuration updated successfully']);
+        break;
+
+    // GET /admin/config/languages - Obtener idiomas habilitados
+    case $path === 'admin/config/languages' && $method === 'GET':
+        checkAuth();
+
+        $config = getConfig();
+        $enabledLanguages = $config['enabled_languages'] ?? ['es' => true, 'en' => true];
+
+        response(['enabled_languages' => $enabledLanguages]);
         break;
 
     default:

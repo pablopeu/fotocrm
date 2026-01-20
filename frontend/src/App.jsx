@@ -38,6 +38,7 @@ function App() {
   const [siteSubtitleMobile, setSiteSubtitleMobile] = useState('Buscador interactivo')
   const [siteSubtitleDesktop, setSiteSubtitleDesktop] = useState('Buscador interactivo de modelos y materiales')
   const [showConfigurador, setShowConfigurador] = useState(false)
+  const [enabledLanguages, setEnabledLanguages] = useState({ es: true, en: true })
 
   // Filtros
   const [activeTab, setActiveTab] = useState(null) // null = todos, o un id de tab
@@ -164,6 +165,7 @@ function App() {
           setSiteTitle(data.site_title || 'PEU Cuchillos Artesanales')
           setSiteSubtitleMobile(data.site_subtitle_mobile || 'Buscador interactivo')
           setSiteSubtitleDesktop(data.site_subtitle_desktop || 'Buscador interactivo de modelos y materiales')
+          setEnabledLanguages(data.enabled_languages || { es: true, en: true })
         }
       } catch (error) {
         // Error silencioso - no afecta funcionalidad principal
@@ -471,7 +473,7 @@ function App() {
               </div>
               {/* Icono de búsqueda y selector de idioma */}
               <div className="flex items-center gap-2 flex-shrink-0">
-                <LanguageSwitcher />
+                <LanguageSwitcher enabledLanguages={enabledLanguages} />
                 <button
                   onClick={() => setShowMobileSearch(!showMobileSearch)}
                   className="p-1.5 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
