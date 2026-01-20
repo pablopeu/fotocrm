@@ -38,6 +38,7 @@ export default function Admin() {
   const [newPassword, setNewPassword] = useState('')
   const [pendingSave, setPendingSave] = useState(null) // Función para guardar antes de cambiar tab
   const [backendTitle, setBackendTitle] = useState('FotoCRM Admin')
+  const [enabledLanguages, setEnabledLanguages] = useState({ es: true, en: true })
 
   const { isOpen, modalProps, closeModal, showSuccess, showError, showConfirm } = useModal()
 
@@ -92,6 +93,7 @@ export default function Admin() {
       setTagGroups(catData.tag_groups || [])
       setPhotos(photoData.photos || [])
       setBackendTitle(configData.backend_title || 'FotoCRM Admin')
+      setEnabledLanguages(configData.enabled_languages || { es: true, en: true })
     } catch (error) {
       showError(t('messages.error', { ns: 'common' }), t('errors.load_data_error'))
     } finally {
